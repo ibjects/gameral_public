@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Merge to Midnight</title>
+<style>
+  html, body {
+    margin:0; padding:0; height:100%;
+    overflow:hidden; background:#070611;
+    overscroll-behavior:none; touch-action:none;
+    -webkit-tap-highlight-color:transparent;
+    user-select:none; -webkit-user-select:none;
+  }
+  #game { display:block; width:100vw; height:100vh; cursor:pointer; }
+  #boot {
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    color:#7b86c0; background:#070611; font:600 16px -apple-system,system-ui,sans-serif;
+    z-index:9999; padding:24px; box-sizing:border-box; text-align:center; white-space:pre-wrap;
+  }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="boot">starting Merge to Midnight…</div>
+<script>
+// ── On-screen error reporter: a blank page should be impossible. ──
+function showErr(msg){
+  var d=document.getElementById('boot');
+  if(!d){ d=document.createElement('div'); d.id='boot'; document.body.appendChild(d); }
+  d.style.color='#ff8a8a';
+  d.style.font='13px ui-monospace,Menlo,Consolas,monospace';
+  d.textContent='⚠ Game error (please send me this):\n\n'+msg;
+}
+window.addEventListener('error', function(ev){
+  showErr((ev.message||'error')+'  @ line '+(ev.lineno||'?')+':'+(ev.colno||'?'));
+});
+window.addEventListener('unhandledrejection', function(ev){
+  showErr('promise: '+((ev.reason&&ev.reason.message)||ev.reason||'?'));
+});
+
+try {
+(() => {
+"use strict";
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+if(!ctx){ showErr("Your browser blocked the 2D canvas context."); return; }
+let W=0, H=0, DPR=1;
+
+let cx=0, cy=0, boardR=0, coreR=0, ringT=0, tokenR=0;
+let btnSize=0, btnY=0, btnL=null, btnR=null;
+
+const N = 12;
+const LANE = (Math.PI*2)/N;
+const MAX_RINGS = 4;
+const TOP_ANGLE = -Math.PI/2;
+const isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints>0;
+
+function resize(){
+  DPR = Math.min(window.devicePixelRatio||1, 2);
+  W = window.innerWidth || document.documentElement.clientWidth || 360;
+  H = window.innerHeight || document.documentElement.clientHeight || 640;
+  canvas.width = Math.floor(W*DPR); canvas.height = Math.floor(H*DPR);
+  canvas.style.width = W+"px"; canvas.style.height = H+"px";
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+
+  const bottomUI = Math.min(H*0.16, 150);
+  const avail = Math.min(W, H - bottomUI);
+  boardR = avail * 0.46;
+  cx = W/2;
+  cy = (H - bottomUI)/2 + bottomUI*0.10;
+  coreR = boardR*0.24;
+  ringT = (boardR - coreR)/MAX_RINGS;
+  tokenR = ringT*0.40;
+
+  btnSize = Math.min(W*0.20, 88);
+  btnY = H - btnSize - Math.min(H*0.03, 24);
+  const pad = Math.max(W*0.06, 22);
+  btnL = { x: pad,               y: btnY, w: btnSize, h: btnSize };
+  btnR = { x: W - pad - btnSize, y: btnY, w: btnSize, h: btnSize };
+}
+window.addEventListener("resize", resize);
+resize();
+
+const STATE = { START:0, PLAYING:1, GAMEOVER:2, WIN:3 };
+let state = STATE.START;
+
+let best = 0;
+try { best = parseInt(localStorage.getItem("mergeMidnightBest")||"0",10)||0; } catch(e){ best=0; }
+function saveBest(v){ best=v; try{ localStorage.setItem("mergeMidnightBest", String(v)); }catch(e){} }
+
+let stacks = []; for(let i=0;i<N;i++) stacks.push([]);
+let curRot=0, targRot=0;
+let piece=null;
+let nextValue=1;
+let fallSpeed=0, fastFall=false;
+let score=0, displayScore=0, merges=0;
+let shake=0, flash=0;
+let pops=[], particles=[];
+let goCooldown=0;
+
+const clamp=(v,a,b)=>v<a?a:(v>b?b:v);
+const rand=(a,b)=>a+Math.random()*(b-a);
+function numColor(v){ const hue=(v-1)/N*300; return "hsl("+hue+",72%,56%)"; }
+
+function spawnValue(){
+  const ceil = Math.min(3 + Math.floor(merges/14), 6);
+  const weights=[]; for(let v=1; v<=ceil; v++) weights.push(1/(v*v));
+  let total=weights.reduce((a,b)=>a+b,0), r=Math.random()*total;
+  for(let v=1; v<=ceil; v++){ r-=weights[v-1]; if(r<=0) return v; }
+  return 1;
+}
+function newPiece(){
+  piece = { value: nextValue, radius: boardR + tokenR*1.5 };
+  nextValue = spawnValue();
+  fallSpeed = clamp(150 + merges*4.5, 150, 430);
+  fastFall = false;
+}
+function resetGame(){
+  stacks=[]; for(let i=0;i<N;i++) stacks.push([]);
+  curRot=0; targRot=0; score=0; displayScore=0; merges=0;
+  shake=0; flash=0; pops=[]; particles=[];
+  nextValue = spawnValue(); newPiece();
+}
+function startGame(){ resetGame(); state=STATE.PLAYING; }
+
+function topLane(){ let i=Math.round(-curRot/LANE); return ((i%N)+N)%N; }
+function tokenPos(lane, ring){
+  const ang = lane*LANE + TOP_ANGLE + curRot;
+  const rad = coreR + (ring+0.5)*ringT;
+  return { x: cx + Math.cos(ang)*rad, y: cy + Math.sin(ang)*rad };
+}
+function addPop(x,y,color,text){ pops.push({x,y,color,text,life:1}); }
+function burst(x,y,color,n){
+  for(let i=0;i<n;i++){ const a=rand(0,Math.PI*2), s=rand(2,7);
+    particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1,size:rand(2,5),color}); }
+}
+
+function land(lane){
+  const stack = stacks[lane];
+  const v = piece.value;
+  if (stack.length >= MAX_RINGS && stack[stack.length-1] !== v){ gameOver(false); return; }
+  stack.push(v);
+  cascade(lane);
+  flash=Math.max(flash,0.25); shake=Math.max(shake,4);
+  const p=tokenPos(lane, stack.length-1); burst(p.x,p.y,numColor(v),8);
+  merges++; newPiece();
+}
+function cascade(lane){
+  const stack = stacks[lane];
+  let combo=0;
+  while (stack.length>=2 && stack[stack.length-1]===stack[stack.length-2]){
+    const v=stack.pop(); stack.pop(); const nv=v+1; stack.push(nv); combo++;
+    const gain=nv*10*combo; score+=gain;
+    const p=tokenPos(lane, stack.length-1);
+    addPop(p.x,p.y,numColor(nv),"+"+gain); burst(p.x,p.y,numColor(nv),10+combo*4);
+    flash=Math.max(flash,0.30+combo*0.05); shake=Math.max(shake,5+combo*2);
+    if (nv>=N){ gameOver(true); return; }
+  }
+}
+function gameOver(won){
+  state = won?STATE.WIN:STATE.GAMEOVER; goCooldown=0.55;
+  shake = won?22:16; flash=1;
+  if(won){ for(let k=0;k<60;k++) burst(cx,cy,numColor(1+(k%N)),1); }
+  if(score>best) saveBest(score);
+}
+
+function update(dt){
+  if(goCooldown>0) goCooldown=Math.max(0,goCooldown-dt);
+  if(flash>0) flash=Math.max(0,flash-dt*3);
+  if(shake>0) shake=Math.max(0,shake-dt*60*1.3);
+  curRot += (targRot-curRot)*Math.min(1,18*dt);
+  for(let i=pops.length-1;i>=0;i--){ pops[i].life-=dt*1.4; pops[i].y-=dt*40; if(pops[i].life<=0) pops.splice(i,1); }
+  for(let i=particles.length-1;i>=0;i--){ const p=particles[i]; p.vx*=0.92; p.vy*=0.92; p.x+=p.vx; p.y+=p.vy; p.life-=dt*1.6; if(p.life<=0) particles.splice(i,1); }
+  if(state!==STATE.PLAYING) return;
+  const sp=fallSpeed*(fastFall?3.4:1);
+  piece.radius -= sp*dt;
+  const lane=topLane();
+  const h=stacks[lane].length;
+  const landRadius=coreR+(h+0.5)*ringT;
+  if(piece.radius<=landRadius){ piece.radius=landRadius; land(lane); }
+}
+
+function roundRect(x,y,w,h,r){ ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+function drawToken(x,y,value,scale){
+  const r=tokenR*(scale||1);
+  ctx.save(); ctx.shadowBlur=14; ctx.shadowColor=numColor(value);
+  ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=numColor(value); ctx.fill();
+  ctx.shadowBlur=0; ctx.lineWidth=2; ctx.strokeStyle="rgba(255,255,255,0.35)"; ctx.stroke();
+  ctx.fillStyle="#fff"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.font="800 "+(r*1.05)+"px -apple-system, system-ui, sans-serif";
+  ctx.fillText(String(value),x,y+r*0.05); ctx.restore();
+}
+function drawBoard(){
+  ctx.beginPath(); ctx.arc(cx,cy,boardR+tokenR*0.4,0,Math.PI*2);
+  ctx.lineWidth=3; ctx.strokeStyle="rgba(120,130,200,0.30)"; ctx.stroke();
+  ctx.strokeStyle="rgba(120,130,200,0.10)"; ctx.lineWidth=1;
+  for(let i=0;i<N;i++){ const ang=i*LANE+TOP_ANGLE+curRot;
+    ctx.beginPath();
+    ctx.moveTo(cx+Math.cos(ang-LANE/2)*coreR, cy+Math.sin(ang-LANE/2)*coreR);
+    ctx.lineTo(cx+Math.cos(ang-LANE/2)*(boardR+tokenR*0.4), cy+Math.sin(ang-LANE/2)*(boardR+tokenR*0.4));
+    ctx.stroke(); }
+  for(let r=1;r<=MAX_RINGS;r++){ ctx.beginPath(); ctx.arc(cx,cy,coreR+r*ringT,0,Math.PI*2);
+    ctx.strokeStyle="rgba(120,130,200,0.07)"; ctx.stroke(); }
+  const tl=topLane(), ang=tl*LANE+TOP_ANGLE+curRot;
+  ctx.save(); ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.arc(cx,cy,boardR+tokenR*0.4, ang-LANE/2, ang+LANE/2); ctx.closePath();
+  ctx.fillStyle="rgba(255,255,255,0.05)"; ctx.fill(); ctx.restore();
+  for(let i=0;i<N;i++){ const st=stacks[i]; if(!st) continue;
+    for(let r=0;r<st.length;r++){ const p=tokenPos(i,r); drawToken(p.x,p.y,st[r],1); } }
+  ctx.beginPath(); ctx.arc(cx,cy,coreR,0,Math.PI*2); ctx.fillStyle="#0d0c1c"; ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle="rgba(120,130,200,0.30)"; ctx.stroke();
+  ctx.fillStyle="rgba(255,255,255,0.45)"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.font="600 "+(coreR*0.26)+"px -apple-system, system-ui, sans-serif";
+  ctx.fillText("NEXT",cx,cy-coreR*0.42);
+  drawToken(cx,cy+coreR*0.12,nextValue,0.82);
+  if(state===STATE.PLAYING && piece){
+    const px=cx+Math.cos(TOP_ANGLE)*piece.radius, py=cy+Math.sin(TOP_ANGLE)*piece.radius;
+    drawToken(px,py,piece.value,1);
+  }
+}
+function drawParticles(){ for(const p of particles){ ctx.globalAlpha=clamp(p.life,0,1);
+  ctx.fillStyle=p.color; ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size); } ctx.globalAlpha=1; }
+function drawPops(){ ctx.textAlign="center"; ctx.textBaseline="middle";
+  for(const p of pops){ ctx.globalAlpha=clamp(p.life,0,1); ctx.fillStyle=p.color;
+    ctx.font="800 "+(tokenR*0.9)+"px -apple-system, system-ui, sans-serif"; ctx.fillText(p.text,p.x,p.y); }
+  ctx.globalAlpha=1; }
+function drawHUD(){
+  ctx.fillStyle="#fff"; ctx.textAlign="left"; ctx.textBaseline="top";
+  ctx.font="800 "+clamp(W*0.07,26,44)+"px -apple-system, system-ui, sans-serif";
+  ctx.fillText(String(displayScore),22,18);
+  ctx.fillStyle="rgba(255,255,255,0.45)";
+  ctx.font="600 "+clamp(W*0.032,12,18)+"px -apple-system, system-ui, sans-serif";
+  ctx.fillText("BEST "+best,24,clamp(W*0.07,26,44)+22);
+  ctx.textAlign="right"; ctx.fillStyle="rgba(255,255,255,0.55)";
+  ctx.fillText("reach 12 = midnight",W-22,22);
+}
+function drawButton(b,label){
+  ctx.save(); ctx.shadowBlur=10; ctx.shadowColor="#6a7bff";
+  ctx.fillStyle="rgba(106,123,255,0.14)"; roundRect(b.x,b.y,b.w,b.h,b.h*0.28); ctx.fill();
+  ctx.lineWidth=2; ctx.strokeStyle="rgba(140,150,255,0.7)"; ctx.stroke();
+  ctx.shadowBlur=0; ctx.fillStyle="#dfe3ff"; ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.font="800 "+(b.h*0.46)+"px -apple-system, system-ui, sans-serif";
+  ctx.fillText(label,b.x+b.w/2,b.y+b.h/2); ctx.restore();
+}
+function drawCenter(title,sub,sub2){
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillStyle="#fff"; ctx.shadowBlur=24; ctx.shadowColor="#6a7bff";
+  ctx.font="800 "+clamp(W*0.12,38,76)+"px -apple-system, system-ui, sans-serif";
+  ctx.fillText(title,W/2,H*0.40); ctx.shadowBlur=0;
+  if(sub){ ctx.fillStyle="rgba(255,255,255,0.92)";
+    ctx.font="600 "+clamp(W*0.045,18,28)+"px -apple-system, system-ui, sans-serif";
+    ctx.fillText(sub,W/2,H*0.40+clamp(W*0.09,46,70)); }
+  if(sub2){ ctx.fillStyle="rgba(255,255,255,0.55)";
+    ctx.font="500 "+clamp(W*0.034,13,20)+"px -apple-system, system-ui, sans-serif";
+    ctx.fillText(sub2,W/2,H*0.40+clamp(W*0.15,76,108)); }
+}
+
+let booted=false;
+let lastT=performance.now();
+function frame(now){
+  if(!booted){ booted=true; const b=document.getElementById('boot'); if(b) b.style.display='none'; }
+  let dt=(now-lastT)/1000; lastT=now; if(dt>0.05) dt=0.05;
+  update(dt);
+  displayScore += (score-displayScore)*Math.min(1,dt*12);
+  displayScore = Math.round(displayScore);
+  ctx.fillStyle="#070611"; ctx.fillRect(0,0,W,H);
+  ctx.save(); if(shake>0){ const s=shake; ctx.translate(rand(-s,s),rand(-s,s)); }
+  drawBoard(); drawParticles(); drawPops();
+  if(state===STATE.PLAYING){ drawHUD(); drawButton(btnL,"\u25C0"); drawButton(btnR,"\u25B6"); }
+  else if(state===STATE.START){ drawCenter("MIDNIGHT", isTouch?"Tap to Start":"Click to Start", "Spin the clock \u2022 catch \u2022 merge matching numbers"); }
+  else if(state===STATE.GAMEOVER){ drawHUD(); drawCenter("JAMMED","Score "+score+"  \u2022  Best "+best, goCooldown>0?"...":(isTouch?"Tap to Restart":"Click / Space to Restart")); }
+  else if(state===STATE.WIN){ drawHUD(); drawCenter("MIDNIGHT!","You struck 12 \u2022 Score "+score, goCooldown>0?"...":(isTouch?"Tap to Play Again":"Click / Space to Play Again")); }
+  ctx.restore();
+  if(flash>0){ ctx.fillStyle="rgba(255,255,255,"+(flash*0.5)+")"; ctx.fillRect(0,0,W,H); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+function rotate(dir){ if(state===STATE.PLAYING) targRot += dir*LANE; }
+function hitBtn(b,x,y){ return x>=b.x&&x<=b.x+b.w&&y>=b.y&&y<=b.y+b.h; }
+function pointerDown(x,y){
+  if(state===STATE.START){ startGame(); return; }
+  if(state===STATE.GAMEOVER||state===STATE.WIN){ if(goCooldown<=0) startGame(); return; }
+  if(hitBtn(btnL,x,y)){ rotate(+1); return; }
+  if(hitBtn(btnR,x,y)){ rotate(-1); return; }
+  if(x<W/2) rotate(+1); else rotate(-1);
+}
+if(window.PointerEvent){
+  canvas.addEventListener("pointerdown",e=>{ e.preventDefault(); pointerDown(e.clientX,e.clientY); },{passive:false});
+} else {
+  canvas.addEventListener("mousedown",e=>{ e.preventDefault(); pointerDown(e.clientX,e.clientY); });
+  canvas.addEventListener("touchstart",e=>{ e.preventDefault(); const t=e.changedTouches[0]; pointerDown(t.clientX,t.clientY); },{passive:false});
+}
+window.addEventListener("keydown",e=>{
+  if(["ArrowLeft","KeyA"].includes(e.code)){ e.preventDefault(); if(!e.repeat) rotate(+1); }
+  else if(["ArrowRight","KeyD"].includes(e.code)){ e.preventDefault(); if(!e.repeat) rotate(-1); }
+  else if(["Space","ArrowDown","Enter"].includes(e.code)){ e.preventDefault();
+    if(state===STATE.PLAYING) fastFall=true; else if(goCooldown<=0) startGame(); }
+},{passive:false});
+window.addEventListener("keyup",e=>{ if(["Space","ArrowDown"].includes(e.code)){ e.preventDefault(); fastFall=false; } },{passive:false});
+document.addEventListener("visibilitychange",()=>{ if(document.hidden) fastFall=false; });
+
+})();
+} catch(e){ showErr((e&&e.stack)||String(e)); }
+</script>
+</body>
+</html>
