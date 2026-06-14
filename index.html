@@ -471,48 +471,7 @@
                 <!-- <span>1 game</span> -->
             </div>
 
-            <div class="games-grid">
-
-                <!-- Tap Tap Drift -->
-                <a class="game-card" href="games/tap-tap-drift/index.html"
-                    title="Play Tap Tap Drift – free online racing game"
-                    style="--thumb-gradient: linear-gradient(135deg, #1a1c2e 0%, #07080d 100%);">
-                    <div class="card-thumb">
-                        <img src="games/tap-tap-drift/thumbnail.png" alt="Tap Tap Drift game preview" loading="lazy"
-                            onerror="this.style.display='none'">
-                        <div class="play-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M8 5v14l11-7z" />
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="card-info">
-                        <div class="game-name">Tap Tap Drift</div>
-                        <!-- <div class="game-tag">Racing · Arcade</div> -->
-                    </div>
-                </a>
-
-                <!-- Merge to Midnight -->
-                <a class="game-card" href="games/merge-to-midnight/index.html" title="Merge to Midnight"
-                    style="--thumb-gradient: linear-gradient(135deg, #1a1c2e 0%, #07080d 100%);">
-                    <div class="card-thumb">
-                        <img src="games/merge-to-midnight/thumbnail.png" alt="Merge to Midnight game preview"
-                            loading="lazy" onerror="this.style.display='none'">
-                        <div class="play-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M8 5v14l11-7z" />
-                            </svg>
-                        </div>
-                    </div>
-                    <div class="card-info">
-                        <div class="game-name">Merge to Midnight</div>
-                        <!-- <div class="game-tag">Racing · Arcade</div> -->
-                    </div>
-                </a>
-
-                <!-- More games coming soon -->
-
-            </div>
+            <div class="games-grid" id="games-grid"></div>
         </section>
 
         <!-- ── FAQ for AI Overviews ── -->
@@ -555,6 +514,31 @@
         <p>&copy; 2026 <a href="/">Gameral</a> &mdash; Free fun games to play online, anytime.</p>
     </footer>
 
+    <script src="games.js"></script>
+    <script>
+        const grid = document.getElementById('games-grid');
+        // document.getElementById('game-count').textContent =
+        //     GAMES.length + (GAMES.length === 1 ? ' game' : ' games');
+
+        grid.innerHTML = GAMES.map(g => `
+      <a class="game-card" href="${g.url}"
+         title="Play ${g.name} – free online game"
+         style="--thumb-gradient: ${g.gradient}">
+        <div class="card-thumb">
+          <img src="${g.thumbnail}" alt="${g.name} preview"
+               loading="lazy" onerror="this.style.display='none'">
+          <div class="play-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          </div>
+        </div>
+        <div class="card-info">
+          <div class="game-name">${g.name}</div>
+          <div class="game-tag">${g.genre}</div>
+        </div>
+      </a>
+    `).join('');
+    </script>
 </body>
+
 
 </html>

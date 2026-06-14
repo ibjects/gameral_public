@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Cleanroom - Micro-Web Game</title>
+    <style>
+        /* CSS RESET & SCI-FI CORE THEMING */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body,
+        html {
+            width: 100%;
+            height: 100%;
+            background-color: #090d16;
+            /* Cleanroom void black */
+            overflow: hidden;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            touch-action: none;
+            /* Disables ambient mobile gestures */
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+
+<body>
+
+    <canvas id="cleanroomCanvas"></canvas>
+
+    <script>
+        /**
+         * THE CLEANROOM - Core Engine
+         * 100% Functional Vanilla JS Frontend Game Architecture
+         */
+
+        const canvas = document.getElementById('cleanroomCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // Grid Configurations
+        const ROWS = 6;
+        const COLS = 6;
+
+        // Color Palette / Design Tokens
+        const COLORS = {
+            bg: '#090d16',
+            gridLine: '#1e293b',
+            gridAccent: '#334155',
+            textMain: '#f8fafc',
+            textMuted: '#64748b',
+            // Particle/Venting targets
+            RED: '#ef4444',    // Top Vent Target
+            GREEN: '#22c55e',  // Right Vent Target
+            BLUE: '#3b82f6',   // Bottom Vent Target
+            YELLOW: '#eab308'  // Left Vent Target
+        };
+
+        // Game Engine State Machine
+        let gameState = 'START'; // START, PLAY, OVER
+        let lastTime = 0;
+        let score = 0;
+        let highScore = localStorage.getItem('cleanroom_highscore') || 0;
+        let contamination = 0; // Gauge from 0 to 100
+
+        // Grid Array System
+        let grid = [];
+
+        // Selection tracks (for keyboard/pad controllers)
+        let selectedRow = 0;
+        let selectedCol = 0;
+
+        // Dynamic Sizing Layout Parameters
+        let viewWidth = 0;
+        let viewHeight = 0;
+        let cellSize = 0;
+        let gridLeft = 0;
+        let gridTop = 0;
+        let gridWidth = 0;
+        let gridHeight = 0;
+
+        // Interaction & Touch-Drag Tracker Variables
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let dragRow = -1;
+        let dragCol = -1;
+        const DRAG_THRESHOLD = 30; // Min pixels to register a clean slide shift
+
+        // Virtual Control UI Coordinates
+        let uiButtons = {};
+
+        // Game Loop / Timing Mechanics
+        let spawnTimer = 0;
+        let spawnInterval = 1.8; // Decreases as score increases
+        let growthRate = 8;     // Speed at which dots grow
+
+        // Juice Systems
+        let screenShake = 0;
+        let flashAlpha = 0;
+        let flashColor = '#ffffff';
+        let particles = [];
+        let floatingTexts = [];
+
+        /**
+         * Initialize Event Listeners and Setup Loop
+         */
+        function init() {
+            setupGrid();
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Setup User Controls
+            window.addEventListener('keydown', handleKeyDown);
+            canvas.addEventListener('mousedown', handlePointerDown);
+            canvas.addEventListener('mousemove', handlePointerMove);
+            window.addEventListener('mouseup', handlePointerUp);
+
+            canvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+            canvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+            window.addEventListener('touchend', handleTouchEnd);
+
+            // Run Engine Loop
+            requestAnimationFrame(engineLoop);
+        }
+
+        function setupGrid() {
+            grid = Array(ROWS).fill(null).map(() => Array(COLS).fill(null));
+        }
+
+        function resizeCanvas() {
+            viewWidth = window.innerWidth;
+            viewHeight = window.innerHeight;
+            canvas.width = viewWidth;
+            canvas.height = viewHeight;
+
+            // Calculate layout limits to make grid perfectly square and central
+            const minDim = Math.min(viewWidth, viewHeight * 0.6); // Reserve space for top dashboard/bottom controls
+            cellSize = Math.floor((minDim * 0.8) / COLS);
+            gridWidth = cellSize * COLS;
+            gridHeight = cellSize * ROWS;
+            gridLeft = Math.floor((viewWidth - gridWidth) / 2);
+            gridTop = Math.floor((viewHeight * 0.45) - (gridHeight / 2));
+
+            // Map Coordinates for Responsive Virtual Controls (Bottom D-Pad layout)
+            const btnY = gridTop + gridHeight + 40;
+            const btnSize = 50;
+            const centerX = viewWidth / 2;
+
+            uiButtons = {
+                left: { x: centerX - 75, y: btnY + 25, w: btnSize, h: btnSize, label: '←' },
+                right: { x: centerX + 25, y: btnY + 25, w: btnSize, h: btnSize, label: '→' },
+                up: { x: centerX - 25, y: btnY - 25, w: btnSize, h: btnSize, label: '↑' },
+                down: { x: centerX - 25, y: btnY + 75, w: btnSize, h: btnSize, label: '↓' },
+                rowUp: { x: gridLeft - 60, y: gridTop + gridHeight / 2 - 40, w: 45, h: 35, label: 'R▲' },
+                rowDn: { x: gridLeft - 60, y: gridTop + gridHeight / 2 + 5, w: 45, h: 35, label: 'R▼' },
+                colLf: { x: gridLeft + gridWidth / 2 - 40, y: gridTop - 50, w: 35, h: 40, label: 'C◀' },
+                colRt: { x: gridLeft + gridWidth / 2 + 5, y: gridTop - 50, w: 35, h: 40, label: 'C▶' }
+            };
+        }
+
+        /**
+         * Mechanics Engine: Spawn Contaminants
+         */
+        function spawnContaminant() {
+            // Collect empty cells
+            let empties = [];
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    if (!grid[r][c]) empties.push({ r, c });
+                }
+            }
+
+            if (empties.length === 0) return;
+
+            // Choose random location
+            let pick = empties[Math.floor(Math.random() * empties.length)];
+
+            // Choose random core vent color category
+            const pool = ['RED', 'GREEN', 'BLUE', 'YELLOW'];
+            const selectedColor = pool[Math.floor(Math.random() * pool.length)];
+
+            grid[pick.r][pick.c] = {
+                colorKey: selectedColor,
+                colorHex: COLORS[selectedColor],
+                radius: 2,
+                maxRadius: cellSize * 0.44,
+                isRupturing: false
+            };
+        }
+
+        /**
+         * Core Shift Mechanics (Rubik's Wrap-Around Logic)
+         */
+        function shiftRow(r, direction) {
+            if (gameState !== 'PLAY') return;
+            const rowCopy = [...grid[r]];
+            if (direction > 0) { // Shift right
+                const last = rowCopy[COLS - 1];
+                for (let c = COLS - 1; c > 0; c--) grid[r][c] = rowCopy[c - 1];
+                grid[r][0] = last;
+            } else { // Shift left
+                const first = rowCopy[0];
+                for (let c = 0; c < COLS - 1; c++) grid[r][c] = rowCopy[c + 1];
+                grid[r][COLS - 1] = first;
+            }
+            triggerShiftFeedback();
+            processExhaustVents();
+        }
+
+        function shiftColumn(c, direction) {
+            if (gameState !== 'PLAY') return;
+            const colCopy = [];
+            for (let r = 0; r < ROWS; r++) colCopy.push(grid[r][c]);
+
+            if (direction > 0) { // Shift down
+                const last = colCopy[ROWS - 1];
+                for (let r = ROWS - 1; r > 0; r--) grid[r][c] = colCopy[r - 1];
+                grid[0][c] = last;
+            } else { // Shift up
+                const first = colCopy[0];
+                for (let r = 0; r < ROWS - 1; r++) grid[r][c] = colCopy[r + 1];
+                grid[ROWS - 1][c] = first;
+            }
+            triggerShiftFeedback();
+            processExhaustVents();
+        }
+
+        function triggerShiftFeedback() {
+            screenShake = Math.max(screenShake, 4);
+            flashColor = 'rgba(255,255,255,0.05)';
+            flashAlpha = 0.1;
+        }
+
+        /**
+         * Processing Rule: Exhaust Vent Matches
+         */
+        function processExhaustVents() {
+            let ventedAny = false;
+            let localMatches = [];
+
+            // Check Outer Boundaries for Matching Colors against designated vents
+            // Top Row (r=0) -> RED Vents
+            for (let c = 0; c < COLS; c++) {
+                if (grid[0][c] && grid[0][c].colorKey === 'RED') {
+                    localMatches.push({ r: 0, c, key: 'RED' });
+                }
+            }
+            // Bottom Row (r=ROWS-1) -> BLUE Vents
+            for (let c = 0; c < COLS; c++) {
+                if (grid[ROWS - 1][c] && grid[ROWS - 1][c].colorKey === 'BLUE') {
+                    localMatches.push({ r: ROWS - 1, c, key: 'BLUE' });
+                }
+            }
+            // Left Column (c=0) -> YELLOW Vents
+            for (let r = 0; r < ROWS; r++) {
+                if (grid[r][0] && grid[r][0].colorKey === 'YELLOW') {
+                    localMatches.push({ r, c: 0, key: 'YELLOW' });
+                }
+            }
+            // Right Column (c=COLS-1) -> GREEN Vents
+            for (let r = 0; r < ROWS; r++) {
+                if (grid[r][COLS - 1] && grid[r][COLS - 1].colorKey === 'GREEN') {
+                    localMatches.push({ r, c: COLS - 1, key: 'GREEN' });
+                }
+            }
+
+            // Process visual venting juice & score accumulation
+            localMatches.forEach(match => {
+                const item = grid[match.r][match.c];
+                if (!item) return; // Guard against multi-overlap drops
+
+                ventedAny = true;
+                const scoreGain = Math.floor(item.radius * 2);
+                score += scoreGain;
+
+                // Visual Coordinates
+                const px = gridLeft + (match.c * cellSize) + cellSize / 2;
+                const py = gridTop + (match.r * cellSize) + cellSize / 2;
+
+                // Trigger Juice Assets
+                createImpactParticles(px, py, item.colorHex);
+                createFloatingText(`+${scoreGain}`, px, py - 10, item.colorHex);
+
+                contamination = Math.max(0, contamination - 6); // Clearing drops reduces ambient hazard metrics
+                grid[match.r][match.c] = null; // Purge cell
+            });
+
+            if (ventedAny) {
+                screenShake = Math.min(screenShake + 18, 25);
+                flashColor = 'rgba(255, 255, 255, 0.25)';
+                flashAlpha = 0.3;
+                // Check cascade line configurations immediately following shifts
+                processExhaustVents();
+            }
+        }
+
+        /**
+         * Visual Feedback Generation Utilities
+         */
+        function createImpactParticles(x, y, color) {
+            for (let i = 0; i < 16; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 80 + Math.random() * 160;
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed,
+                    radius: 2 + Math.random() * 4,
+                    alpha: 1.0,
+                    decay: 1.8 + Math.random() * 1.5,
+                    color: color
+                });
+            }
+        }
+
+        function createFloatingText(str, x, y, color) {
+            floatingTexts.push({
+                text: str, x: x, y: y, color: color, alpha: 1.0, speedY: -40
+            });
+        }
+
+        /**
+         * Controller Mechanics Configuration
+         */
+        function handleKeyDown(e) {
+            if (gameState !== 'PLAY') {
+                if (e.code === 'Space' || e.code === 'Enter') startNewGame();
+                return;
+            }
+
+            switch (e.key.toLowerCase()) {
+                // Track Management (W/S for Rows, A/D for Cols)
+                case 'w': selectedRow = (selectedRow - 1 + ROWS) % ROWS; break;
+                case 's': selectedRow = (selectedRow + 1) % ROWS; break;
+                case 'a': selectedCol = (selectedCol - 1 + COLS) % COLS; break;
+                case 'd': selectedCol = (selectedCol + 1) % COLS; break;
+
+                // Dynamic Shifts Engine
+                case 'arrowleft': shiftRow(selectedRow, -1); break;
+                case 'arrowright': shiftRow(selectedRow, 1); break;
+                case 'arrowup': shiftColumn(selectedCol, -1); break;
+                case 'arrowdown': shiftColumn(selectedCol, 1); break;
+            }
+        }
+
+        function processPointerDown(clientX, clientY) {
+            if (gameState !== 'PLAY') {
+                startNewGame();
+                return;
+            }
+
+            // Check if virtual button control was pressed instead of direct grid row click
+            for (let key in uiButtons) {
+                let b = uiButtons[key];
+                if (clientX >= b.x && clientX <= b.x + b.w && clientY >= b.y && clientY <= b.y + b.h) {
+                    executeUiButtonAction(key);
+                    return;
+                }
+            }
+
+            // Test for Direct Grid Interactions
+            if (clientX >= gridLeft && clientX <= gridLeft + gridWidth &&
+                clientY >= gridTop && clientY <= gridTop + gridHeight) {
+
+                const c = Math.floor((clientX - gridLeft) / cellSize);
+                const r = Math.floor((clientY - gridTop) / cellSize);
+
+                if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
+                    isDragging = true;
+                    dragStartX = clientX;
+                    dragStartY = clientY;
+                    dragRow = r;
+                    dragCol = c;
+                    selectedRow = r;
+                    selectedCol = c;
+                }
+            }
+        }
+
+        function processPointerMove(clientX, clientY) {
+            if (!isDragging || gameState !== 'PLAY') return;
+
+            const dx = clientX - dragStartX;
+            const dy = clientY - dragStartY;
+
+            if (Math.abs(dx) > DRAG_THRESHOLD && Math.abs(dx) > Math.abs(dy)) {
+                // Horizontal Flick Registered
+                shiftRow(dragRow, dx > 0 ? 1 : -1);
+                isDragging = false; // Reset gesture lock
+            } else if (Math.abs(dy) > DRAG_THRESHOLD && Math.abs(dy) > Math.abs(dx)) {
+                // Vertical Flick Registered
+                shiftColumn(dragCol, dy > 0 ? 1 : -1);
+                isDragging = false;
+            }
+        }
+
+        function executeUiButtonAction(action) {
+            switch (action) {
+                case 'left': shiftRow(selectedRow, -1); break;
+                case 'right': shiftRow(selectedRow, 1); break;
+                case 'up': shiftColumn(selectedCol, -1); break;
+                case 'down': shiftColumn(selectedCol, 1); break;
+                case 'rowUp': selectedRow = (selectedRow - 1 + ROWS) % ROWS; break;
+                case 'rowDn': selectedRow = (selectedRow + 1) % ROWS; break;
+                case 'colLf': selectedCol = (selectedCol - 1 + COLS) % COLS; break;
+                case 'colRt': selectedCol = (selectedCol + 1) % COLS; break;
+            }
+        }
+
+        // Unified Pointer Bridge
+        function handlePointerDown(e) { processPointerDown(e.clientX, e.clientY); }
+        function handlePointerMove(e) { processPointerMove(e.clientX, e.clientY); }
+        function handlePointerUp() { isDragging = false; }
+
+        function handleTouchStart(e) {
+            if (e.touches.length > 0) {
+                processPointerDown(e.touches[0].clientX, e.touches[0].clientY);
+                e.preventDefault();
+            }
+        }
+        function handleTouchMove(e) {
+            if (e.touches.length > 0) {
+                processPointerMove(e.touches[0].clientX, e.touches[0].clientY);
+                e.preventDefault();
+            }
+        }
+        function handleTouchEnd() { isDragging = false; }
+
+        function startNewGame() {
+            setupGrid();
+            score = 0;
+            contamination = 0;
+            spawnInterval = 1.8;
+            spawnTimer = 0.5;
+            selectedRow = 0;
+            selectedCol = 0;
+            particles = [];
+            floatingTexts = [];
+            gameState = 'PLAY';
+        }
+
+        /**
+         * Global Real-Time Physics Calculation updates
+         */
+        function updateEngineState(dt) {
+            // Screen Juice Decay System
+            if (screenShake > 0) screenShake -= 45 * dt;
+            if (screenShake < 0) screenShake = 0;
+            if (flashAlpha > 0) flashAlpha -= 1.8 * dt;
+            if (flashAlpha < 0) flashAlpha = 0;
+
+            if (gameState !== 'PLAY') return;
+
+            // Difficulty Progression Controller
+            spawnInterval = Math.max(0.65, 1.8 - (score / 1200));
+
+            // Core Timed Spawner Sequence
+            spawnTimer -= dt;
+            if (spawnTimer <= 0) {
+                spawnContaminant();
+                spawnTimer = spawnInterval;
+            }
+
+            // Dynamic Bacteria Growth Process Routine
+            let aggregateContaminationRate = 0;
+
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    let item = grid[r][c];
+                    if (item) {
+                        // Growth size interpolation
+                        if (item.radius < item.maxRadius) {
+                            item.radius += growthRate * dt;
+                        } else {
+                            item.radius = item.maxRadius;
+                            item.isRupturing = true; // Flag structural alerts
+                        }
+
+                        // Active elements steadily increase systemic critical hazard values
+                        aggregateContaminationRate += item.isRupturing ? 4.5 : 1.2;
+                    }
+                }
+            }
+
+            contamination += aggregateContaminationRate * dt;
+
+            // Game Over condition
+            if (contamination >= 100) {
+                contamination = 100;
+                gameState = 'OVER';
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('cleanroom_highscore', highScore);
+                }
+            }
+
+            // Modern Fluid Particle update
+            for (let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.alpha -= p.decay * dt;
+                if (p.alpha <= 0) particles.splice(i, 1);
+            }
+
+            // Text Float updates
+            for (let i = floatingTexts.length - 1; i >= 0; i--) {
+                let t = floatingTexts[i];
+                t.y += t.speedY * dt;
+                t.alpha -= 1.5 * dt;
+                if (t.alpha <= 0) floatingTexts.splice(i, 1);
+            }
+        }
+
+        /**
+         * Graphics Render System Canvas Paint Engine
+         */
+        function renderScene() {
+            // Canvas Buffer Clear
+            ctx.fillStyle = COLORS.bg;
+            ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+            ctx.save();
+            // Screen Shake Implementation
+            if (screenShake > 0) {
+                const dx = (Math.random() - 0.5) * screenShake;
+                const dy = (Math.random() - 0.5) * screenShake;
+                ctx.translate(dx, dy);
+            }
+
+            // Draw Vents (Exhaust Channels Framing the Boundary)
+            drawVents();
+
+            // Draw Interior Grid Array Layout
+            drawCleanroomGrid();
+
+            // Draw UI Handles and Overlay Buttons
+            drawVirtualControls();
+
+            // Draw Active Floating FX Assets
+            drawVisualFx();
+
+            ctx.restore();
+
+            // Render Foreground HUD dashboard data
+            drawHeadsUpDisplay();
+
+            // Trigger Screen Flashes
+            if (flashAlpha > 0) {
+                ctx.fillStyle = flashColor;
+                ctx.globalAlpha = flashAlpha;
+                ctx.fillRect(0, 0, viewWidth, viewHeight);
+                ctx.globalAlpha = 1.0;
+            }
+        }
+
+        function drawVents() {
+            const thickness = 10;
+            // Top Vent -> RED
+            ctx.fillStyle = COLORS.RED;
+            ctx.fillRect(gridLeft, gridTop - thickness, gridWidth, thickness);
+            // Right Vent -> GREEN
+            ctx.fillStyle = COLORS.GREEN;
+            ctx.fillRect(gridLeft + gridWidth, gridTop, thickness, gridHeight);
+            // Bottom Vent -> BLUE
+            ctx.fillStyle = COLORS.BLUE;
+            ctx.fillRect(gridLeft, gridTop + gridHeight, gridWidth, thickness);
+            // Left Vent -> YELLOW
+            ctx.fillStyle = COLORS.YELLOW;
+            ctx.fillRect(gridLeft - thickness, gridTop, thickness, gridHeight);
+        }
+
+        function drawCleanroomGrid() {
+            // Render Selection Track Shaders (Highlight indicators)
+            if (gameState === 'PLAY') {
+                ctx.fillStyle = 'rgba(30, 41, 59, 0.4)';
+                // Row Highlight Track
+                ctx.fillRect(gridLeft, gridTop + (selectedRow * cellSize), gridWidth, cellSize);
+                // Column Highlight Track
+                ctx.fillRect(gridLeft + (selectedCol * cellSize), gridTop, cellSize, gridHeight);
+            }
+
+            // Grid Line Render Execution
+            ctx.strokeStyle = COLORS.gridLine;
+            ctx.lineWidth = 1;
+            for (let r = 0; r <= ROWS; r++) {
+                ctx.beginPath();
+                ctx.moveTo(gridLeft, gridTop + (r * cellSize));
+                ctx.lineTo(gridLeft + gridWidth, gridTop + (r * cellSize));
+                ctx.stroke();
+            }
+            for (let c = 0; c <= COLS; c++) {
+                ctx.beginPath();
+                ctx.moveTo(gridLeft + (c * cellSize), gridTop);
+                ctx.lineTo(gridLeft + (c * cellSize), gridTop + gridHeight);
+                ctx.stroke();
+            }
+
+            // Active Tracker Cursor Accent Boundary Box
+            if (gameState === 'PLAY') {
+                ctx.strokeStyle = COLORS.gridAccent;
+                ctx.lineWidth = 2;
+                ctx.strokeRect(gridLeft + (selectedCol * cellSize), gridTop + (selectedRow * cellSize), cellSize, cellSize);
+            }
+
+            // Draw Contaminant Bacteria Dots Within Cells
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const node = grid[r][c];
+                    if (node) {
+                        const cx = gridLeft + (c * cellSize) + (cellSize / 2);
+                        const cy = gridTop + (r * cellSize) + (cellSize / 2);
+
+                        // If fully expanding, draw a distinct warning containment ring pulse
+                        if (node.isRupturing) {
+                            ctx.strokeStyle = node.colorHex;
+                            ctx.lineWidth = 1.5;
+                            ctx.beginPath();
+                            ctx.arc(cx, cy, node.maxRadius + Math.sin(Date.now() / 90) * 3, 0, Math.PI * 2);
+                            ctx.stroke();
+                        }
+
+                        // Core Contaminant Dot Body
+                        ctx.fillStyle = node.colorHex;
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, node.radius, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        // Sterile Center Core Accent
+                        ctx.fillStyle = '#090d16';
+                        ctx.beginPath();
+                        ctx.arc(cx, cy, node.radius * 0.3, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            }
+        }
+
+        function drawVirtualControls() {
+            if (gameState !== 'PLAY') return;
+
+            ctx.font = 'bold 13px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            for (let key in uiButtons) {
+                let b = uiButtons[key];
+
+                // Highlight operational keys conditionally based on current active tracks
+                let isActiveTrackBtn = false;
+                if (key === 'rowUp' || key === 'rowDn') isActiveTrackBtn = true;
+                if (key === 'colLf' || key === 'colRt') isActiveTrackBtn = true;
+
+                ctx.fillStyle = isActiveTrackBtn ? '#1e293b' : '#111827';
+                ctx.strokeStyle = COLORS.gridAccent;
+                ctx.lineWidth = 1;
+
+                // Button Outline Shapes
+                ctx.fillRect(b.x, b.y, b.w, b.h);
+                ctx.strokeRect(b.x, b.y, b.w, b.h);
+
+                // Core Labels Symbols Drawing
+                ctx.fillStyle = COLORS.textMain;
+                ctx.fillText(b.label, b.x + b.w / 2, b.y + b.h / 2);
+            }
+        }
+
+        function drawVisualFx() {
+            // Draw Particles
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.alpha;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1.0;
+
+            // Draw Score Pops Texts
+            floatingTexts.forEach(t => {
+                ctx.fillStyle = t.color;
+                ctx.globalAlpha = t.alpha;
+                ctx.font = 'bold 16px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(t.text, t.x, t.y);
+            });
+            ctx.globalAlpha = 1.0;
+        }
+
+        function drawHeadsUpDisplay() {
+            // Upper Status Banner Area
+            ctx.fillStyle = COLORS.textMain;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'top';
+            ctx.font = 'bold 22px sans-serif';
+            ctx.fillText(`SCORE: ${score}`, 24, 24);
+
+            ctx.fillStyle = COLORS.textMuted;
+            ctx.font = '13px monospace';
+            ctx.fillText(`HIGH RECORD: ${highScore}`, 26, 52);
+
+            // Contamination Alert Hazard Gauge Panel Rendering
+            const barW = 160;
+            const barH = 14;
+            const barX = viewWidth - barW - 24;
+            const barY = 28;
+
+            // Boundary Frame Outline
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barW, barH);
+
+            // Filling Warning Slider Core
+            ctx.fillStyle = contamination > 75 ? COLORS.RED : (contamination > 45 ? COLORS.YELLOW : COLORS.GREEN);
+            const fillPercent = (contamination / 100) * (barW - 4);
+            ctx.fillRect(barX + 2, barY + 2, Math.max(0, fillPercent), barH - 4);
+
+            ctx.fillStyle = COLORS.textMain;
+            ctx.font = 'bold 11px monospace';
+            ctx.textAlign = 'right';
+            ctx.fillText(`CONTAINMENT HAZARD: ${Math.floor(contamination)}%`, barX + barW, barY - 14);
+
+            // Screen-State Menu Graphics Intermission overlays
+            if (gameState === 'START') {
+                drawMenuOverlay('THE CLEANROOM', 'FLICK ROWS & COLUMNS TO PURGE MATCHING VENTS', 'TAP SCREEN OR PRESS SPACE TO ACTIVATE');
+            } else if (gameState === 'OVER') {
+                drawMenuOverlay('CONTAINMENT BREACH', `SYSTEM TERMINATED // FINAL SCORE: ${score}`, 'TAP SCREEN OR PRESS SPACE TO PURGE CORE');
+            }
+        }
+
+        function drawMenuOverlay(title, subtitle, actionText) {
+            ctx.fillStyle = 'rgba(6, 9, 15, 0.85)';
+            ctx.fillRect(0, 0, viewWidth, viewHeight);
+
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.fillStyle = title.includes('BREACH') ? COLORS.RED : COLORS.textMain;
+            ctx.font = 'bold 36px sans-serif';
+            ctx.fillText(title, viewWidth / 2, viewHeight / 2 - 40);
+
+            ctx.fillStyle = COLORS.textMuted;
+            ctx.font = '15px sans-serif';
+            ctx.fillText(subtitle, viewWidth / 2, viewHeight / 2 + 5);
+
+            // Pulsing Text Animation Loop calculation
+            if (Math.floor(Date.now() / 450) % 2 === 0) {
+                ctx.fillStyle = COLORS.GREEN;
+                ctx.font = 'bold 13px monospace';
+                ctx.fillText(actionText, viewWidth / 2, viewHeight / 2 + 50);
+            }
+        }
+
+        /**
+         * Universal High Performance Loop System Clock
+         */
+        function engineLoop(timestamp) {
+            if (!lastTime) lastTime = timestamp;
+            let dt = (timestamp - lastTime) / 1000;
+
+            // Safety performance cap to protect framing logic on background execution drops
+            if (dt > 0.1) dt = 0.1;
+            lastTime = timestamp;
+
+            updateEngineState(dt);
+            renderScene();
+
+            requestAnimationFrame(engineLoop);
+        }
+
+        // Fire Up Frontend Application
+        init();
+
+    </script>
+</body>
+
+</html>

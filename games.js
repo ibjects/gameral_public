@@ -1,0 +1,30 @@
+const GAMES = [
+  {
+    id: "tap-tap-drift",
+    name: "Tap Tap Drift",
+    genre: "Racing · Arcade",
+    url: "games/tap-tap-drift/index.html",
+    thumbnail: "games/tap-tap-drift/thumbnail.png",
+    gradient: "linear-gradient(135deg, #1a1c2e 0%, #07080d 100%)",
+    // description: "A fast-paced tap-to-drift racing game.",
+  },
+  {
+    id: "merge-to-midnight",
+    name: "Merge to Midnight",
+    genre: "Puzzle · Strategy",
+    url: "games/merge-to-midnight/index.html",
+    thumbnail: "games/merge-to-midnight/thumbnail.png",
+    gradient: "linear-gradient(135deg, #1a1c2e 0%, #07080d 100%)",
+    // description:
+    //   "A challenging puzzle game where you merge tiles to reach midnight.",
+  },
+  {
+    id: "the-cleanroom",
+    name: "The Cleanroom",
+    genre: "Puzzle · Strategy",
+    url: "games/the-cleanroom/index.html",
+    thumbnail: "games/the-cleanroom/thumbnail.png",
+    gradient: "linear-gradient(135deg, #1a1c2e 0%, #07080d 100%)",
+    // description: "A challenging puzzle game set in a mysterious cleanroom.",
+  },
+];
