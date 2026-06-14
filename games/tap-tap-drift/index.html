@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tap Tap Drift</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%;
+    overflow: hidden; background: #07080d;
+    overscroll-behavior: none; touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none; -webkit-user-select: none;
+  }
+  #game { display: block; width: 100vw; height: 100vh; cursor: pointer; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<script>
+(() => {
+"use strict";
+
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+let W = 0, H = 0, DPR = 1;
+
+function resize() {
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  W = window.innerWidth; H = window.innerHeight;
+  canvas.width  = Math.floor(W * DPR);
+  canvas.height = Math.floor(H * DPR);
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener("resize", resize);
+resize();
+
+const STATE = { START: 0, PLAYING: 1, GAMEOVER: 2 };
+let state = STATE.START;
+
+let best = 0;
+try { best = parseInt(localStorage.getItem("tapTapDriftBest") || "0", 10) || 0; } catch (e) { best = 0; }
+function saveBest(v){ best = v; try { localStorage.setItem("tapTapDriftBest", String(v)); } catch(e){} }
+
+const isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+
+// ── core vars (fractions of width for responsiveness) ──
+let holding = false;
+let carX = 0.5;
+let carVX = 0;
+
+// ── MECHANIC TUNING (eased steering, not runaway accel) ──
+const DRIFT_RIGHT =  0.0115;  // target lateral velocity while holding
+const DRIFT_LEFT  = -0.0100;  // target lateral velocity while released
+const EASE        =  0.16;    // how fast velocity approaches target (snappy)
+
+let segments = [];
+let lastD = 0;
+let distance = 0;
+const D_STEP = 16;
+let carScreenY = 0;
+let speed = 0;
+const BASE_SPEED = 4.4;
+const MAX_SPEED  = 11.0;
+let curveVel = 0;
+
+let score = 0, displayScore = 0, lastMilestone = 0;
+let shake = 0, flash = 0, particles = [], goCooldown = 0;
+let bgScroll = 0;
+
+const clamp = (v,a,b)=> v<a?a:(v>b?b:v);
+const lerp  = (a,b,t)=> a+(b-a)*t;
+const rand  = (a,b)=> a+Math.random()*(b-a);
+
+function halfWidthAt(dist){ return lerp(0.185, 0.100, clamp(dist/10000,0,1)); }
+function speedAt(dist){ return lerp(BASE_SPEED, MAX_SPEED, clamp(dist/12000,0,1)); }
+
+function genSegment(){
+  // straight runway first, then curviness ramps in gently
+  const ramp = clamp((distance - 1200) / 9000, 0, 1);
+  const curviness = lerp(0.0, 0.0022, ramp);
+  curveVel += rand(-curviness, curviness);
+  curveVel = clamp(curveVel, -0.0095, 0.0095);
+
+  let cx = segments.length ? segments[segments.length-1].cx : 0.5;
+  cx += curveVel;
+  const hw = halfWidthAt(lastD);
+  const mL = hw + 0.025, mR = 1 - hw - 0.025;
+  if (cx < mL){ cx = mL; curveVel = Math.abs(curveVel); }
+  if (cx > mR){ cx = mR; curveVel = -Math.abs(curveVel); }
+
+  segments.push({ d:lastD, cx, hw });
+  lastD += D_STEP;
+}
+
+function trackAt(dist){
+  if(!segments.length) return { cx:0.5, hw:0.15 };
+  const first = segments[0].d;
+  let idx = clamp((dist - first)/D_STEP, 0, segments.length-1);
+  const i0 = Math.floor(idx), i1 = Math.min(i0+1, segments.length-1), t = idx - i0;
+  return { cx: lerp(segments[i0].cx, segments[i1].cx, t), hw: lerp(segments[i0].hw, segments[i1].hw, t) };
+}
+
+function resetGame(){
+  holding = false; carX = 0.5; carVX = 0;
+  segments = []; lastD = 0; distance = 0; curveVel = 0;
+  score = 0; displayScore = 0; lastMilestone = 0;
+  shake = 0; flash = 0; particles = []; bgScroll = 0;
+  carScreenY = H * 0.70;
+  // long straight runway so you always get a beat to react
+  for (let i=0;i<10;i++){ segments.push({ d:lastD, cx:0.5, hw:halfWidthAt(0) }); lastD += D_STEP; }
+  while (lastD - distance < H + 240) genSegment();
+}
+function startGame(){ resetGame(); state = STATE.PLAYING; }
+
+function crash(){
+  state = STATE.GAMEOVER; goCooldown = 0.55; shake = 18; flash = 1;
+  const px = carX*W, py = carScreenY;
+  for(let i=0;i<34;i++){
+    const a = rand(0,Math.PI*2), sp = rand(2,9);
+    particles.push({ x:px, y:py, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp-2, life:1, size:rand(2,5), hue:rand(8,48) });
+  }
+  if (score > best) saveBest(score);
+}
+
+function update(dt){
+  const f = dt*60;
+  if (goCooldown>0) goCooldown = Math.max(0, goCooldown-dt);
+  if (flash>0) flash = Math.max(0, flash-dt*3.2);
+  if (shake>0) shake = Math.max(0, shake-f*1.4);
+
+  for(let i=particles.length-1;i>=0;i--){
+    const p = particles[i];
+    p.vy += 0.35*f; p.x += p.vx*f; p.y += p.vy*f; p.life -= dt*1.5;
+    if (p.life<=0) particles.splice(i,1);
+  }
+
+  if (state !== STATE.PLAYING) return;
+
+  carScreenY = H * 0.70;
+  speed = speedAt(distance);
+  distance += speed*f;
+  bgScroll = (bgScroll + speed*f) % 80;
+
+  // ── CORE MECHANIC: ease toward a drift target ──
+  // Holding aims right; releasing aims left. Velocity glides through
+  // zero ("straightens up") instead of snapping, and is self-capping.
+  const target = holding ? DRIFT_RIGHT : DRIFT_LEFT;
+  carVX += (target - carVX) * Math.min(1, EASE*f);
+  carX  += carVX * f;
+
+  while (lastD - distance < H + 280) genSegment();
+  while (segments.length > 4 && (carScreenY - (segments[0].d - distance)) > H + 140) segments.shift();
+
+  const tk = trackAt(distance);
+  if (carX < tk.cx - tk.hw || carX > tk.cx + tk.hw){ crash(); return; }
+
+  score = Math.floor(distance/40);
+  if (score - lastMilestone >= 100){
+    lastMilestone = score - (score%100);
+    shake = Math.max(shake, 4); flash = Math.max(flash, 0.18);
+  }
+}
+
+function roundRect(x,y,w,h,r){
+  ctx.beginPath(); ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath();
+}
+
+function drawBackground(){
+  ctx.fillStyle = "#07080d"; ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle = "rgba(120,140,200,0.05)"; ctx.lineWidth = 1;
+  const gap = 80;
+  for(let y=-gap+(bgScroll%gap); y<H; y+=gap){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
+}
+
+function drawTrack(){
+  if (segments.length < 2) return;
+  const pts = [];
+  for(const s of segments){
+    pts.push({ y: carScreenY-(s.d-distance), lx:(s.cx-s.hw)*W, rx:(s.cx+s.hw)*W, cx:s.cx*W });
+  }
+  ctx.beginPath(); ctx.moveTo(pts[0].lx, pts[0].y);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].lx, pts[i].y);
+  for(let i=pts.length-1;i>=0;i--) ctx.lineTo(pts[i].rx, pts[i].y);
+  ctx.closePath(); ctx.fillStyle = "#11131f"; ctx.fill();
+
+  ctx.lineWidth = 4; ctx.lineJoin = "round";
+  ctx.shadowBlur = 14; ctx.shadowColor = "#00e5ff"; ctx.strokeStyle = "#28e7ff";
+  ctx.beginPath(); ctx.moveTo(pts[0].lx, pts[0].y);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].lx, pts[i].y); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(pts[0].rx, pts[0].y);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].rx, pts[i].y); ctx.stroke();
+  ctx.shadowBlur = 0;
+
+  ctx.strokeStyle = "rgba(255,255,255,0.20)"; ctx.lineWidth = 3;
+  ctx.setLineDash([14,22]); ctx.lineDashOffset = -distance % 36;
+  ctx.beginPath(); ctx.moveTo(pts[0].cx, pts[0].y);
+  for(let i=1;i<pts.length;i++) ctx.lineTo(pts[i].cx, pts[i].y); ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawCar(){
+  const x = carX*W, y = carScreenY;
+  const tilt = clamp(carVX*26, -0.5, 0.5);
+  const cw = clamp(W*0.030, 16, 30), ch = cw*1.7;
+  ctx.save(); ctx.translate(x,y); ctx.rotate(tilt);
+  ctx.fillStyle = "rgba(255,90,40,0.12)"; ctx.fillRect(-cw*0.5, 0, cw, ch*2.4);
+  ctx.shadowBlur = 18; ctx.shadowColor = "#ff5a28";
+  ctx.fillStyle = "#ff6a3d"; roundRect(-cw/2,-ch/2,cw,ch,5); ctx.fill();
+  ctx.shadowBlur = 0; ctx.fillStyle = "#ffd6a0";
+  roundRect(-cw*0.28,-ch*0.18,cw*0.56,ch*0.34,3); ctx.fill();
+  ctx.restore();
+}
+
+function drawParticles(){
+  for(const p of particles){
+    ctx.globalAlpha = clamp(p.life,0,1);
+    ctx.fillStyle = "hsl("+p.hue+",100%,60%)";
+    ctx.fillRect(p.x-p.size/2, p.y-p.size/2, p.size, p.size);
+  }
+  ctx.globalAlpha = 1;
+}
+
+function drawHUD(){
+  ctx.fillStyle = "#fff"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+  ctx.font = "700 "+clamp(W*0.07,26,46)+"px -apple-system, system-ui, sans-serif";
+  ctx.fillText(String(displayScore), 22, 20);
+  ctx.fillStyle = "rgba(255,255,255,0.45)";
+  ctx.font = "600 "+clamp(W*0.032,12,18)+"px -apple-system, system-ui, sans-serif";
+  ctx.fillText("BEST "+best, 24, clamp(W*0.07,26,46)+26);
+}
+
+function drawHoldButton(){
+  const bw = clamp(W*0.62,200,460), bh = clamp(H*0.10,64,92);
+  const bx = (W-bw)/2, by = H-bh-clamp(H*0.035,18,40);
+  ctx.save();
+  ctx.globalAlpha = holding ? 1 : 0.72;
+  ctx.shadowBlur = holding ? 26 : 10; ctx.shadowColor = "#28e7ff";
+  ctx.fillStyle = holding ? "rgba(40,231,255,0.30)" : "rgba(40,231,255,0.10)";
+  roundRect(bx,by,bw,bh,bh/2); ctx.fill();
+  ctx.lineWidth = 2; ctx.strokeStyle = "rgba(40,231,255,0.8)"; ctx.stroke();
+  ctx.shadowBlur = 0; ctx.fillStyle = "#dffcff";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.font = "700 "+clamp(bh*0.30,16,26)+"px -apple-system, system-ui, sans-serif";
+  ctx.fillText(isTouch ? "HOLD TO DRIFT" : "HOLD (click / space)", W/2, by+bh/2);
+  ctx.restore();
+}
+
+function drawCenterText(title, subtitle, sub2){
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillStyle = "#fff"; ctx.shadowBlur = 22; ctx.shadowColor = "#ff5a28";
+  ctx.font = "800 "+clamp(W*0.13,40,84)+"px -apple-system, system-ui, sans-serif";
+  ctx.fillText(title, W/2, H*0.34); ctx.shadowBlur = 0;
+  if (subtitle){
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.font = "600 "+clamp(W*0.045,18,28)+"px -apple-system, system-ui, sans-serif";
+    ctx.fillText(subtitle, W/2, H*0.50);
+  }
+  if (sub2){
+    ctx.fillStyle = "rgba(255,255,255,0.55)";
+    ctx.font = "500 "+clamp(W*0.034,13,20)+"px -apple-system, system-ui, sans-serif";
+    ctx.fillText(sub2, W/2, H*0.50+clamp(W*0.06,30,44));
+  }
+}
+
+let lastT = performance.now();
+function frame(now){
+  let dt = (now-lastT)/1000; lastT = now;
+  if (dt > 0.05) dt = 0.05;
+  update(dt);
+
+  displayScore += (score-displayScore)*Math.min(1,dt*12);
+  displayScore = Math.round(displayScore);
+
+  ctx.save();
+  if (shake>0){ const s = shake; ctx.translate(rand(-s,s), rand(-s,s)); }
+  drawBackground(); drawTrack();
+  if (state === STATE.PLAYING){
+    drawCar(); drawHUD(); drawHoldButton();
+  } else if (state === STATE.START){
+    drawCar();
+    drawCenterText("TAP TAP DRIFT", isTouch ? "Tap to Start" : "Click to Start",
+      "Hold = drift right  •  Release = veer left");
+    drawHoldButton();
+  } else if (state === STATE.GAMEOVER){
+    drawParticles();
+    drawCenterText("CRASHED", "Score  "+score+"   •   Best  "+best,
+      goCooldown>0 ? "..." : (isTouch ? "Tap to Restart" : "Click / Space to Restart"));
+  }
+  ctx.restore();
+
+  if (flash>0){ ctx.fillStyle = "rgba(255,255,255,"+(flash*0.6)+")"; ctx.fillRect(0,0,W,H); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+// ── INPUT ──
+function press(){
+  if (state === STATE.START){ startGame(); return; }
+  if (state === STATE.GAMEOVER){ if (goCooldown<=0) startGame(); return; }
+  if (state === STATE.PLAYING) holding = true;
+}
+function release(){ if (state === STATE.PLAYING) holding = false; }
+
+// Prefer Pointer Events (covers mouse + touch + pen in one path).
+// Fall back to mouse + touch only if PointerEvent is unavailable.
+if (window.PointerEvent){
+  canvas.addEventListener("pointerdown", e => { e.preventDefault(); press(); }, { passive:false });
+  window.addEventListener("pointerup",   e => { release(); }, { passive:false });
+  window.addEventListener("pointercancel", release);
+} else {
+  canvas.addEventListener("mousedown", e => { e.preventDefault(); press(); });
+  window.addEventListener("mouseup",   () => release());
+  canvas.addEventListener("touchstart", e => { e.preventDefault(); press(); }, { passive:false });
+  window.addEventListener("touchend",   e => { e.preventDefault(); release(); }, { passive:false });
+}
+
+// Keyboard (desktop)
+const KEYS = ["Space","ArrowRight","ArrowUp","ArrowDown","ArrowLeft","KeyD","Enter"];
+window.addEventListener("keydown", e => {
+  if (KEYS.includes(e.code)){ e.preventDefault(); if (!e.repeat) press(); }
+}, { passive:false });
+window.addEventListener("keyup", e => {
+  if (KEYS.includes(e.code)){ e.preventDefault(); release(); }
+}, { passive:false });
+
+document.addEventListener("visibilitychange", () => { if (document.hidden) holding = false; });
+
+})();
+</script>
+</body>
+</html>
