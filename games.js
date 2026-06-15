@@ -36,4 +36,13 @@ const GAMES = [
     gradient: "linear-gradient(135deg, #1a1c2e 0%, #07080d 100%)",
     // description: "A challenging puzzle game set in a mysterious cleanroom.",
   },
+  {
+    id: "echo-chamber",
+    name: "Echo Chamber",
+    // genre: "Puzzle · Strategy",
+    url: "games/echo-chamber/index.html",
+    thumbnail: "games/echo-chamber/thumbnail.png",
+    gradient: "linear-gradient(135deg, #1a1c2e 0%, #07080d 100%)",
+    // description: "A challenging puzzle game set in a mysterious cleanroom.",
+  },
 ];

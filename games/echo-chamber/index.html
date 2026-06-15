@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width,height=device-height,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <title>Echo Chamber</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+            background: #0d1117;
+            overscroll-behavior: none;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh
+        }
+
+        #boot {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4a6070;
+            background: #0d1117;
+            z-index: 9999;
+            font: 600 15px system-ui;
+            text-align: center;
+            white-space: pre-wrap
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="c"></canvas>
+    <div id="boot">booting NEXUS FeedOS…</div>
+    <script>
+        function showErr(m) {
+            var d = document.getElementById("boot"); if (!d) { d = document.createElement("div"); d.id = "boot"; document.body.appendChild(d); }
+            d.style.display = "flex"; d.style.color = "#ff8a8a"; d.style.font = "13px ui-monospace,Menlo,Consolas,monospace"; d.textContent = "Error:\n\n" + m;
+        }
+        window.addEventListener("error", function (e) { showErr((e.message || "?") + " @ " + (e.lineno || "?")); });
+
+        try {
+            (function () {
+                "use strict";
+
+                var canvas = document.getElementById("c"), ctx = canvas.getContext("2d");
+                if (!ctx) { showErr("No canvas"); return; }
+                var W = 0, H = 0, DPR = 1, isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+
+                function resize() {
+                    DPR = Math.min(window.devicePixelRatio || 1, 2);
+                    W = window.innerWidth || 360; H = window.innerHeight || 640;
+                    canvas.width = Math.floor(W * DPR); canvas.height = Math.floor(H * DPR);
+                    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+                    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+                }
+                window.addEventListener("resize", resize); resize();
+
+                /* ═══ COLORS ═══ */
+                var C = {
+                    bg: "#0d1117", panel: "#161b22", panelL: "#1c2333", border: "#30363d",
+                    text: "#e6edf3", dim: "#7d8590", accent: "#58a6ff", danger: "#f85149",
+                    success: "#3fb950", warn: "#d29922", purple: "#bc8cff", cyan: "#39d2c0"
+                };
+                var CAT_COL = {
+                    inflammatory: C.danger, conspiracy: C.purple, wholesome: C.success,
+                    ad: C.warn, news: C.accent, meme: C.cyan
+                };
+
+                /* ═══ POST DATA (30 posts) ═══ */
+                var POSTS = [
+                    /* inflammatory */
+                    {
+                        cat: "inflammatory", tag: "RAGE", a: "@RealPatriot99", ic: "RP",
+                        tx: "Anyone who supports the new policy is LITERALLY destroying this nation! RT if you agree!",
+                        o: .85, tr: .15, v: .78, ad: .1, lk: 12400, sh: 5200, cm: 3100
+                    },
+                    {
+                        cat: "inflammatory", tag: "RAGE", a: "@WokeEnough", ic: "WE",
+                        tx: "If you still eat at that restaurant chain, you're part of the problem. Full stop.",
+                        o: .70, tr: .20, v: .55, ad: .05, lk: 8900, sh: 3400, cm: 2800
+                    },
+                    {
+                        cat: "inflammatory", tag: "RAGE", a: "@AngryPundit42", ic: "AP",
+                        tx: "THREAD: Why the other side doesn't actually care about people — they care about CONTROL.",
+                        o: .80, tr: .25, v: .72, ad: .08, lk: 18600, sh: 7100, cm: 4500
+                    },
+                    {
+                        cat: "inflammatory", tag: "RAGE", a: "@FedUpSusan", ic: "FS",
+                        tx: "Just got screamed at for wearing the wrong hat. This country is FINISHED.",
+                        o: .65, tr: .40, v: .60, ad: .05, lk: 6700, sh: 2900, cm: 1800
+                    },
+                    {
+                        cat: "inflammatory", tag: "RAGE", a: "@NoFilterMike", ic: "NM",
+                        tx: "Unfriend me NOW if you voted for them. I'm dead serious. This is non-negotiable.",
+                        o: .75, tr: .10, v: .65, ad: .03, lk: 15200, sh: 6800, cm: 5200
+                    },
+                    /* conspiracy */
+                    {
+                        cat: "conspiracy", tag: "CONSPIR.", a: "@DeepTruth88", ic: "DT",
+                        tx: "They don't want you to know what's REALLY in the water supply. I did my own research. Thread.",
+                        o: .70, tr: .05, v: .80, ad: .02, lk: 22100, sh: 9800, cm: 6400
+                    },
+                    {
+                        cat: "conspiracy", tag: "CONSPIR.", a: "@MatrixAwake", ic: "MA",
+                        tx: "EXPOSED: Why every major event in the last decade was orchestrated. Open your eyes.",
+                        o: .75, tr: .08, v: .85, ad: .02, lk: 31200, sh: 14500, cm: 8900
+                    },
+                    {
+                        cat: "conspiracy", tag: "CONSPIR.", a: "@TinFoilTina", ic: "TF",
+                        tx: "My neighbor works for THEM and confirmed everything. I can't say more. You know what I mean.",
+                        o: .60, tr: .05, v: .65, ad: .01, lk: 9400, sh: 4200, cm: 3600
+                    },
+                    {
+                        cat: "conspiracy", tag: "CONSPIR.", a: "@Whistleblower_X", ic: "WX",
+                        tx: "Why did they delete my last post?? That tells you everything you need to know.",
+                        o: .68, tr: .10, v: .70, ad: .02, lk: 16800, sh: 7700, cm: 5100
+                    },
+                    /* wholesome */
+                    {
+                        cat: "wholesome", tag: "WHOLESOME", a: "@DogMomSally", ic: "DS",
+                        tx: "My rescue dog just learned to shake hands! Sometimes the little things matter most. \ud83d\udc36",
+                        o: .02, tr: .90, v: .50, ad: .15, lk: 45200, sh: 8100, cm: 2900
+                    },
+                    {
+                        cat: "wholesome", tag: "WHOLESOME", a: "@GrampsOnline", ic: "GO",
+                        tx: "My grandson showed me how to do the video calls. Now I see his face every Sunday. Technology is beautiful.",
+                        o: .0, tr: .95, v: .40, ad: .10, lk: 62000, sh: 12400, cm: 4100
+                    },
+                    {
+                        cat: "wholesome", tag: "WHOLESOME", a: "@KindnessDaily", ic: "KD",
+                        tx: "Stranger paid for my groceries today when my card declined. Humanity isn't lost. Pass it on.",
+                        o: .0, tr: .85, v: .55, ad: .12, lk: 38700, sh: 15200, cm: 3400
+                    },
+                    {
+                        cat: "wholesome", tag: "WHOLESOME", a: "@CoachMarcus", ic: "CM",
+                        tx: "Kid on my team scored his first goal today. The whole crowd went wild. THIS is why I coach.",
+                        o: .0, tr: .90, v: .45, ad: .08, lk: 28400, sh: 6300, cm: 2100
+                    },
+                    {
+                        cat: "wholesome", tag: "WHOLESOME", a: "@PlantParent", ic: "PP",
+                        tx: "My succulent that I thought was dead just sprouted a new leaf! Never give up on things you love.",
+                        o: .05, tr: .88, v: .35, ad: .10, lk: 19600, sh: 4500, cm: 1800
+                    },
+                    /* ad/sponsored */
+                    {
+                        cat: "ad", tag: "SPONSORED", a: "@MegaCorpOfficial", ic: "MC",
+                        tx: "\ud83d\udd25 LIMITED TIME: 70% off NeuroDrink\u2122 — fuel your brain or your money back!",
+                        o: .10, tr: .30, v: .40, ad: .95, lk: 2400, sh: 800, cm: 340
+                    },
+                    {
+                        cat: "ad", tag: "SPONSORED", a: "@CryptoKing_NFT", ic: "CK",
+                        tx: "I turned $50 into $50K in 30 days. FREE masterclass link in bio. Not financial advice \ud83d\ude09",
+                        o: .20, tr: .05, v: .60, ad: .90, lk: 8900, sh: 3200, cm: 1200
+                    },
+                    {
+                        cat: "ad", tag: "SPONSORED", a: "@FitLifePro", ic: "FL",
+                        tx: "AD: Download BodyMax\u2122 and get your personalized AI workout plan. 50M users can't be wrong!",
+                        o: .05, tr: .35, v: .30, ad: .85, lk: 1800, sh: 500, cm: 210
+                    },
+                    {
+                        cat: "ad", tag: "SPONSORED", a: "@DealHunterBot", ic: "DH",
+                        tx: "FLASH SALE: Smart home cameras 80% off. Protect your family for less. [Affiliate Link]",
+                        o: .08, tr: .40, v: .35, ad: .88, lk: 3200, sh: 1100, cm: 450
+                    },
+                    {
+                        cat: "ad", tag: "SPONSORED", a: "@GlowSkinCo", ic: "GS",
+                        tx: "Dermatologists HATE this one trick. Our serum sold out 3x. Restocking NOW \u2014 tap link!",
+                        o: .12, tr: .10, v: .50, ad: .92, lk: 5600, sh: 2100, cm: 890
+                    },
+                    /* news */
+                    {
+                        cat: "news", tag: "BREAKING", a: "@GlobalNewsNow", ic: "GN",
+                        tx: "BREAKING: Major earthquake strikes coastal region. Emergency services responding. Developing story.",
+                        o: .15, tr: .90, v: .80, ad: .05, lk: 89000, sh: 45000, cm: 12000
+                    },
+                    {
+                        cat: "news", tag: "BREAKING", a: "@PolitiWire", ic: "PW",
+                        tx: "DEVELOPING: Election results contested in 3 districts. Legal challenges expected this week.",
+                        o: .55, tr: .70, v: .75, ad: .04, lk: 67000, sh: 38000, cm: 18000
+                    },
+                    {
+                        cat: "news", tag: "VERIFIED", a: "@ScienceAlert", ic: "SA",
+                        tx: "New study: Screen time over 6hrs/day linked to significant cognitive decline. Peer-reviewed data attached.",
+                        o: .20, tr: .92, v: .55, ad: .06, lk: 34000, sh: 16000, cm: 5400
+                    },
+                    {
+                        cat: "news", tag: "BREAKING", a: "@TechInsider", ic: "TI",
+                        tx: "JUST IN: Major tech CEO resigns amid data privacy scandal. Stock plunges 12% in after-hours trading.",
+                        o: .35, tr: .85, v: .70, ad: .08, lk: 52000, sh: 28000, cm: 9200
+                    },
+                    {
+                        cat: "news", tag: "VERIFIED", a: "@HealthAuthority", ic: "HA",
+                        tx: "Official: New variant detected but current measures remain effective. No cause for panic.",
+                        o: .30, tr: .88, v: .60, ad: .05, lk: 41000, sh: 22000, cm: 7800
+                    },
+                    /* meme/viral */
+                    {
+                        cat: "meme", tag: "VIRAL", a: "@MemeLord420", ic: "ML",
+                        tx: "nobody:\nme at 3am explaining to my cat why the economy is a social construct:",
+                        o: .08, tr: .10, v: .90, ad: .15, lk: 124000, sh: 67000, cm: 8900
+                    },
+                    {
+                        cat: "meme", tag: "VIRAL", a: "@CursedImages", ic: "CI",
+                        tx: "This cat looks EXACTLY like the CEO of my company and I cannot unsee it \ud83d\ude2d [img attached]",
+                        o: .05, tr: .15, v: .85, ad: .12, lk: 98000, sh: 52000, cm: 6700
+                    },
+                    {
+                        cat: "meme", tag: "VIRAL", a: "@GenZTranslator", ic: "GZ",
+                        tx: "POV: you just said 'I don't have TikTok' at a family dinner and now everyone is staring",
+                        o: .10, tr: .20, v: .78, ad: .18, lk: 76000, sh: 34000, cm: 5100
+                    },
+                    {
+                        cat: "meme", tag: "TRENDING", a: "@ChaoticNeutral", ic: "CN",
+                        tx: "normalize canceling plans to sit in the dark and stare at the wall. self care is self care.",
+                        o: .12, tr: .25, v: .72, ad: .10, lk: 54000, sh: 28000, cm: 4300
+                    },
+                    {
+                        cat: "meme", tag: "VIRAL", a: "@HistoryMemes", ic: "HM",
+                        tx: "[political figure] as a medieval painting is the content I didn't know I needed today",
+                        o: .25, tr: .10, v: .80, ad: .08, lk: 112000, sh: 58000, cm: 7600
+                    },
+                ];
+
+                /* ═══ NOTIFICATIONS ═══ */
+                var NOTIFS = [
+                    { t: "\u26a0\ufe0f User attention spans declining!", c: C.warn, eff: function () { engDecay += 0.15; } },
+                    { t: "\ud83d\udcca Investors demanding growth metrics", c: C.warn, eff: function () { funDecay += 0.12; } },
+                    { t: "\ud83d\udee1\ufe0f Government regulators are watching", c: C.danger, eff: function () { stabWeight = 1.3; } },
+                    { t: "\ud83d\udd25 Outrage content is trending globally", c: C.danger, eff: function () { outrageMult = 1.4; } },
+                    { t: "\ud83d\udcb0 Ad revenue bonanza! Monetize now!", c: C.success, eff: function () { adBonusMult = 1.5; } },
+                    { t: "\ud83c\udf1f Celebrity endorsement boosted platform", c: C.accent, eff: function () { engagement = Math.min(100, engagement + 8); } },
+                    { t: "\ud83d\udea8 Fact-checkers calling out your platform", c: C.danger, eff: function () { stability -= 5; } },
+                    { t: "\ud83d\udcc8 Competitor gaining users fast!", c: C.warn, eff: function () { engDecay += 0.2; } },
+                ];
+
+                /* ═══ STATE ═══ */
+                var S_START = 0, S_PLAY = 1, S_OVER = 2;
+                var state = S_START;
+                var best = 0;
+                try { best = parseInt(localStorage.getItem("echoChamberBest") || "0", 10) || 0; } catch (e) { best = 0; }
+                function saveBest(v) { best = v; try { localStorage.setItem("echoChamberBest", "" + v); } catch (e) { } }
+
+                /* game vars */
+                var engagement = 0, stability = 0, funding = 0;
+                var engDisplay = 0, stabDisplay = 0, funDisplay = 0;
+                var engDecay = 1.2, funDecay = 0.8, stabRecover = 0.15;
+                var stabWeight = 1.0, outrageMult = 1.0, adBonusMult = 1.0;
+                var elapsed = 0, score = 0, postsProcessed = 0;
+                var shake = 0, flash = 0, flashCol = "#fff";
+                var goCooldown = 0;
+                var overReason = "";
+
+                /* post state */
+                var postPool = [], curPost = null, postTimer = 0, postTimerMax = 8;
+                var subPhase = "idle"; /* "active","transition","idle" */
+                var transT = 0;
+                var actionTaken = ""; /* for transition anim */
+                var actionFlash = 0;
+
+                /* ui state */
+                var hoverBtn = -1;
+                var notifications = [];
+                var nextNotifT = 0;
+                var particles = [];
+
+                var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+                var rnd = function (a, b) { return a + Math.random() * (b - a); };
+
+                /* ═══ POST POOL ═══ */
+                function shufflePool() {
+                    postPool = []; for (var i = 0; i < POSTS.length; i++)postPool.push(i);
+                    for (var i = postPool.length - 1; i > 0; i--) {
+                        var j = Math.floor(Math.random() * (i + 1));
+                        var t = postPool[i]; postPool[i] = postPool[j]; postPool[j] = t;
+                    }
+                }
+                function nextPost() {
+                    if (!postPool.length) shufflePool();
+                    curPost = POSTS[postPool.pop()];
+                    postTimer = 0;
+                    postTimerMax = Math.max(3.8, 8 - elapsed * 0.012);
+                    subPhase = "active";
+                }
+
+                /* ═══ ACTIONS ═══ */
+                function doAction(type) {
+                    if (state !== S_PLAY || subPhase !== "active" || !curPost) return;
+                    var p = curPost;
+                    if (type === "amplify") {
+                        engagement += 5 + p.v * 12;
+                        stability -= p.o * 14 * stabWeight * outrageMult;
+                        funding += p.ad * 4;
+                        actionTaken = "AMPLIFIED"; flashCol = C.success;
+                    } else if (type === "suppress") {
+                        engagement -= 3 + p.v * 5;
+                        stability += p.o * 7;
+                        funding -= 2;
+                        actionTaken = "SUPPRESSED"; flashCol = C.danger;
+                    } else if (type === "monetize") {
+                        funding += 8 + p.ad * 10 * adBonusMult;
+                        engagement -= 4;
+                        stability -= p.o * 4 * outrageMult;
+                        actionTaken = "MONETIZED"; flashCol = C.warn;
+                    }
+                    engagement = clamp(engagement, 0, 100);
+                    stability = clamp(stability, 0, 100);
+                    funding = clamp(funding, 0, 100);
+                    flash = 0.5; shake = Math.max(shake, 5);
+                    postsProcessed++;
+                    score = Math.floor(elapsed) * (1 + Math.floor(engagement / 30));
+                    actionFlash = 1;
+                    subPhase = "transition"; transT = 0;
+
+                    /* particles */
+                    var pcx = W / 2, pcy = H * 0.45;
+                    for (var i = 0; i < 12; i++) {
+                        var a = rnd(0, Math.PI * 2), s = rnd(2, 6);
+                        particles.push({ x: pcx, y: pcy, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, sz: rnd(2, 4), col: flashCol });
+                    }
+                }
+
+                function autoPublish() {
+                    if (!curPost) return;
+                    engagement -= 3; stability -= curPost.o * 2; funding -= 1;
+                    engagement = clamp(engagement, 0, 100); stability = clamp(stability, 0, 100); funding = clamp(funding, 0, 100);
+                    postsProcessed++; actionTaken = "AUTO-PUBLISHED"; flashCol = C.dim;
+                    flash = 0.15; subPhase = "transition"; transT = 0;
+                }
+
+                /* ═══ GAME LIFECYCLE ═══ */
+                function startGame() {
+                    engagement = 58; stability = 65; funding = 50;
+                    engDisplay = engagement; stabDisplay = stability; funDisplay = funding;
+                    engDecay = 1.2; funDecay = 0.8; stabRecover = 0.15;
+                    stabWeight = 1.0; outrageMult = 1.0; adBonusMult = 1.0;
+                    elapsed = 0; score = 0; postsProcessed = 0;
+                    shake = 0; flash = 0; goCooldown = 0;
+                    notifications = []; particles = [];
+                    nextNotifT = rnd(15, 25);
+                    shufflePool(); nextPost();
+                    state = S_PLAY;
+                }
+                function gameOver(reason) {
+                    if (state !== S_PLAY) return;
+                    overReason = reason; state = S_OVER; goCooldown = 0.7; shake = 18; flash = 1; flashCol = "#fff";
+                    score = Math.floor(elapsed) * (1 + Math.floor(Math.max(0, engagement) / 30));
+                    if (score > best) saveBest(score);
+                }
+
+                /* ═══ UPDATE ═══ */
+                function update(dt) {
+                    if (goCooldown > 0) goCooldown = Math.max(0, goCooldown - dt);
+                    if (flash > 0) flash = Math.max(0, flash - dt * 3);
+                    if (shake > 0) shake = Math.max(0, shake - dt * 60 * 1.5);
+                    if (actionFlash > 0) actionFlash = Math.max(0, actionFlash - dt * 4);
+                    for (var i = particles.length - 1; i >= 0; i--) {
+                        var pp = particles[i];
+                        pp.vx *= 0.92; pp.vy *= 0.92; pp.x += pp.vx; pp.y += pp.vy; pp.life -= dt * 1.8; if (pp.life <= 0) particles.splice(i, 1);
+                    }
+                    for (var i = notifications.length - 1; i >= 0; i--) { notifications[i].life -= dt; if (notifications[i].life <= 0) notifications.splice(i, 1); }
+
+                    /* smooth meter display */
+                    engDisplay += (engagement - engDisplay) * Math.min(1, dt * 8);
+                    stabDisplay += (stability - stabDisplay) * Math.min(1, dt * 8);
+                    funDisplay += (funding - funDisplay) * Math.min(1, dt * 8);
+
+                    if (state !== S_PLAY) return;
+                    elapsed += dt;
+
+                    /* natural decay */
+                    engagement = Math.max(0, engagement - engDecay * dt);
+                    funding = Math.max(0, funding - funDecay * dt);
+                    stability = Math.min(100, stability + stabRecover * dt);
+
+                    /* decay modifiers fade back to normal */
+                    engDecay += (1.2 - engDecay) * dt * 0.1;
+                    funDecay += (0.8 - funDecay) * dt * 0.1;
+                    stabWeight += (1.0 - stabWeight) * dt * 0.08;
+                    outrageMult += (1.0 - outrageMult) * dt * 0.08;
+                    adBonusMult += (1.0 - adBonusMult) * dt * 0.08;
+
+                    /* difficulty ramp */
+                    engDecay = Math.max(engDecay, 1.2 + elapsed * 0.005);
+                    funDecay = Math.max(funDecay, 0.8 + elapsed * 0.003);
+
+                    /* game over checks */
+                    if (engagement <= 0) { gameOver("ENGAGEMENT COLLAPSED \u2014 Users left the platform"); return; }
+                    if (stability <= 0) { gameOver("CIVIL UNREST \u2014 Platform shut down by regulators"); return; }
+                    if (funding <= 0) { gameOver("FUNDING PULLED \u2014 Investors walked away"); return; }
+
+                    /* post timer */
+                    if (subPhase === "active") {
+                        postTimer += dt;
+                        if (postTimer >= postTimerMax) autoPublish();
+                    } else if (subPhase === "transition") {
+                        transT += dt;
+                        if (transT >= 0.55) { nextPost(); }
+                    }
+
+                    /* notifications */
+                    nextNotifT -= dt;
+                    if (nextNotifT <= 0) {
+                        var n = NOTIFS[Math.floor(Math.random() * NOTIFS.length)];
+                        notifications.push({ text: n.t, col: n.c, life: 4.0 });
+                        n.eff();
+                        nextNotifT = rnd(12, 22);
+                    }
+
+                    score = Math.floor(elapsed) * (1 + Math.floor(Math.max(0, engagement) / 30));
+                }
+
+                /* ═══ DRAWING ═══ */
+                function rrect(x, y, w, h, r) {
+                    ctx.beginPath(); ctx.moveTo(x + r, y);
+                    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+                    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+                }
+                function fmtNum(n) { if (n >= 1000000) return (n / 1000000).toFixed(1) + "M"; if (n >= 1000) return (n / 1000).toFixed(1) + "K"; return "" + n; }
+
+                function drawBar(x, y, w, h, pct, col, label, val) {
+                    rrect(x, y, w, h, h / 2); ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fill();
+                    if (pct > 0) { rrect(x, y, Math.max(h, w * pct), h, h / 2); ctx.fillStyle = col; ctx.fill(); }
+                    /* pulse if critical */
+                    if (pct < 0.25) {
+                        var p = 0.4 + 0.3 * Math.sin(performance.now() / 200);
+                        ctx.fillStyle = col; ctx.globalAlpha = p * 0.3; rrect(x - 2, y - 2, w + 4, h + 4, h / 2 + 2); ctx.fill(); ctx.globalAlpha = 1;
+                    }
+                    ctx.fillStyle = C.text; ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+                    ctx.font = "600 " + Math.max(10, h * 0.75) + "px system-ui";
+                    ctx.fillText(label, x, y - 3);
+                    ctx.textAlign = "right"; ctx.fillText(Math.round(val) + "%", x + w, y - 3);
+                }
+
+                function drawTitleBar() {
+                    var tbH = Math.min(36, H * 0.05);
+                    ctx.fillStyle = C.panel; ctx.fillRect(0, 0, W, tbH);
+                    ctx.fillStyle = "#ff5f56"; ctx.beginPath(); ctx.arc(14, tbH / 2, 5, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "#ffbd2e"; ctx.beginPath(); ctx.arc(30, tbH / 2, 5, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = "#27c93f"; ctx.beginPath(); ctx.arc(46, tbH / 2, 5, 0, Math.PI * 2); ctx.fill();
+                    ctx.fillStyle = C.text; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.font = "700 " + Math.max(11, tbH * 0.40) + "px system-ui";
+                    ctx.fillText("NEXUS FeedOS v3.1 \u2014 Content Moderation Terminal", W / 2, tbH / 2);
+                    ctx.fillStyle = C.dim; ctx.textAlign = "right";
+                    ctx.font = "500 " + Math.max(10, tbH * 0.36) + "px system-ui";
+                    var d = Math.floor(elapsed / 30) + 1;
+                    ctx.fillText("Day " + d + "  |  " + fmtTime(elapsed), W - 12, tbH / 2);
+                    return tbH;
+                }
+                function fmtTime(s) { var m = Math.floor(s / 60), ss = Math.floor(s % 60); return (m < 10 ? "0" : "") + m + ":" + (ss < 10 ? "0" : "") + ss; }
+
+                function drawMetrics(y) {
+                    var pad = Math.max(12, W * 0.03);
+                    var barH = Math.max(8, H * 0.012);
+                    var barW = (W - pad * 4) / 3;
+                    drawBar(pad, y, barW, barH, clamp(engDisplay / 100, 0, 1), C.success, "ENGAGEMENT", engDisplay);
+                    drawBar(pad * 2 + barW, y, barW, barH, clamp(stabDisplay / 100, 0, 1), C.accent, "STABILITY", stabDisplay);
+                    drawBar(pad * 3 + barW * 2, y, barW, barH, clamp(funDisplay / 100, 0, 1), C.warn, "FUNDING", funDisplay);
+                    return barH + Math.max(16, H * 0.025);
+                }
+
+                function drawPostCard(y0) {
+                    if (!curPost) return 0;
+                    var p = curPost;
+                    var pad = Math.max(12, W * 0.03);
+                    var cardW = W - pad * 2;
+                    var cardH = Math.min(H * 0.46, 340);
+                    var cx0 = pad, cy0 = y0;
+
+                    /* slide animation */
+                    var slideOff = 0;
+                    if (subPhase === "transition") {
+                        slideOff = -W * Math.min(1, transT / 0.3);
+                    }
+                    ctx.save(); ctx.translate(slideOff, 0);
+
+                    /* card bg */
+                    rrect(cx0, cy0, cardW, cardH, 10);
+                    ctx.fillStyle = C.panel; ctx.fill();
+                    ctx.lineWidth = 1.5; ctx.strokeStyle = C.border; ctx.stroke();
+
+                    /* category accent bar */
+                    var catCol = CAT_COL[p.cat] || C.dim;
+                    ctx.fillStyle = catCol; ctx.fillRect(cx0, cy0 + 10, 4, cardH - 20);
+
+                    /* action flash overlay */
+                    if (actionFlash > 0 && subPhase === "transition") {
+                        rrect(cx0, cy0, cardW, cardH, 10);
+                        ctx.fillStyle = flashCol; ctx.globalAlpha = actionFlash * 0.15; ctx.fill(); ctx.globalAlpha = 1;
+                    }
+
+                    var tx = cx0 + 20, ty = cy0 + 16;
+                    /* avatar */
+                    ctx.beginPath(); ctx.arc(tx + 14, ty + 14, 14, 0, Math.PI * 2);
+                    ctx.fillStyle = catCol; ctx.fill();
+                    ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.font = "700 11px system-ui"; ctx.fillText(p.ic, tx + 14, ty + 14);
+
+                    /* username + tag */
+                    ctx.textAlign = "left"; ctx.textBaseline = "top";
+                    ctx.fillStyle = C.text; ctx.font = "700 " + Math.max(12, cardW * 0.038) + "px system-ui";
+                    ctx.fillText(p.a, tx + 36, ty + 2);
+                    ctx.fillStyle = catCol; ctx.font = "600 " + Math.max(10, cardW * 0.028) + "px system-ui";
+                    ctx.fillText(p.tag, tx + 36, ty + 20);
+
+                    /* post text */
+                    ctx.fillStyle = C.text; ctx.font = "500 " + Math.max(13, cardW * 0.04) + "px system-ui";
+                    var maxTW = cardW - 48;
+                    var lines = wrapText(p.tx, maxTW);
+                    var lineH = Math.max(17, cardW * 0.05);
+                    var textY = ty + 44;
+                    for (var i = 0; i < Math.min(lines.length, 5); i++) {
+                        ctx.fillText(lines[i], tx + 4, textY + i * lineH);
+                    }
+
+                    /* engagement stats */
+                    var statY = textY + Math.min(lines.length, 5) * lineH + 10;
+                    ctx.fillStyle = C.dim; ctx.font = "500 " + Math.max(11, cardW * 0.03) + "px system-ui";
+                    ctx.fillText("\u2764\ufe0f " + fmtNum(p.lk) + "   \ud83d\udd01 " + fmtNum(p.sh) + "   \ud83d\udcac " + fmtNum(p.cm), tx + 4, statY);
+
+                    /* analysis bars */
+                    var abY = statY + Math.max(22, cardW * 0.06);
+                    var abW = cardW * 0.35, abH = 6;
+                    ctx.fillStyle = C.dim; ctx.font = "600 " + Math.max(10, cardW * 0.025) + "px system-ui";
+                    ctx.fillText("Outrage", tx + 4, abY - 2);
+                    rrect(tx + 4 + 60, abY, abW, abH, 3); ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fill();
+                    rrect(tx + 4 + 60, abY, Math.max(abH, abW * p.o), abH, 3); ctx.fillStyle = C.danger; ctx.fill();
+                    ctx.fillStyle = C.dim; ctx.fillText("Truth", tx + 4, abY + 18);
+                    rrect(tx + 4 + 60, abY + 18, abW, abH, 3); ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fill();
+                    rrect(tx + 4 + 60, abY + 18, Math.max(abH, abW * p.tr), abH, 3); ctx.fillStyle = C.success; ctx.fill();
+                    ctx.fillStyle = C.dim; ctx.fillText("Viral", tx + 4, abY + 36);
+                    rrect(tx + 4 + 60, abY + 36, abW, abH, 3); ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fill();
+                    rrect(tx + 4 + 60, abY + 36, Math.max(abH, abW * p.v), abH, 3); ctx.fillStyle = C.cyan; ctx.fill();
+
+                    /* post timer bar */
+                    if (subPhase === "active") {
+                        var timerY = cy0 + cardH - 14;
+                        var pct = clamp(postTimer / postTimerMax, 0, 1);
+                        rrect(cx0 + 12, timerY, cardW - 24, 6, 3); ctx.fillStyle = "rgba(255,255,255,0.06)"; ctx.fill();
+                        var tCol = pct < 0.5 ? C.success : pct < 0.8 ? C.warn : C.danger;
+                        rrect(cx0 + 12, timerY, Math.max(6, (cardW - 24) * pct), 6, 3); ctx.fillStyle = tCol; ctx.fill();
+                    }
+
+                    /* action label during transition */
+                    if (subPhase === "transition" && actionTaken) {
+                        ctx.fillStyle = flashCol; ctx.globalAlpha = clamp(1 - transT * 2, 0, 1);
+                        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                        ctx.font = "800 " + Math.max(20, cardW * 0.07) + "px system-ui";
+                        ctx.fillText(actionTaken, cx0 + cardW / 2, cy0 + cardH / 2);
+                        ctx.globalAlpha = 1;
+                    }
+
+                    ctx.restore();
+                    return cardH;
+                }
+
+                function wrapText(text, maxW) {
+                    var words = text.split(" "); var lines = []; var cur = "";
+                    for (var i = 0; i < words.length; i++) {
+                        var test = cur ? cur + " " + words[i] : words[i];
+                        var m = ctx.measureText(test);
+                        var tw = (m && m.width) ? m.width : test.length * 7;
+                        if (tw > maxW && cur) { lines.push(cur); cur = words[i]; }
+                        else cur = test;
+                    }
+                    if (cur) lines.push(cur); return lines;
+                }
+
+                /* action buttons */
+                var btnDefs = [
+                    { label: "AMPLIFY", icon: "\ud83d\udce2", col: C.success, act: "amplify", key: "1/A" },
+                    { label: "SUPPRESS", icon: "\ud83d\udeab", col: C.danger, act: "suppress", key: "2/S" },
+                    { label: "MONETIZE", icon: "\ud83d\udcb0", col: C.warn, act: "monetize", key: "3/D" },
+                ];
+                var btnRects = [];
+
+                function drawButtons(y0) {
+                    var pad = Math.max(12, W * 0.03);
+                    var gap = Math.max(8, W * 0.02);
+                    var totalW = W - pad * 2;
+                    var btnW = (totalW - gap * 2) / 3;
+                    var btnH = Math.min(62, H * 0.08);
+                    btnRects = [];
+                    for (var i = 0; i < 3; i++) {
+                        var bx = pad + i * (btnW + gap);
+                        var by = y0;
+                        btnRects.push({ x: bx, y: by, w: btnW, h: btnH });
+                        var hover = hoverBtn === i;
+                        var d = btnDefs[i];
+                        ctx.save();
+                        if (hover) { ctx.shadowBlur = 14; ctx.shadowColor = d.col; }
+                        rrect(bx, by, btnW, btnH, 8);
+                        ctx.fillStyle = hover ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.03)"; ctx.fill();
+                        ctx.lineWidth = 1.5; ctx.strokeStyle = hover ? d.col : C.border; ctx.stroke();
+                        ctx.shadowBlur = 0;
+                        ctx.fillStyle = d.col; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                        ctx.font = "700 " + Math.max(13, btnH * 0.30) + "px system-ui";
+                        ctx.fillText(d.icon + " " + d.label, bx + btnW / 2, by + btnH * 0.42);
+                        ctx.fillStyle = C.dim; ctx.font = "500 " + Math.max(9, btnH * 0.20) + "px system-ui";
+                        ctx.fillText(isTouch ? "tap" : d.key, bx + btnW / 2, by + btnH * 0.76);
+                        ctx.restore();
+                    }
+                    return btnH;
+                }
+
+                function drawScore(y0) {
+                    ctx.fillStyle = C.dim; ctx.textAlign = "left"; ctx.textBaseline = "top";
+                    ctx.font = "600 " + Math.max(11, W * 0.03) + "px system-ui";
+                    ctx.fillText("\ud83d\udcca Score: " + score, Math.max(12, W * 0.03), y0);
+                    ctx.textAlign = "right";
+                    ctx.fillText("\ud83c\udfc6 Best: " + best, W - Math.max(12, W * 0.03), y0);
+                }
+
+                function drawNotifications() {
+                    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    for (var i = 0; i < notifications.length; i++) {
+                        var n = notifications[i];
+                        var ny = H * 0.12 + i * Math.max(30, H * 0.04);
+                        ctx.globalAlpha = clamp(n.life / 0.8, 0, 1) * 0.95;
+                        rrect(W * 0.1, ny, W * 0.8, Math.max(28, H * 0.035), 6);
+                        ctx.fillStyle = "rgba(22,27,34,0.92)"; ctx.fill();
+                        ctx.lineWidth = 1; ctx.strokeStyle = n.col; ctx.stroke();
+                        ctx.fillStyle = n.col; ctx.font = "600 " + Math.max(11, W * 0.028) + "px system-ui";
+                        ctx.fillText(n.text, W / 2, ny + Math.max(14, H * 0.018));
+                    }
+                    ctx.globalAlpha = 1;
+                }
+
+                function drawParticles() {
+                    for (var i = 0; i < particles.length; i++) {
+                        var p = particles[i];
+                        ctx.globalAlpha = clamp(p.life, 0, 1); ctx.fillStyle = p.col;
+                        ctx.fillRect(p.x - p.sz / 2, p.y - p.sz / 2, p.sz, p.sz);
+                    }
+                    ctx.globalAlpha = 1;
+                }
+
+                function drawOverlay(title, sub, sub2) {
+                    ctx.fillStyle = "rgba(13,17,23,0.80)"; ctx.fillRect(0, 0, W, H);
+                    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillStyle = C.text; ctx.shadowBlur = 24; ctx.shadowColor = C.accent;
+                    ctx.font = "800 " + clamp(W * 0.095, 28, 60) + "px system-ui";
+                    ctx.fillText(title, W / 2, H * 0.35); ctx.shadowBlur = 0;
+                    if (sub) {
+                        ctx.fillStyle = "rgba(230,237,243,0.88)";
+                        ctx.font = "600 " + clamp(W * 0.038, 14, 24) + "px system-ui";
+                        ctx.fillText(sub, W / 2, H * 0.35 + clamp(W * 0.08, 36, 58));
+                    }
+                    if (sub2) {
+                        ctx.fillStyle = C.dim;
+                        ctx.font = "500 " + clamp(W * 0.03, 11, 17) + "px system-ui";
+                        var lines = sub2.split("\n");
+                        for (var i = 0; i < lines.length; i++)
+                            ctx.fillText(lines[i], W / 2, H * 0.35 + clamp(W * 0.14, 64, 100) + i * clamp(W * 0.04, 18, 24));
+                    }
+                }
+
+                /* scanline effect when stability is low */
+                function drawGlitch() {
+                    if (stability > 30) return;
+                    var intensity = (30 - stability) / 30;
+                    for (var i = 0; i < 3; i++) {
+                        if (Math.random() < intensity * 0.3) {
+                            var sy = Math.random() * H, sh = 2 + Math.random() * 4;
+                            ctx.fillStyle = "rgba(248,81,73," + (intensity * 0.08) + ")";
+                            ctx.fillRect(0, sy, W, sh);
+                        }
+                    }
+                    /* CRT scanlines */
+                    ctx.fillStyle = "rgba(0,0,0," + (intensity * 0.04) + ")";
+                    for (var y = 0; y < H; y += 3) ctx.fillRect(0, y, W, 1);
+                }
+
+                /* ═══ MAIN FRAME ═══ */
+                var booted = false, lastT = performance.now();
+                function frame(now) {
+                    if (!booted) { booted = true; var b = document.getElementById("boot"); if (b) b.style.display = "none"; }
+                    var dt = (now - lastT) / 1000; lastT = now; if (dt > 0.06) dt = 0.06;
+                    update(dt);
+
+                    ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
+
+                    ctx.save();
+                    if (shake > 0) { var s = shake; ctx.translate(rnd(-s, s), rnd(-s, s)); }
+
+                    if (state === S_PLAY) {
+                        var y = drawTitleBar();
+                        y += 8;
+                        y += drawMetrics(y + 16);
+                        y += 8;
+                        var cardH = drawPostCard(y);
+                        y += cardH + Math.max(10, H * 0.015);
+                        var btnH = drawButtons(y);
+                        y += btnH + Math.max(8, H * 0.01);
+                        drawScore(y);
+                        drawNotifications();
+                        drawParticles();
+                        drawGlitch();
+                    } else if (state === S_START) {
+                        drawTitleBar();
+                        drawOverlay("ECHO CHAMBER",
+                            isTouch ? "Tap to Start Your Shift" : "Click to Start Your Shift",
+                            "You are an AI moderator for NEXUS, the world's\nlargest social network. Curate the algorithm.\nKeep users addicted without starting a civil war.\n\nBalance ENGAGEMENT, STABILITY, and FUNDING.\nIf any meter hits zero, it's game over.");
+                    } else if (state === S_OVER) {
+                        drawTitleBar();
+                        drawParticles();
+                        drawOverlay("SYSTEM SHUTDOWN",
+                            overReason,
+                            "Score: " + score + "  |  Posts: " + postsProcessed + "  |  Best: " + best + "\n\nDay " +
+                            (Math.floor(elapsed / 30) + 1) + "  |  Survived " + fmtTime(elapsed) + "\n\n" +
+                            (goCooldown > 0 ? "..." : (isTouch ? "Tap to Restart" : "Click / Space to Restart")));
+                    }
+
+                    ctx.restore();
+                    if (flash > 0) { ctx.fillStyle = flashCol; ctx.globalAlpha = flash * 0.3; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+                    requestAnimationFrame(frame);
+                }
+                requestAnimationFrame(frame);
+
+                /* ═══ INPUT ═══ */
+                function cXY(e) { var r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+                function hitBtn(x, y) {
+                    for (var i = 0; i < btnRects.length; i++) {
+                        var b = btnRects[i];
+                        if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return i;
+                    }
+                    return -1;
+                }
+                function onDown(x, y) {
+                    if (state === S_START) { startGame(); return; }
+                    if (state === S_OVER) { if (goCooldown <= 0) startGame(); return; }
+                    var b = hitBtn(x, y);
+                    if (b >= 0) doAction(btnDefs[b].act);
+                }
+                function onMove(x, y) { hoverBtn = hitBtn(x, y); }
+
+                if (window.PointerEvent) {
+                    canvas.addEventListener("pointerdown", function (e) { e.preventDefault(); var p = cXY(e); onDown(p.x, p.y); }, { passive: false });
+                    canvas.addEventListener("pointermove", function (e) { var p = cXY(e); onMove(p.x, p.y); }, { passive: false });
+                } else {
+                    canvas.addEventListener("mousedown", function (e) { e.preventDefault(); var p = cXY(e); onDown(p.x, p.y); });
+                    canvas.addEventListener("mousemove", function (e) { var p = cXY(e); onMove(p.x, p.y); });
+                    canvas.addEventListener("touchstart", function (e) { e.preventDefault(); var t = e.changedTouches[0]; var p = cXY(t); onDown(p.x, p.y); }, { passive: false });
+                }
+                window.addEventListener("keydown", function (e) {
+                    if (state === S_START) { if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); startGame(); } return; }
+                    if (state === S_OVER) { if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); if (goCooldown <= 0) startGame(); } return; }
+                    switch (e.code) {
+                        case "Digit1": case "KeyA": e.preventDefault(); doAction("amplify"); break;
+                        case "Digit2": case "KeyS": e.preventDefault(); doAction("suppress"); break;
+                        case "Digit3": case "KeyD": e.preventDefault(); doAction("monetize"); break;
+                    }
+                }, { passive: false });
+
+            })();
+        } catch (e) { showErr((e && e.stack) || ("" + e)); }
+    </script>
+</body>
+
+</html>
