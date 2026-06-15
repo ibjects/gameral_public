@@ -27,4 +27,13 @@ const GAMES = [
     gradient: "linear-gradient(135deg, #1a1c2e 0%, #07080d 100%)",
     // description: "A challenging puzzle game set in a mysterious cleanroom.",
   },
+  {
+    id: "perfect-cut",
+    name: "Perfect Cut",
+    // genre: "Puzzle · Strategy",
+    url: "games/perfect-cut/index.html",
+    thumbnail: "games/perfect-cut/thumbnail.png",
+    gradient: "linear-gradient(135deg, #1a1c2e 0%, #07080d 100%)",
+    // description: "A challenging puzzle game set in a mysterious cleanroom.",
+  },
 ];

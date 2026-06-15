@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Perfect Cut</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+            background: #0b1118;
+            overscroll-behavior: none;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            cursor: crosshair
+        }
+
+        #boot {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #4a6070;
+            background: #0b1118;
+            z-index: 9999;
+            font: 600 15px system-ui;
+            text-align: center;
+            white-space: pre-wrap
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="c"></canvas>
+    <div id="boot">loading Perfect Cut…</div>
+    <script>
+        function showErr(m) {
+            var d = document.getElementById("boot"); if (!d) { d = document.createElement("div"); d.id = "boot"; document.body.appendChild(d); }
+            d.style.display = "flex"; d.style.color = "#ff8a8a"; d.style.font = "13px ui-monospace,Menlo,Consolas,monospace"; d.textContent = "Error:\n\n" + m;
+        }
+        window.addEventListener("error", function (e) { showErr((e.message || "?") + " @ line " + (e.lineno || "?")); });
+
+        try {
+            (function () {
+                "use strict";
+
+                var canvas = document.getElementById("c");
+                var ctx = canvas.getContext("2d");
+                if (!ctx) { showErr("No canvas context"); return; }
+                var W = 0, H = 0, DPR = 1;
+                var isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+
+                function resize() {
+                    DPR = Math.min(window.devicePixelRatio || 1, 2);
+                    W = window.innerWidth || 360; H = window.innerHeight || 640;
+                    canvas.width = Math.floor(W * DPR); canvas.height = Math.floor(H * DPR);
+                    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+                    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+                }
+                window.addEventListener("resize", resize); resize();
+
+                /* ════════════════════════════════════════════════
+                   MATH UTILITIES
+                   ════════════════════════════════════════════════ */
+                var clamp = function (v, a, b) { return v < a ? a : v > b ? b : v; };
+                var rnd = function (a, b) { return a + Math.random() * (b - a); };
+
+                function polyArea(p) {
+                    var n = p.length; if (n < 3) return 0; var a = 0;
+                    for (var i = 0; i < n; i++) { var j = (i + 1) % n; a += p[i].x * p[j].y - p[j].x * p[i].y; }
+                    return Math.abs(a) / 2;
+                }
+                function polyCentroid(p) {
+                    var n = p.length, cx = 0, cy = 0;
+                    for (var i = 0; i < n; i++) { cx += p[i].x; cy += p[i].y; }
+                    return { x: cx / n, y: cy / n };
+                }
+                function side(a, b, c) { return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x); }
+
+                function clipLeft(pts, la, lb) {
+                    var n = pts.length; if (n < 3) return []; var out = [];
+                    for (var i = 0; i < n; i++) {
+                        var cur = pts[i], nxt = pts[(i + 1) % n];
+                        var sc = side(la, lb, cur), sn = side(la, lb, nxt);
+                        if (sc >= 0) out.push({ x: cur.x, y: cur.y });
+                        if ((sc >= 0) !== (sn >= 0)) {
+                            var t = sc / (sc - sn);
+                            out.push({ x: cur.x + t * (nxt.x - cur.x), y: cur.y + t * (nxt.y - cur.y) });
+                        }
+                    }
+                    return out;
+                }
+
+                function linePolyHits(poly, la, lb) {
+                    var hits = [], n = poly.length;
+                    for (var i = 0; i < n; i++) {
+                        var a = poly[i], b = poly[(i + 1) % n];
+                        var sa = side(la, lb, a), sb = side(la, lb, b);
+                        if ((sa >= 0) !== (sb >= 0)) {
+                            var t = sa / (sa - sb);
+                            hits.push({ x: a.x + t * (b.x - a.x), y: a.y + t * (b.y - a.y) });
+                        }
+                    }
+                    return hits;
+                }
+
+                /* ════════════════════════════════════════════════
+                   SHAPE GENERATION
+                   ════════════════════════════════════════════════ */
+                var PALETTE = [
+                    { f: "#00c9a7", s: "#66ffd9" }, { f: "#ff6b6b", s: "#ffa0a0" },
+                    { f: "#5b9bff", s: "#99c4ff" }, { f: "#ffc73a", s: "#ffe080" },
+                    { f: "#c77dff", s: "#ddb0ff" }, { f: "#ff8a5c", s: "#ffb899" }
+                ];
+
+                function genConvex(cx, cy, rMin, rMax, sides) {
+                    var angs = []; for (var i = 0; i < sides; i++) angs.push(rnd(0, Math.PI * 2));
+                    angs.sort(function (a, b) { return a - b; });
+                    var pts = [];
+                    for (var i = 0; i < sides; i++) {
+                        var r = rnd(rMin, rMax);
+                        pts.push({ x: cx + Math.cos(angs[i]) * r, y: cy + Math.sin(angs[i]) * r });
+                    }
+                    return pts;
+                }
+                function genStar(cx, cy, ri, ro, pts) {
+                    var out = [], n = pts * 2;
+                    for (var i = 0; i < n; i++) {
+                        var a = (i / n) * Math.PI * 2 - Math.PI / 2;
+                        var r = (i % 2 === 0) ? ro : ri;
+                        out.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+                    }
+                    return out;
+                }
+                function genBlob(cx, cy, base, vary, n) {
+                    var off = []; for (var i = 0; i < n; i++)off.push((Math.random() - 0.5) * 2);
+                    for (var pass = 0; pass < 4; pass++) {
+                        var sm = []; for (var i = 0; i < n; i++)
+                            sm.push(off[(i - 1 + n) % n] * 0.25 + off[i] * 0.5 + off[(i + 1) % n] * 0.25);
+                        off = sm;
+                    }
+                    var pts = [];
+                    for (var i = 0; i < n; i++) {
+                        var a = (i / n) * Math.PI * 2;
+                        var r = base + off[i] * vary;
+                        pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+                    }
+                    return pts;
+                }
+
+                function genShape() {
+                    var hudH = Math.min(56, H * 0.07);
+                    var cxs = W / 2, cys = hudH + (H - hudH) * 0.40;
+                    var maxR = Math.min(W * 0.34, H * 0.24);
+                    var type = Math.floor(Math.random() * 3);
+                    var poly;
+                    if (type === 0) {
+                        poly = genConvex(cxs, cys, maxR * 0.55, maxR, 5 + Math.floor(rnd(0, 5)));
+                    } else if (type === 1) {
+                        poly = genStar(cxs, cys, maxR * 0.32, maxR, 4 + Math.floor(rnd(0, 4)));
+                    } else {
+                        poly = genBlob(cxs, cys, maxR * 0.72, maxR * 0.28, 14 + Math.floor(rnd(0, 6)));
+                    }
+                    var col = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+                    return { poly: poly, fill: col.f, stroke: col.s };
+                }
+
+                /* ════════════════════════════════════════════════
+                   GUIDE LINE (true 50/50 finder)
+                   ════════════════════════════════════════════════ */
+                function findGuide(poly) {
+                    var cent = polyCentroid(poly);
+                    var total = polyArea(poly);
+                    if (total < 1) return { p1: { x: 0, y: 0 }, p2: { x: 1, y: 0 } };
+                    var angle = rnd(0, Math.PI);
+                    var dx = Math.cos(angle), dy = Math.sin(angle);
+                    var px = -dy, py = dx;
+
+                    /* bounding radius for search range */
+                    var maxD = 0;
+                    for (var i = 0; i < poly.length; i++) {
+                        var d = Math.hypot(poly[i].x - cent.x, poly[i].y - cent.y);
+                        if (d > maxD) maxD = d;
+                    }
+                    var sr = maxD * 0.75;
+
+                    var bestOff = 0, bestErr = 1e18;
+                    /* coarse */
+                    var step = sr / 20;
+                    for (var off = -sr; off <= sr; off += step) {
+                        var ox = cent.x + px * off, oy = cent.y + py * off;
+                        var p1 = { x: ox - dx * 3000, y: oy - dy * 3000 };
+                        var p2 = { x: ox + dx * 3000, y: oy + dy * 3000 };
+                        var la = polyArea(clipLeft(poly, p1, p2));
+                        var err = Math.abs(la - total / 2);
+                        if (err < bestErr) { bestErr = err; bestOff = off; }
+                    }
+                    /* fine */
+                    for (var off = bestOff - step; off <= bestOff + step; off += step / 15) {
+                        var ox = cent.x + px * off, oy = cent.y + py * off;
+                        var p1 = { x: ox - dx * 3000, y: oy - dy * 3000 };
+                        var p2 = { x: ox + dx * 3000, y: oy + dy * 3000 };
+                        var la = polyArea(clipLeft(poly, p1, p2));
+                        var err = Math.abs(la - total / 2);
+                        if (err < bestErr) { bestErr = err; bestOff = off; }
+                    }
+                    var ox = cent.x + px * bestOff, oy = cent.y + py * bestOff;
+                    return {
+                        p1: { x: ox - dx * 3000, y: oy - dy * 3000 },
+                        p2: { x: ox + dx * 3000, y: oy + dy * 3000 }
+                    };
+                }
+
+                /* ════════════════════════════════════════════════
+                   GAME STATE
+                   ════════════════════════════════════════════════ */
+                var S_START = 0, S_PLAY = 1, S_OVER = 2;
+                var state = S_START;
+
+                var best = 0;
+                try { best = parseInt(localStorage.getItem("perfectCutBest") || "0", 10) || 0; } catch (e) { best = 0; }
+                function saveBest(v) { best = v; try { localStorage.setItem("perfectCutBest", "" + v); } catch (e) { } }
+
+                var timer = 0, score = 0, shapesN = 0;
+                var phase = "", phaseT = 0;
+                var curPoly = null, curFill = "", curStroke = "";
+                var guideP1 = null, guideP2 = null, guideHits = [];
+                var cutP1 = null, cutP2 = null, isCutting = false;
+                var resGrade = null, resRatio = 0, resPieceL = null, resPieceR = null;
+                var resCutP1 = null, resCutP2 = null;
+                var shapeScale = 0;
+                var shake = 0, flash = 0;
+                var particles = [], popTexts = [];
+                var goCooldown = 0;
+
+                /* ════════════════════════════════════════════════
+                   GRADING
+                   ════════════════════════════════════════════════ */
+                function getGrade(ratio) {
+                    /* ratio = min(areaL,areaR)/total, 0..0.5. 0.5 = perfect. */
+                    if (ratio >= 0.48) return { name: "PERFECT!", time: 4, pts: 100, col: "#ffd700" };
+                    if (ratio >= 0.44) return { name: "GREAT!", time: 2, pts: 60, col: "#3ddc84" };
+                    if (ratio >= 0.40) return { name: "GOOD", time: 0.5, pts: 30, col: "#d0dff0" };
+                    if (ratio >= 0.35) return { name: "OK", time: -1, pts: 10, col: "#ffa050" };
+                    if (ratio >= 0.20) return { name: "BAD", time: -2, pts: 0, col: "#ff5050" };
+                    return { name: "MISS", time: -3, pts: 0, col: "#ff2828" };
+                }
+
+                /* ════════════════════════════════════════════════
+                   GAME LOGIC
+                   ════════════════════════════════════════════════ */
+                function startGame() {
+                    timer = 22; score = 0; shapesN = 0;
+                    shake = 0; flash = 0; particles = []; popTexts = [];
+                    state = S_PLAY;
+                    nextShape();
+                }
+                function gameOver() {
+                    if (state !== S_PLAY) return;
+                    state = S_OVER; goCooldown = 0.6;
+                    shake = 14; flash = 0.8;
+                    if (score > best) saveBest(score);
+                }
+                function nextShape() {
+                    var s = genShape();
+                    curPoly = s.poly; curFill = s.fill; curStroke = s.stroke;
+                    var g = findGuide(curPoly);
+                    guideP1 = g.p1; guideP2 = g.p2;
+                    guideHits = linePolyHits(curPoly, guideP1, guideP2);
+                    cutP1 = null; cutP2 = null; isCutting = false;
+                    resPieceL = null; resPieceR = null; resGrade = null;
+                    resCutP1 = null; resCutP2 = null;
+                    phase = "SHOW"; phaseT = 0; shapeScale = 0;
+                }
+
+                function beginCut(x, y) {
+                    if (state !== S_PLAY || phase !== "READY") return;
+                    cutP1 = { x: x, y: y }; cutP2 = { x: x, y: y };
+                    isCutting = true; phase = "CUT"; phaseT = 0;
+                }
+                function moveCut(x, y) {
+                    if (!isCutting) return;
+                    cutP2 = { x: x, y: y };
+                }
+                function endCut() {
+                    if (!isCutting || !cutP1 || !cutP2) return;
+                    isCutting = false;
+
+                    var dx = cutP2.x - cutP1.x, dy = cutP2.y - cutP1.y;
+                    var dist = Math.hypot(dx, dy);
+                    if (dist < 15) { phase = "READY"; phaseT = 0; return; } /* too short, cancel */
+
+                    var ux = dx / dist, uy = dy / dist;
+                    var la = { x: cutP1.x - ux * 5000, y: cutP1.y - uy * 5000 };
+                    var lb = { x: cutP2.x + ux * 5000, y: cutP2.y + uy * 5000 };
+
+                    var pieceL = clipLeft(curPoly, la, lb);
+                    var pieceR = clipLeft(curPoly, lb, la);
+                    var aL = polyArea(pieceL), aR = polyArea(pieceR);
+                    var total = aL + aR;
+
+                    if (total < 1 || pieceL.length < 3 || pieceR.length < 3) {
+                        resGrade = getGrade(0); resPieceL = curPoly; resPieceR = []; resRatio = 0;
+                    } else {
+                        resRatio = Math.min(aL, aR) / total;
+                        resGrade = getGrade(resRatio);
+                        resPieceL = pieceL; resPieceR = pieceR;
+                    }
+
+                    resCutP1 = { x: cutP1.x, y: cutP1.y };
+                    resCutP2 = { x: cutP2.x, y: cutP2.y };
+                    score += resGrade.pts;
+                    timer = Math.min(35, timer + resGrade.time);
+                    if (timer <= 0) { timer = 0; gameOver(); return; }
+
+                    flash = resGrade.pts >= 60 ? 0.55 : 0.2;
+                    shake = resGrade.pts >= 60 ? 10 : resGrade.pts > 0 ? 4 : 8;
+
+                    if (resGrade.pts >= 60) {
+                        var cent = polyCentroid(curPoly);
+                        for (var i = 0; i < 24; i++) {
+                            var a = rnd(0, Math.PI * 2), sp = rnd(2, 7);
+                            particles.push({ x: cent.x, y: cent.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 1, sz: rnd(2, 4), col: resGrade.col });
+                        }
+                    }
+
+                    var pctL = Math.round(Math.min(aL, aR) / total * 100);
+                    var pctR = 100 - pctL;
+                    popTexts.push({ text: resGrade.name, x: W / 2, y: H * 0.22, life: 1.6, col: resGrade.col, big: true });
+                    popTexts.push({ text: pctL + "/" + pctR + " split", x: W / 2, y: H * 0.30, life: 1.6, col: "#8899aa", big: false });
+                    var tStr = (resGrade.time >= 0 ? "+" : "") + resGrade.time + "s";
+                    popTexts.push({ text: tStr, x: W / 2, y: H * 0.08, life: 1.2, col: resGrade.time >= 0 ? "#3ddc84" : "#ff5050", big: false });
+
+                    phase = "RESULT"; phaseT = 0;
+                }
+
+                /* ════════════════════════════════════════════════
+                   UPDATE
+                   ════════════════════════════════════════════════ */
+                function update(dt) {
+                    if (goCooldown > 0) goCooldown = Math.max(0, goCooldown - dt);
+                    if (flash > 0) flash = Math.max(0, flash - dt * 3);
+                    if (shake > 0) shake = Math.max(0, shake - dt * 60 * 1.5);
+
+                    for (var i = particles.length - 1; i >= 0; i--) {
+                        var p = particles[i];
+                        p.vx *= 0.93; p.vy *= 0.93; p.x += p.vx; p.y += p.vy; p.life -= dt * 1.5; if (p.life <= 0) particles.splice(i, 1);
+                    }
+                    for (var i = popTexts.length - 1; i >= 0; i--) {
+                        popTexts[i].life -= dt; popTexts[i].y -= dt * 22;
+                        if (popTexts[i].life <= 0) popTexts.splice(i, 1);
+                    }
+
+                    if (state !== S_PLAY) return;
+
+                    /* timer only ticks when the player can actually play */
+                    if (phase === "READY" || phase === "CUT") timer -= dt;
+                    if (timer <= 0) { timer = 0; gameOver(); return; }
+
+                    phaseT += dt;
+
+                    if (phase === "SHOW") {
+                        shapeScale = Math.min(1, phaseT / 0.28);
+                        var showDur = Math.max(0.55, 2.0 - shapesN * 0.065);
+                        if (phaseT >= showDur) { phase = "READY"; phaseT = 0; }
+                    } else if (phase === "RESULT") {
+                        if (phaseT >= 1.6) { shapesN++; nextShape(); }
+                    }
+                }
+
+                /* ════════════════════════════════════════════════
+                   DRAWING
+                   ════════════════════════════════════════════════ */
+                function rrect(x, y, w, h, r) {
+                    ctx.beginPath(); ctx.moveTo(x + r, y);
+                    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+                    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+                }
+
+                function drawPolyFill(pts, fill, stroke, alpha) {
+                    if (!pts || pts.length < 3) return;
+                    ctx.save(); ctx.globalAlpha = alpha || 1;
+                    ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+                    for (var i = 1; i < pts.length; i++)ctx.lineTo(pts[i].x, pts[i].y);
+                    ctx.closePath(); ctx.fillStyle = fill; ctx.fill();
+                    ctx.lineWidth = 3; ctx.strokeStyle = stroke; ctx.stroke();
+                    ctx.restore();
+                }
+
+                function drawShapeScaled(pts, fill, stroke, sc) {
+                    if (!pts || pts.length < 3 || sc <= 0) return;
+                    var c = polyCentroid(pts);
+                    ctx.save(); ctx.translate(c.x, c.y); ctx.scale(sc, sc); ctx.translate(-c.x, -c.y);
+                    /* subtle shadow */
+                    ctx.shadowBlur = 24; ctx.shadowColor = "rgba(0,0,0,0.5)";
+                    drawPolyFill(pts, fill, stroke, 0.88);
+                    ctx.shadowBlur = 0; ctx.restore();
+                }
+
+                function drawGuideVis(alpha) {
+                    if (guideHits.length < 2) return;
+                    ctx.save(); ctx.globalAlpha = alpha;
+                    ctx.setLineDash([10, 7]); ctx.lineDashOffset = (performance.now() / 60) % 17;
+                    ctx.lineWidth = 3.5; ctx.strokeStyle = "#ffd700";
+                    ctx.shadowBlur = 12; ctx.shadowColor = "#ffd700";
+                    ctx.beginPath(); ctx.moveTo(guideHits[0].x, guideHits[0].y);
+                    ctx.lineTo(guideHits[1].x, guideHits[1].y); ctx.stroke();
+                    ctx.setLineDash([]); ctx.shadowBlur = 0; ctx.restore();
+                }
+
+                function drawCutPreview() {
+                    if (!cutP1 || !cutP2) return;
+                    var dx = cutP2.x - cutP1.x, dy = cutP2.y - cutP1.y;
+                    var dist = Math.hypot(dx, dy);
+
+                    /* drag line */
+                    ctx.beginPath(); ctx.moveTo(cutP1.x, cutP1.y); ctx.lineTo(cutP2.x, cutP2.y);
+                    ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.stroke();
+
+                    /* projected across shape */
+                    if (dist > 10) {
+                        var ux = dx / dist, uy = dy / dist;
+                        var la = { x: cutP1.x - ux * 5000, y: cutP1.y - uy * 5000 };
+                        var lb = { x: cutP2.x + ux * 5000, y: cutP2.y + uy * 5000 };
+                        var hits = linePolyHits(curPoly, la, lb);
+                        if (hits.length >= 2) {
+                            ctx.beginPath(); ctx.moveTo(hits[0].x, hits[0].y); ctx.lineTo(hits[1].x, hits[1].y);
+                            ctx.lineWidth = 3; ctx.strokeStyle = "rgba(255,255,255,0.9)";
+                            ctx.shadowBlur = 10; ctx.shadowColor = "#fff"; ctx.stroke(); ctx.shadowBlur = 0;
+                        }
+                    }
+
+                    /* start dot */
+                    ctx.beginPath(); ctx.arc(cutP1.x, cutP1.y, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = "#fff"; ctx.fill();
+                }
+
+                function drawResultAnim() {
+                    if (!resPieceL || resPieceL.length < 3) return;
+                    var t = Math.min(1, phaseT / 0.45);
+                    var slideD = t * 35;
+                    var dx = 0, dy = 0;
+                    if (resCutP1 && resCutP2) {
+                        var cdx = resCutP2.x - resCutP1.x, cdy = resCutP2.y - resCutP1.y;
+                        var cd = Math.hypot(cdx, cdy);
+                        if (cd > 1) { dx = -cdy / cd; dy = cdx / cd; }
+                    }
+
+                    ctx.save(); ctx.translate(-dx * slideD, -dy * slideD);
+                    drawPolyFill(resPieceL, curFill, curStroke, 0.82); ctx.restore();
+
+                    if (resPieceR && resPieceR.length >= 3) {
+                        ctx.save(); ctx.translate(dx * slideD, dy * slideD);
+                        drawPolyFill(resPieceR, curFill, curStroke, 0.82); ctx.restore();
+                    }
+
+                    /* ghost guide line for comparison */
+                    if (guideHits.length >= 2 && phaseT > 0.3) {
+                        var ga = clamp((phaseT - 0.3) / 0.3, 0, 0.5);
+                        ctx.save(); ctx.globalAlpha = ga; ctx.setLineDash([6, 5]);
+                        ctx.lineWidth = 2; ctx.strokeStyle = "#ffd700";
+                        ctx.beginPath(); ctx.moveTo(guideHits[0].x, guideHits[0].y);
+                        ctx.lineTo(guideHits[1].x, guideHits[1].y); ctx.stroke();
+                        ctx.setLineDash([]); ctx.restore();
+                    }
+                }
+
+                function drawTimerBar() {
+                    var barW = W - 40, barH = 8, barX = 20, barY = 14;
+                    var pct = clamp(timer / 35, 0, 1);
+                    rrect(barX, barY, barW, barH, barH / 2); ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.fill();
+                    if (pct > 0) {
+                        var r2, g2;
+                        if (pct > 0.5) { r2 = Math.round((1 - pct) * 2 * 255); g2 = 220; }
+                        else { r2 = 255; g2 = Math.round(pct * 2 * 220); }
+                        rrect(barX, barY, Math.max(barH, barW * pct), barH, barH / 2);
+                        ctx.fillStyle = "rgb(" + r2 + "," + g2 + ",50)"; ctx.fill();
+                    }
+                    ctx.fillStyle = "rgba(200,220,240,0.55)"; ctx.textAlign = "right"; ctx.textBaseline = "top";
+                    ctx.font = "600 " + clamp(W * 0.03, 12, 16) + "px system-ui";
+                    ctx.fillText(timer.toFixed(1) + "s", W - 20, barY + barH + 4);
+                }
+
+                function drawHUD() {
+                    ctx.fillStyle = "#e0ecf8"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+                    ctx.font = "800 " + clamp(W * 0.07, 24, 42) + "px system-ui";
+                    ctx.fillText("" + score, 20, 28);
+                    ctx.fillStyle = "rgba(180,200,220,0.40)";
+                    ctx.font = "600 " + clamp(W * 0.028, 11, 15) + "px system-ui";
+                    ctx.fillText("BEST " + best, 22, 28 + clamp(W * 0.07, 24, 42) + 2);
+                }
+
+                function drawParticles() {
+                    for (var i = 0; i < particles.length; i++) {
+                        var p = particles[i];
+                        ctx.globalAlpha = clamp(p.life, 0, 1); ctx.fillStyle = p.col;
+                        ctx.fillRect(p.x - p.sz / 2, p.y - p.sz / 2, p.sz, p.sz);
+                    }
+                    ctx.globalAlpha = 1;
+                }
+                function drawPops() {
+                    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    for (var i = 0; i < popTexts.length; i++) {
+                        var p = popTexts[i];
+                        ctx.globalAlpha = clamp(p.life / 0.4, 0, 1); ctx.fillStyle = p.col;
+                        if (p.big) { ctx.shadowBlur = 16; ctx.shadowColor = p.col; }
+                        ctx.font = (p.big ? "800 " : "600 ") + clamp(p.big ? W * 0.10 : W * 0.045, p.big ? 28 : 14, p.big ? 58 : 22) + "px system-ui";
+                        ctx.fillText(p.text, p.x, p.y); ctx.shadowBlur = 0;
+                    }
+                    ctx.globalAlpha = 1;
+                }
+
+                function drawOverlay(title, sub, sub2) {
+                    ctx.fillStyle = "rgba(11,17,24,0.75)"; ctx.fillRect(0, 0, W, H);
+                    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#e0ecf8"; ctx.shadowBlur = 24; ctx.shadowColor = "#4488cc";
+                    ctx.font = "800 " + clamp(W * 0.11, 34, 68) + "px system-ui";
+                    ctx.fillText(title, W / 2, H * 0.38); ctx.shadowBlur = 0;
+                    if (sub) {
+                        ctx.fillStyle = "rgba(220,235,250,0.90)";
+                        ctx.font = "600 " + clamp(W * 0.042, 16, 26) + "px system-ui";
+                        ctx.fillText(sub, W / 2, H * 0.38 + clamp(W * 0.085, 42, 64));
+                    }
+                    if (sub2) {
+                        ctx.fillStyle = "rgba(160,190,220,0.55)";
+                        ctx.font = "500 " + clamp(W * 0.032, 12, 18) + "px system-ui";
+                        var lines = sub2.split("\n");
+                        for (var i = 0; i < lines.length; i++)
+                            ctx.fillText(lines[i], W / 2, H * 0.38 + clamp(W * 0.14, 70, 104) + i * clamp(W * 0.045, 20, 26));
+                    }
+                }
+
+                function drawReadyHint() {
+                    var t = performance.now() / 1000;
+                    var a = 0.35 + 0.15 * Math.sin(t * 3);
+                    ctx.globalAlpha = a; ctx.fillStyle = "#88aacc"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.font = "600 " + clamp(W * 0.038, 14, 20) + "px system-ui";
+                    ctx.fillText(isTouch ? "\u2702 Swipe to cut" : "\u2702 Click & drag to cut", W / 2, H * 0.82);
+                    ctx.globalAlpha = 1;
+                }
+
+                /* ════════════════════════════════════════════════
+                   MAIN FRAME
+                   ════════════════════════════════════════════════ */
+                var booted = false, lastT = performance.now();
+                function frame(now) {
+                    if (!booted) { booted = true; var b = document.getElementById("boot"); if (b) b.style.display = "none"; }
+                    var dt = (now - lastT) / 1000; lastT = now; if (dt > 0.06) dt = 0.06;
+                    update(dt);
+
+                    ctx.fillStyle = "#0b1118"; ctx.fillRect(0, 0, W, H);
+
+                    /* subtle grid bg */
+                    ctx.strokeStyle = "rgba(60,80,100,0.06)"; ctx.lineWidth = 1;
+                    var gap = Math.max(30, Math.min(W, H) / 16);
+                    for (var yy = gap; yy < H; yy += gap) { ctx.beginPath(); ctx.moveTo(0, yy); ctx.lineTo(W, yy); ctx.stroke(); }
+                    for (var xx = gap; xx < W; xx += gap) { ctx.beginPath(); ctx.moveTo(xx, 0); ctx.lineTo(xx, H); ctx.stroke(); }
+
+                    ctx.save();
+                    if (shake > 0) { var s = shake; ctx.translate(rnd(-s, s), rnd(-s, s)); }
+
+                    if (state === S_PLAY) {
+                        if (phase === "SHOW") {
+                            drawShapeScaled(curPoly, curFill, curStroke, shapeScale);
+                            if (shapeScale > 0.6) drawGuideVis(clamp((shapeScale - 0.6) / 0.3, 0, 1));
+                        } else if (phase === "READY") {
+                            drawShapeScaled(curPoly, curFill, curStroke, 1);
+                            drawReadyHint();
+                        } else if (phase === "CUT") {
+                            drawShapeScaled(curPoly, curFill, curStroke, 1);
+                            drawCutPreview();
+                        } else if (phase === "RESULT") {
+                            drawResultAnim();
+                        }
+                        drawTimerBar(); drawHUD();
+                        drawParticles(); drawPops();
+                    } else if (state === S_START) {
+                        /* draw a sample shape on start screen */
+                        if (!curPoly) {
+                            var s = genShape(); curPoly = s.poly; curFill = s.fill; curStroke = s.stroke;
+                            var g2 = findGuide(curPoly); guideHits = linePolyHits(curPoly, g2.p1, g2.p2);
+                        }
+                        drawShapeScaled(curPoly, curFill, curStroke, 1);
+                        if (guideHits.length >= 2) drawGuideVis(0.5);
+                        drawOverlay("PERFECT CUT", isTouch ? "Tap to Start" : "Click to Start",
+                            "A dotted line flashes — memorize it!\nSwipe to cut the shape in half.\nCloser to 50/50 = more time added.");
+                    } else if (state === S_OVER) {
+                        drawParticles(); drawPops();
+                        drawOverlay("TIME'S UP", "Score " + score + "  \u2022  Best " + best,
+                            goCooldown > 0 ? "..." : (isTouch ? "Tap to Restart" : "Click / Space to Restart"));
+                    }
+
+                    ctx.restore();
+                    if (flash > 0) { ctx.fillStyle = "rgba(255,255,255," + (flash * 0.45) + ")"; ctx.fillRect(0, 0, W, H); }
+                    requestAnimationFrame(frame);
+                }
+                requestAnimationFrame(frame);
+
+                /* ════════════════════════════════════════════════
+                   INPUT
+                   ════════════════════════════════════════════════ */
+                function cXY(e) { var r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+
+                function onDown(x, y) {
+                    if (state === S_START) { curPoly = null; guideHits = []; startGame(); return; }
+                    if (state === S_OVER) { if (goCooldown <= 0) startGame(); return; }
+                    if (state === S_PLAY) beginCut(x, y);
+                }
+                function onMove(x, y) { if (state === S_PLAY && isCutting) moveCut(x, y); }
+                function onUp() { if (state === S_PLAY && isCutting) endCut(); }
+
+                if (window.PointerEvent) {
+                    canvas.addEventListener("pointerdown", function (e) { e.preventDefault(); var p = cXY(e); onDown(p.x, p.y); }, { passive: false });
+                    canvas.addEventListener("pointermove", function (e) { e.preventDefault(); var p = cXY(e); onMove(p.x, p.y); }, { passive: false });
+                    window.addEventListener("pointerup", function (e) { onUp(); });
+                    window.addEventListener("pointercancel", function () { isCutting = false; });
+                } else {
+                    canvas.addEventListener("mousedown", function (e) { e.preventDefault(); var p = cXY(e); onDown(p.x, p.y); });
+                    canvas.addEventListener("mousemove", function (e) { var p = cXY(e); onMove(p.x, p.y); });
+                    window.addEventListener("mouseup", function () { onUp(); });
+                    canvas.addEventListener("touchstart", function (e) { e.preventDefault(); var t = e.changedTouches[0]; var p = cXY(t); onDown(p.x, p.y); }, { passive: false });
+                    canvas.addEventListener("touchmove", function (e) { e.preventDefault(); var t = e.changedTouches[0]; var p = cXY(t); onMove(p.x, p.y); }, { passive: false });
+                    window.addEventListener("touchend", function () { onUp(); });
+                }
+
+                window.addEventListener("keydown", function (e) {
+                    if (e.code === "Space" || e.code === "Enter") {
+                        e.preventDefault();
+                        if (state === S_START) { curPoly = null; guideHits = []; startGame(); }
+                        else if (state === S_OVER && goCooldown <= 0) startGame();
+                    }
+                }, { passive: false });
+
+            })();
+        } catch (e) { showErr((e && e.stack) || ("" + e)); }
+    </script>
+</body>
+
+</html>

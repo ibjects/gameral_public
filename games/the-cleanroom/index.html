@@ -182,7 +182,7 @@
                     score = 0; dScore = 0; combo = 0; lastClnT = -99;
                     elapsed = 0; spawnTmr = 0;
                     shake = 0; flash = 0; parts = []; flys = []; slideAnims = [];
-                    for (var i = 0; i < 4; i++) spawnDot();
+                    for (var i = 0; i < 2; i++) spawnDot();
                 }
                 function startGame() { resetGame(); state = S_PLAY; }
 
@@ -332,10 +332,11 @@
 
                     elapsed += dt;
 
-                    /* difficulty ramp */
-                    var growDur = Math.max(2.8, 5.5 - elapsed * 0.035);
-                    var spreadI = Math.max(1.2, 2.4 - elapsed * 0.015);
-                    var spawnI = Math.max(0.7, 2.0 - elapsed * 0.015);
+                    /* difficulty ramp — gentle curve, grace period at start */
+                    var ramp = Math.max(0, elapsed - 4);  /* 4-second grace: no ramp at all */
+                    var growDur = Math.max(4.5, 12.0 - ramp * 0.025);   /* maturity time: 12s → 4.5s */
+                    var spreadI = Math.max(2.8, 7.0 - ramp * 0.015);   /* spread interval: 7s → 2.8s */
+                    var spawnI = Math.max(2.0, 5.5 - ramp * 0.012);   /* new dot interval: 5.5s → 2s */
 
                     /* grow + spread */
                     for (var r = 0; r < GS; r++) for (var c = 0; c < GS; c++) {
@@ -345,11 +346,14 @@
                             d.spT += dt;
                             if (d.spT >= spreadI) {
                                 d.spT = 0;
-                                var nb = neighbors(r, c);
-                                if (nb.length) {
-                                    var pick = nb[rndI(nb.length)];
-                                    grid[pick[0]][pick[1]] = { col: d.col, mat: 0, spT: 0 };
-                                    flash = Math.max(flash, 0.08);
+                                /* only 40% chance per interval — prevents exponential blowup */
+                                if (Math.random() < 0.40) {
+                                    var nb = neighbors(r, c);
+                                    if (nb.length) {
+                                        var pick = nb[rndI(nb.length)];
+                                        grid[pick[0]][pick[1]] = { col: d.col, mat: 0, spT: 0 };
+                                        flash = Math.max(flash, 0.08);
+                                    }
                                 }
                             }
                         }
@@ -358,9 +362,11 @@
                     /* check full */
                     if (empties().length === 0) { doGameOver(); return; }
 
-                    /* spawn timer */
-                    spawnTmr += dt;
-                    if (spawnTmr >= spawnI) { spawnTmr -= spawnI; spawnDot(); }
+                    /* spawn timer — paused during grace period */
+                    if (elapsed > 4) {
+                        spawnTmr += dt;
+                        if (spawnTmr >= spawnI) { spawnTmr -= spawnI; spawnDot(); }
+                    }
                 }
 
                 /* ════════════════════════════════════════════════════════════
