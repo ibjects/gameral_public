@@ -3,542 +3,720 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Gameral – Free Fun Games to Play Online | No Download</title>
-    <meta name="description"
-        content="Play free online games instantly in your browser — no download, no sign-up needed. Fun games for everyone including Tap Tap Drift and more. New games added all the time.">
-    <meta name="keywords"
-        content="free games to play, fun games to play, free online games, play games online free, browser games, instant play games, no download games">
-    <link rel="canonical" href="https://gameral.com/">
-
-    <!-- Open Graph -->
-    <meta property="og:title" content="Gameral – Free Fun Games to Play Online">
-    <meta property="og:description"
-        content="Play free online games instantly in your browser — no download, no sign-up needed.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://gameral.com">
-    <meta property="og:site_name" content="Gameral">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="Gameral – Free Fun Games to Play Online">
-    <meta name="twitter:description"
-        content="Play free online games instantly in your browser — no download, no sign-up needed.">
-
-    <!-- Structured Data: WebSite -->
-    <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebSite",
-    "name": "Gameral",
-    "url": "https://gameral.com",
-    "description": "Free fun online games to play instantly in your browser. No downloads, no sign-up required.",
-    "potentialAction": {
-      "@type": "SearchAction",
-      "target": "https://gameral.com/?q={search_term_string}",
-      "query-input": "required name=search_term_string"
-    }
-  }
-  </script>
-
-    <!-- Structured Data: ItemList of games -->
-    <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "ItemList",
-    "name": "Free Online Games",
-    "description": "A collection of free, fun browser games you can play instantly.",
-    "itemListElement": [
-      {
-        "@type": "ListItem",
-        "position": 1,
-        "item": {
-          "@type": "VideoGame",
-          "name": "Tap Tap Drift",
-          "description": "A fast-paced tap-to-drift racing game. Test your reflexes and drift through the track.",
-          "url": "https://gameral.com/games/tap-tap-drift/",
-          "genre": "Racing",
-          "playMode": "SinglePlayer",
-          "applicationCategory": "Game",
-          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-        }
-      }
-    ]
-  }
-  </script>
-
-    <!-- FAQ Structured Data for AI Overviews -->
-    <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": "Are all games on Gameral free to play?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Yes. Every game on Gameral is completely free to play. No hidden costs, no subscriptions, no sign-up required."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "Do I need to download anything to play?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "No downloads needed. All games on Gameral run directly in your browser — just click and play instantly."
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "What kind of games does Gameral have?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Gameral features fun, casual, and arcade games including racing, action, and reflex games. New games are added regularly."
-        }
-      }
-    ]
-  }
-  </script>
-
+    <meta name="viewport"
+        content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>The Cleanroom</title>
     <style>
-        *,
-        *::before,
-        *::after {
-            box-sizing: border-box;
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box
         }
 
-        :root {
-            --bg: #0d0f18;
-            --surface: #161929;
-            --surface2: #1e2236;
-            --border: #2a2f4a;
-            --accent: #6c63ff;
-            --accent2: #ff6584;
-            --text: #e8eaf6;
-            --muted: #8b93b8;
-            --card-r: 12px;
-            --gap: 20px;
-        }
-
-        html {
-            scroll-behavior: smooth;
-        }
-
+        html,
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-
-        /* ── HEADER ── */
-        header {
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            padding: 0 clamp(16px, 4vw, 60px);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            height: 64px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            text-decoration: none;
-            background: linear-gradient(135deg, var(--accent), var(--accent2));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        nav a {
-            color: var(--muted);
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: color .2s;
-        }
-
-        nav a:hover {
-            color: var(--text);
-        }
-
-        /* ── HERO ── */
-        .hero {
-            text-align: center;
-            padding: clamp(48px, 8vw, 96px) clamp(16px, 4vw, 60px) clamp(32px, 5vw, 60px);
-        }
-
-        .hero h1 {
-            font-size: clamp(1.8rem, 4vw, 3rem);
-            font-weight: 800;
-            line-height: 1.2;
-            margin-bottom: 16px;
-        }
-
-        .hero h1 span {
-            background: linear-gradient(135deg, var(--accent), var(--accent2));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-
-        .hero p {
-            color: var(--muted);
-            font-size: clamp(0.95rem, 2vw, 1.15rem);
-            max-width: 560px;
-            margin: 0 auto 28px;
-        }
-
-        .badge-row {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-
-        .badge {
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 99px;
-            padding: 6px 14px;
-            font-size: 0.8rem;
-            color: var(--muted);
-        }
-
-        /* ── GAMES GRID ── */
-        .section {
-            padding: 0 clamp(16px, 4vw, 60px) clamp(48px, 6vw, 80px);
-            max-width: 1440px;
-            margin: 0 auto;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: baseline;
-            gap: 12px;
-            margin-bottom: 24px;
-        }
-
-        .section-header h2 {
-            font-size: 1.25rem;
-            font-weight: 700;
-        }
-
-        .section-header span {
-            font-size: 0.85rem;
-            color: var(--muted);
-        }
-
-        .games-grid {
-            display: grid;
-            grid-template-columns: repeat(6, 1fr);
-            gap: var(--gap);
-        }
-
-        @media (max-width: 1200px) {
-            .games-grid {
-                grid-template-columns: repeat(5, 1fr);
-            }
-        }
-
-        @media (max-width: 960px) {
-            .games-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-
-        @media (max-width: 720px) {
-            .games-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-
-        @media (max-width: 480px) {
-            .games-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-
-        @media (max-width: 320px) {
-            .games-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
-        /* ── GAME CARD ── */
-        .game-card {
-            display: block;
-            text-decoration: none;
-            color: var(--text);
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--card-r);
-            overflow: hidden;
-            transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
-        }
-
-        .game-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(108, 99, 255, .25);
-            border-color: var(--accent);
-        }
-
-        .card-thumb {
-            width: 100%;
-            aspect-ratio: 16 / 10;
-            background: var(--surface2);
-            position: relative;
-            overflow: hidden;
-        }
-
-        .card-thumb img {
-            width: 100%;
             height: 100%;
-            object-fit: cover;
+            overflow: hidden;
+            background: #080c10;
+            overscroll-behavior: none;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        canvas {
             display: block;
-            transition: transform .3s ease;
+            width: 100vw;
+            height: 100vh;
+            cursor: pointer
         }
 
-        .game-card:hover .card-thumb img {
-            transform: scale(1.06);
-        }
-
-        /* Gradient placeholder shown when no image loads */
-        .card-thumb::before {
-            content: "";
-            position: absolute;
-            inset: 0;
-            background: var(--thumb-gradient, linear-gradient(135deg, #1e2236 0%, #0d0f18 100%));
-            z-index: 0;
-        }
-
-        .card-thumb img {
-            position: relative;
-            z-index: 1;
-        }
-
-        .card-thumb .play-icon {
-            position: absolute;
+        #boot {
+            position: fixed;
             inset: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            opacity: 0;
-            transition: opacity .2s;
-            z-index: 2;
-            background: rgba(0, 0, 0, .35);
-        }
-
-        .game-card:hover .play-icon {
-            opacity: 1;
-        }
-
-        .play-icon svg {
-            width: 40px;
-            height: 40px;
-            fill: #fff;
-            filter: drop-shadow(0 2px 8px rgba(0, 0, 0, .6));
-        }
-
-        .card-info {
-            padding: 10px 12px 12px;
-        }
-
-        .card-info .game-name {
-            font-size: 0.85rem;
-            font-weight: 600;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .card-info .game-tag {
-            font-size: 0.72rem;
-            color: var(--muted);
-            margin-top: 2px;
-        }
-
-        /* ── FAQ (AIO) ── */
-        .faq {
-            padding: 0 clamp(16px, 4vw, 60px) clamp(48px, 6vw, 80px);
-            max-width: 760px;
-            margin: 0 auto;
-        }
-
-        .faq h2 {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-bottom: 20px;
-        }
-
-        details {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: var(--card-r);
-            margin-bottom: 10px;
-            overflow: hidden;
-        }
-
-        summary {
-            padding: 16px 20px;
-            font-weight: 600;
-            font-size: 0.95rem;
-            cursor: pointer;
-            list-style: none;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        summary::-webkit-details-marker {
-            display: none;
-        }
-
-        summary::after {
-            content: "+";
-            font-size: 1.2rem;
-            color: var(--accent);
-            flex-shrink: 0;
-        }
-
-        details[open] summary::after {
-            content: "−";
-        }
-
-        details p {
-            padding: 0 20px 16px;
-            color: var(--muted);
-            font-size: 0.9rem;
-        }
-
-        /* ── FOOTER ── */
-        footer {
+            color: #5a7088;
+            background: #080c10;
+            z-index: 9999;
+            padding: 24px;
+            font: 600 15px -apple-system, system-ui, sans-serif;
             text-align: center;
-            padding: 32px 16px;
-            border-top: 1px solid var(--border);
-            color: var(--muted);
-            font-size: 0.82rem;
-        }
-
-        footer a {
-            color: var(--muted);
-            text-decoration: none;
-        }
-
-        footer a:hover {
-            color: var(--text);
+            white-space: pre-wrap;
         }
     </style>
 </head>
 
 <body>
-
-    <header>
-        <a href="/" class="logo">Gameral.com</a>
-        <!-- <nav>
-            <a href="#games">All Games</a>
-        </nav> -->
-    </header>
-
-    <main>
-
-        <!-- ── HERO ── -->
-        <section class="hero" aria-label="Welcome">
-            <h1>Free <span>Fun Games</span> to Play Online</h1>
-            <p>Instant browser games — no downloads, no sign-up, no cost. Just pick a game and play.</p>
-            <div class="badge-row" aria-hidden="true">
-                <span class="badge">Free to Play</span>
-                <span class="badge">No Download</span>
-                <span class="badge">No Sign-Up</span>
-                <span class="badge">Play Instantly</span>
-            </div>
-        </section>
-
-        <!-- ── GAMES GRID ── -->
-        <section class="section" id="games" aria-label="Games">
-            <div class="section-header">
-                <h2>Select Game</h2>
-                <!-- <span>1 game</span> -->
-            </div>
-
-            <div class="games-grid" id="games-grid"></div>
-        </section>
-
-        <!-- ── FAQ for AI Overviews ── -->
-        <section class="faq" aria-label="Frequently Asked Questions">
-            <h2>Frequently Asked Questions</h2>
-
-            <details>
-                <summary>Are all games on Gameral free to play?</summary>
-                <p>Yes. Every game on Gameral is completely free to play. No hidden costs, no subscriptions, no credit
-                    card required.</p>
-            </details>
-
-            <details>
-                <summary>Do I need to download anything to play?</summary>
-                <p>No downloads needed. All games run directly in your browser — just click a game and start playing
-                    instantly on any device.</p>
-            </details>
-
-            <details>
-                <summary>Do I need to create an account or sign up?</summary>
-                <p>Nope. There is no account or sign-up required. Open the site, pick a game, and play right away.</p>
-            </details>
-
-            <details>
-                <summary>What kind of games does Gameral have?</summary>
-                <p>Gameral features fun casual and arcade games — including racing, reflex, and action games. New games
-                    are added regularly, so check back often.</p>
-            </details>
-
-            <details>
-                <summary>Can I play on my phone or tablet?</summary>
-                <p>Yes. All games on Gameral are designed to work on mobile phones and tablets as well as desktop
-                    browsers.</p>
-            </details>
-        </section>
-
-    </main>
-
-    <footer>
-        <p>&copy; 2026 <a href="/">Gameral</a> &mdash; Free fun games to play online, anytime.</p>
-    </footer>
-
-    <script src="games.js"></script>
+    <canvas id="c"></canvas>
+    <div id="boot">initializing The Cleanroom…</div>
     <script>
-        const grid = document.getElementById('games-grid');
-        // document.getElementById('game-count').textContent =
-        //     GAMES.length + (GAMES.length === 1 ? ' game' : ' games');
+        /* ── On-screen error reporter ── */
+        function showErr(m) {
+            var d = document.getElementById("boot");
+            if (!d) { d = document.createElement("div"); d.id = "boot"; document.body.appendChild(d); }
+            d.style.display = "flex"; d.style.color = "#ff8a8a";
+            d.style.font = "13px ui-monospace,Menlo,Consolas,monospace";
+            d.textContent = "Error:\n\n" + m;
+        }
+        window.addEventListener("error", function (e) { showErr((e.message || "?") + " @ line " + (e.lineno || "?")); });
+        window.addEventListener("unhandledrejection", function (e) { showErr("promise: " + ((e.reason && e.reason.message) || e.reason || "?")); });
 
-        grid.innerHTML = GAMES.map(g => `
-      <a class="game-card" href="${g.url}"
-         title="Play ${g.name} – free online game"
-         style="--thumb-gradient: ${g.gradient}">
-        <div class="card-thumb">
-          <img src="${g.thumbnail}" alt="${g.name} preview"
-               loading="lazy" onerror="this.style.display='none'">
-          <div class="play-icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-          </div>
-        </div>
-        <div class="card-info">
-          <div class="game-name">${g.name}</div>
-          <div class="game-tag">${g.genre}</div>
-        </div>
-      </a>
-    `).join('');
+        try {
+            (function () {
+                "use strict";
+
+                /* ════════════════════════════════════════════════════════════
+                   SETUP
+                   ════════════════════════════════════════════════════════════ */
+                var canvas = document.getElementById("c");
+                var ctx = canvas.getContext("2d");
+                if (!ctx) { showErr("Canvas context unavailable."); return; }
+
+                var W = 0, H = 0, DPR = 1;
+                var isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+
+                /* ── Constants ── */
+                var GS = 6;          /* grid size */
+                var COLS = ["#ff4d6a", "#3ddc84", "#4da6ff", "#ffc73a"];
+                var VENT_THICK = 0;    /* computed on resize */
+
+                /* ── Layout vars (set by resize) ── */
+                var gx = 0, gy = 0, cellSz = 0, gridPx = 0;
+                var hudH = 0, dpadCX = 0, dpadCY = 0, dpadR = 0;
+
+                function resize() {
+                    DPR = Math.min(window.devicePixelRatio || 1, 2);
+                    W = window.innerWidth || 360; H = window.innerHeight || 640;
+                    canvas.width = Math.floor(W * DPR); canvas.height = Math.floor(H * DPR);
+                    canvas.style.width = W + "px"; canvas.style.height = H + "px";
+                    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+
+                    hudH = Math.min(56, H * 0.07);
+                    var safeBot2 = Math.max(20, H * 0.03);
+                    var dpadH = Math.min(180, H * 0.22);
+                    var pad = 14;
+                    var availW = W - pad * 2;
+                    var availH = H - hudH - dpadH - safeBot2 - pad * 3;
+                    var raw = Math.min(availW, availH);
+                    VENT_THICK = Math.max(18, raw * 0.072);
+                    gridPx = raw - VENT_THICK * 2;
+                    if (gridPx < 60) gridPx = 60;
+                    cellSz = gridPx / GS;
+                    gx = (W - gridPx) / 2;
+                    gy = hudH + pad + VENT_THICK + Math.max(0, (availH - raw) / 2);
+
+                    dpadR = Math.min(W * 0.07, 28);
+                    dpadCX = W / 2;
+                    dpadCY = H - safeBot2 - dpadH / 2;
+                }
+                window.addEventListener("resize", resize);
+                resize();
+
+                /* ════════════════════════════════════════════════════════════
+                   STATE
+                   ════════════════════════════════════════════════════════════ */
+                var S_START = 0, S_PLAY = 1, S_OVER = 2;
+                var state = S_START;
+
+                var best = 0;
+                try { best = parseInt(localStorage.getItem("cleanroomBest") || "0", 10) || 0; } catch (e) { best = 0; }
+                function saveBest(v) { best = v; try { localStorage.setItem("cleanroomBest", "" + v); } catch (e) { } }
+
+                /* ════════════════════════════════════════════════════════════
+                   GAME DATA
+                   ════════════════════════════════════════════════════════════ */
+                var grid = [];            /* grid[r][c] = null | {col,mat,spT} */
+                var vL = [], vR = [], vT = [], vB = [];
+                /* pre-init so start screen can render the board */
+                (function () {
+                    for (var r = 0; r < GS; r++) { var row = []; for (var c = 0; c < GS; c++)row.push(null); grid.push(row); }
+                    for (var i = 0; i < GS; i++) { vL.push(rndCol()); vR.push(rndCol()); vT.push(rndCol()); vB.push(rndCol()); }
+                })();
+                var curR = 0, curC = 0;
+                var score = 0, dScore = 0, combo = 0, lastClnT = -99;
+                var elapsed = 0, spawnTmr = 0;
+                var shake = 0, flash = 0;
+                var parts = [], flys = [], slideAnims = [];
+                var goCd = 0;
+
+                /* helpers */
+                function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+                function lerp(a, b, t) { return a + (b - a) * t; }
+                function rnd(a, b) { return a + Math.random() * (b - a); }
+                function rndI(n) { return Math.floor(Math.random() * n); }
+                function rndCol() { return COLS[rndI(COLS.length)]; }
+
+                /* ════════════════════════════════════════════════════════════
+                   INIT / RESET
+                   ════════════════════════════════════════════════════════════ */
+                function makeGrid() {
+                    grid = []; for (var r = 0; r < GS; r++) { var row = []; for (var c = 0; c < GS; c++) row.push(null); grid.push(row); }
+                }
+                function makeVents() {
+                    vL = []; vR = []; vT = []; vB = [];
+                    for (var i = 0; i < GS; i++) { vL.push(rndCol()); vR.push(rndCol()); vT.push(rndCol()); vB.push(rndCol()); }
+                }
+                function empties() {
+                    var a = []; for (var r = 0; r < GS; r++)for (var c = 0; c < GS; c++)if (!grid[r][c]) a.push([r, c]); return a;
+                }
+                function neighbors(r, c) {
+                    var a = [], d = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+                    for (var i = 0; i < d.length; i++) {
+                        var nr = r + d[i][0], nc = c + d[i][1];
+                        if (nr >= 0 && nr < GS && nc >= 0 && nc < GS && !grid[nr][nc]) a.push([nr, nc]);
+                    }
+                    return a;
+                }
+                function spawnDot() {
+                    var e = empties(); if (!e.length) { doGameOver(); return; }
+                    var p = e[rndI(e.length)];
+                    grid[p[0]][p[1]] = { col: rndCol(), mat: 0, spT: 0 };
+                }
+
+                function resetGame() {
+                    makeGrid(); makeVents();
+                    curR = Math.floor(GS / 2); curC = Math.floor(GS / 2);
+                    score = 0; dScore = 0; combo = 0; lastClnT = -99;
+                    elapsed = 0; spawnTmr = 0;
+                    shake = 0; flash = 0; parts = []; flys = []; slideAnims = [];
+                    for (var i = 0; i < 2; i++) spawnDot();
+                }
+                function startGame() { resetGame(); state = S_PLAY; }
+
+                function doGameOver() {
+                    if (state !== S_PLAY) return;
+                    state = S_OVER; goCd = 0.6; shake = 22; flash = 1;
+                    for (var k = 0; k < 50; k++) {
+                        var a = rnd(0, Math.PI * 2), s = rnd(2, 9);
+                        parts.push({ x: W / 2, y: gy + gridPx / 2, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, sz: rnd(2, 5), col: rndCol() });
+                    }
+                    if (score > best) saveBest(score);
+                }
+
+                /* ════════════════════════════════════════════════════════════
+                   GEOMETRY
+                   ════════════════════════════════════════════════════════════ */
+                function cellCtr(r, c) { return { x: gx + (c + 0.5) * cellSz, y: gy + (r + 0.5) * cellSz }; }
+
+                function ventPos(side, idx) {
+                    if (side === "L") return { x: gx - VENT_THICK * 0.55, y: gy + (idx + 0.5) * cellSz };
+                    if (side === "R") return { x: gx + gridPx + VENT_THICK * 0.55, y: gy + (idx + 0.5) * cellSz };
+                    if (side === "T") return { x: gx + (idx + 0.5) * cellSz, y: gy - VENT_THICK * 0.55 };
+                    return { x: gx + (idx + 0.5) * cellSz, y: gy + gridPx + VENT_THICK * 0.55 };
+                }
+
+                /* ════════════════════════════════════════════════════════════
+                   CLEANING (scoring + FX)
+                   ════════════════════════════════════════════════════════════ */
+                function cleanDot(r, c, side) {
+                    var dot = grid[r][c]; if (!dot) return;
+                    var cc2 = cellCtr(r, c);
+                    var vp = ventPos(side, (side === "L" || side === "R") ? r : c);
+                    flys.push({ x: cc2.x, y: cc2.y, tx: vp.x, ty: vp.y, col: dot.col, t: 0, dur: 0.22, r0: cellSz * 0.28 });
+                    for (var k = 0; k < 14; k++) {
+                        var a = rnd(0, Math.PI * 2), s = rnd(1.5, 7);
+                        parts.push({ x: cc2.x, y: cc2.y, vx: Math.cos(a) * s, vy: Math.sin(a) * s, life: 1, sz: rnd(2, 4), col: dot.col });
+                    }
+                    combo = (elapsed - lastClnT < 2.5) ? combo + 1 : 1;
+                    lastClnT = elapsed;
+                    var gain = 10 * combo + Math.round(dot.mat * 12);
+                    score += gain;
+                    flash = Math.max(flash, 0.3 + combo * 0.05);
+                    shake = Math.max(shake, 4 + combo * 1.5);
+                    grid[r][c] = null;
+                }
+
+                /* ════════════════════════════════════════════════════════════
+                   SLIDE (the core mechanic)
+                   ════════════════════════════════════════════════════════════ */
+                function addSlideAnim(axis, idx, dir) {
+                    for (var i = slideAnims.length - 1; i >= 0; i--)
+                        if (slideAnims[i].axis === axis && slideAnims[i].idx === idx) slideAnims.splice(i, 1);
+                    slideAnims.push({ axis: axis, idx: idx, off: -dir, t: 0 });
+                }
+
+                function slideRow(r, dir) {
+                    if (state !== S_PLAY) return;
+                    var row = grid[r];
+                    if (dir > 0) {
+                        /* shifting right → rightmost exits toward right vent */
+                        var lead = row[GS - 1];
+                        if (lead && lead.col === vR[r]) {
+                            cleanDot(r, GS - 1, "R");
+                            for (var c = GS - 1; c > 0; c--) row[c] = row[c - 1];
+                            row[0] = null;
+                        } else {
+                            var tmp = row[GS - 1];
+                            for (var c = GS - 1; c > 0; c--) row[c] = row[c - 1];
+                            row[0] = tmp;
+                        }
+                    } else {
+                        /* shifting left → leftmost exits toward left vent */
+                        var lead2 = row[0];
+                        if (lead2 && lead2.col === vL[r]) {
+                            cleanDot(r, 0, "L");
+                            for (var c = 0; c < GS - 1; c++) row[c] = row[c + 1];
+                            row[GS - 1] = null;
+                        } else {
+                            var tmp2 = row[0];
+                            for (var c = 0; c < GS - 1; c++) row[c] = row[c + 1];
+                            row[GS - 1] = tmp2;
+                        }
+                    }
+                    addSlideAnim("row", r, dir);
+                }
+
+                function slideCol(c, dir) {
+                    if (state !== S_PLAY) return;
+                    if (dir > 0) {
+                        /* shifting down → bottom exits toward bottom vent */
+                        var lead = grid[GS - 1][c];
+                        if (lead && lead.col === vB[c]) {
+                            cleanDot(GS - 1, c, "B");
+                            for (var r = GS - 1; r > 0; r--) grid[r][c] = grid[r - 1][c];
+                            grid[0][c] = null;
+                        } else {
+                            var tmp = grid[GS - 1][c];
+                            for (var r = GS - 1; r > 0; r--) grid[r][c] = grid[r - 1][c];
+                            grid[0][c] = tmp;
+                        }
+                    } else {
+                        /* shifting up → top exits toward top vent */
+                        var lead2 = grid[0][c];
+                        if (lead2 && lead2.col === vT[c]) {
+                            cleanDot(0, c, "T");
+                            for (var r = 0; r < GS - 1; r++) grid[r][c] = grid[r + 1][c];
+                            grid[GS - 1][c] = null;
+                        } else {
+                            var tmp2 = grid[0][c];
+                            for (var r = 0; r < GS - 1; r++) grid[r][c] = grid[r + 1][c];
+                            grid[GS - 1][c] = tmp2;
+                        }
+                    }
+                    addSlideAnim("col", c, dir);
+                }
+
+                function slideCursor(dir) {
+                    if (dir === "u") slideCol(curC, -1);
+                    else if (dir === "d") slideCol(curC, +1);
+                    else if (dir === "l") slideRow(curR, -1);
+                    else if (dir === "r") slideRow(curR, +1);
+                }
+
+                /* ════════════════════════════════════════════════════════════
+                   UPDATE
+                   ════════════════════════════════════════════════════════════ */
+                function update(dt) {
+                    if (goCd > 0) goCd = Math.max(0, goCd - dt);
+                    if (flash > 0) flash = Math.max(0, flash - dt * 3.2);
+                    if (shake > 0) shake = Math.max(0, shake - dt * 60 * 1.5);
+
+                    /* slide anims */
+                    for (var i = slideAnims.length - 1; i >= 0; i--) {
+                        slideAnims[i].off += (0 - slideAnims[i].off) * Math.min(1, 24 * dt);
+                        slideAnims[i].t += dt;
+                        if (Math.abs(slideAnims[i].off) < 0.015 || slideAnims[i].t > 0.4) slideAnims.splice(i, 1);
+                    }
+                    /* particles */
+                    for (var i = parts.length - 1; i >= 0; i--) {
+                        var p = parts[i]; p.vx *= 0.91; p.vy *= 0.91; p.x += p.vx; p.y += p.vy; p.life -= dt * 1.8;
+                        if (p.life <= 0) parts.splice(i, 1);
+                    }
+                    /* flyers */
+                    for (var i = flys.length - 1; i >= 0; i--) { flys[i].t += dt; if (flys[i].t >= flys[i].dur) flys.splice(i, 1); }
+
+                    if (state !== S_PLAY) return;
+
+                    elapsed += dt;
+
+                    /* difficulty ramp — gentle curve, grace period at start */
+                    var ramp = Math.max(0, elapsed - 4);  /* 4-second grace: no ramp at all */
+                    var growDur = Math.max(4.5, 12.0 - ramp * 0.025);   /* maturity time: 12s → 4.5s */
+                    var spreadI = Math.max(2.8, 7.0 - ramp * 0.015);   /* spread interval: 7s → 2.8s */
+                    var spawnI = Math.max(2.0, 5.5 - ramp * 0.012);   /* new dot interval: 5.5s → 2s */
+
+                    /* grow + spread */
+                    for (var r = 0; r < GS; r++) for (var c = 0; c < GS; c++) {
+                        var d = grid[r][c]; if (!d) continue;
+                        d.mat = Math.min(1, d.mat + dt / growDur);
+                        if (d.mat >= 1) {
+                            d.spT += dt;
+                            if (d.spT >= spreadI) {
+                                d.spT = 0;
+                                /* only 40% chance per interval — prevents exponential blowup */
+                                if (Math.random() < 0.40) {
+                                    var nb = neighbors(r, c);
+                                    if (nb.length) {
+                                        var pick = nb[rndI(nb.length)];
+                                        grid[pick[0]][pick[1]] = { col: d.col, mat: 0, spT: 0 };
+                                        flash = Math.max(flash, 0.08);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    /* check full */
+                    if (empties().length === 0) { doGameOver(); return; }
+
+                    /* spawn timer — paused during grace period */
+                    if (elapsed > 4) {
+                        spawnTmr += dt;
+                        if (spawnTmr >= spawnI) { spawnTmr -= spawnI; spawnDot(); }
+                    }
+                }
+
+                /* ════════════════════════════════════════════════════════════
+                   DRAWING
+                   ════════════════════════════════════════════════════════════ */
+                function rrect(x, y, w, h, r) {
+                    ctx.beginPath(); ctx.moveTo(x + r, y);
+                    ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r);
+                    ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+                }
+
+                /* background grid */
+                function drawGrid() {
+                    ctx.save();
+                    ctx.shadowBlur = 20; ctx.shadowColor = "rgba(60,100,140,0.18)";
+                    rrect(gx - 4, gy - 4, gridPx + 8, gridPx + 8, 10);
+                    ctx.fillStyle = "#0c1218"; ctx.fill();
+                    ctx.shadowBlur = 0;
+                    for (var r = 0; r < GS; r++) for (var c = 0; c < GS; c++) {
+                        var x = gx + c * cellSz, y = gy + r * cellSz;
+                        rrect(x + 2, y + 2, cellSz - 4, cellSz - 4, 5);
+                        ctx.fillStyle = "#101920"; ctx.fill();
+                        ctx.lineWidth = 0.8; ctx.strokeStyle = "rgba(80,120,160,0.08)"; ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+
+                /* vents */
+                function drawVent(px, py, col, horiz) {
+                    ctx.save();
+                    var L = cellSz * 0.52, T2 = VENT_THICK * 0.38;
+                    ctx.shadowBlur = 10; ctx.shadowColor = col;
+                    if (horiz) rrect(px - L / 2, py - T2 / 2, L, T2, T2 / 2);
+                    else rrect(px - T2 / 2, py - L / 2, T2, L, T2 / 2);
+                    ctx.fillStyle = col; ctx.globalAlpha = 0.88; ctx.fill(); ctx.globalAlpha = 1;
+                    ctx.shadowBlur = 0;
+                    /* grille lines */
+                    ctx.strokeStyle = "rgba(0,0,0,0.28)"; ctx.lineWidth = 1.2;
+                    for (var k = -1; k <= 1; k++) {
+                        ctx.beginPath();
+                        if (horiz) { ctx.moveTo(px + k * L * 0.2, py - T2 / 2 + 1.5); ctx.lineTo(px + k * L * 0.2, py + T2 / 2 - 1.5); }
+                        else { ctx.moveTo(px - T2 / 2 + 1.5, py + k * L * 0.2); ctx.lineTo(px + T2 / 2 - 1.5, py + k * L * 0.2); }
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+                function drawVents() {
+                    for (var i = 0; i < GS; i++) {
+                        var p;
+                        p = ventPos("L", i); drawVent(p.x, p.y, vL[i], false);
+                        p = ventPos("R", i); drawVent(p.x, p.y, vR[i], false);
+                        p = ventPos("T", i); drawVent(p.x, p.y, vT[i], true);
+                        p = ventPos("B", i); drawVent(p.x, p.y, vB[i], true);
+                    }
+                }
+
+                /* dots */
+                function slideOff(r, c) {
+                    var ox = 0, oy = 0;
+                    for (var i = 0; i < slideAnims.length; i++) {
+                        var a = slideAnims[i];
+                        if (a.axis === "row" && a.idx === r) ox += a.off * cellSz;
+                        if (a.axis === "col" && a.idx === c) oy += a.off * cellSz;
+                    }
+                    return { ox: ox, oy: oy };
+                }
+                function drawDots() {
+                    ctx.save();
+                    rrect(gx - 1, gy - 1, gridPx + 2, gridPx + 2, 6); ctx.clip();
+                    var t = performance.now() / 1000;
+                    for (var r = 0; r < GS; r++) for (var c = 0; c < GS; c++) {
+                        var d = grid[r][c]; if (!d) continue;
+                        var cc2 = cellCtr(r, c);
+                        var off = slideOff(r, c);
+                        var x = cc2.x + off.ox, y = cc2.y + off.oy;
+                        var pulse = d.mat >= 1 ? 1 + 0.07 * Math.sin(t * 5.5 + r * 1.3 + c * 0.9) : 1;
+                        var rad = (cellSz * 0.12 + cellSz * 0.26 * d.mat) * pulse;
+
+                        /* outer halo */
+                        ctx.beginPath(); ctx.arc(x, y, rad * 1.7, 0, Math.PI * 2);
+                        ctx.fillStyle = d.col; ctx.globalAlpha = 0.10 * d.mat; ctx.fill(); ctx.globalAlpha = 1;
+
+                        /* body */
+                        ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2);
+                        ctx.fillStyle = d.col; ctx.shadowBlur = 14; ctx.shadowColor = d.col; ctx.fill(); ctx.shadowBlur = 0;
+
+                        /* specular */
+                        ctx.beginPath(); ctx.arc(x - rad * 0.22, y - rad * 0.22, rad * 0.38, 0, Math.PI * 2);
+                        ctx.fillStyle = "rgba(255,255,255,0.30)"; ctx.fill();
+
+                        /* maturity ring */
+                        if (d.mat < 1) {
+                            ctx.beginPath(); ctx.arc(x, y, rad + 3,
+                                -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * d.mat);
+                            ctx.lineWidth = 2; ctx.strokeStyle = "rgba(255,255,255,0.25)"; ctx.stroke();
+                        }
+                    }
+                    ctx.restore();
+                }
+
+                /* cursor highlight */
+                function drawCursor() {
+                    if (state !== S_PLAY) return;
+                    ctx.save(); ctx.globalAlpha = 0.06; ctx.fillStyle = "#6ab0ff";
+                    ctx.fillRect(gx, gy + curR * cellSz, gridPx, cellSz);
+                    ctx.fillRect(gx + curC * cellSz, gy, cellSz, gridPx);
+                    ctx.globalAlpha = 1;
+                    var cx2 = gx + curC * cellSz, cy2 = gy + curR * cellSz;
+                    rrect(cx2 + 1, cy2 + 1, cellSz - 2, cellSz - 2, 5);
+                    ctx.lineWidth = 2.5; ctx.strokeStyle = "rgba(130,195,255,0.82)"; ctx.stroke();
+
+                    /* directional arrows */
+                    var arSz = cellSz * 0.13, gap = 3;
+                    ctx.fillStyle = "rgba(130,195,255,0.55)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.font = "bold " + Math.round(arSz * 2.8) + "px -apple-system,system-ui,sans-serif";
+                    ctx.fillText("\u25C0", gx - VENT_THICK * 0.4, cy2 + cellSz / 2);
+                    ctx.fillText("\u25B6", gx + gridPx + VENT_THICK * 0.4, cy2 + cellSz / 2);
+                    ctx.fillText("\u25B2", cx2 + cellSz / 2, gy - VENT_THICK * 0.4);
+                    ctx.fillText("\u25BC", cx2 + cellSz / 2, gy + gridPx + VENT_THICK * 0.4);
+                    ctx.restore();
+                }
+
+                /* particles + flyers */
+                function drawParts() {
+                    for (var i = 0; i < parts.length; i++) {
+                        var p = parts[i]; ctx.globalAlpha = clamp(p.life, 0, 1);
+                        ctx.fillStyle = p.col; ctx.fillRect(p.x - p.sz / 2, p.y - p.sz / 2, p.sz, p.sz);
+                    } ctx.globalAlpha = 1;
+                }
+                function drawFlys() {
+                    for (var i = 0; i < flys.length; i++) {
+                        var f = flys[i]; var pr = clamp(f.t / f.dur, 0, 1);
+                        var x = lerp(f.x, f.tx, pr), y = lerp(f.y, f.ty, pr);
+                        var rr = f.r0 * (1 - pr * 0.7);
+                        ctx.beginPath(); ctx.arc(x, y, Math.max(1, rr), 0, Math.PI * 2);
+                        ctx.fillStyle = f.col; ctx.shadowBlur = 12; ctx.shadowColor = f.col; ctx.fill(); ctx.shadowBlur = 0;
+                    }
+                }
+
+                /* HUD */
+                function drawHUD() {
+                    ctx.fillStyle = "#e8f0f8"; ctx.textAlign = "left"; ctx.textBaseline = "top";
+                    ctx.font = "800 " + clamp(W * 0.065, 22, 40) + "px -apple-system,system-ui,sans-serif";
+                    ctx.fillText("" + dScore, 18, 12);
+                    ctx.fillStyle = "rgba(180,210,240,0.42)";
+                    ctx.font = "600 " + clamp(W * 0.028, 11, 16) + "px -apple-system,system-ui,sans-serif";
+                    ctx.fillText("BEST " + best, 20, clamp(W * 0.065, 22, 40) + 16);
+                    if (combo > 1 && elapsed - lastClnT < 2.5) {
+                        ctx.textAlign = "right"; ctx.fillStyle = "#ffc73a";
+                        ctx.font = "800 " + clamp(W * 0.048, 16, 26) + "px -apple-system,system-ui,sans-serif";
+                        ctx.fillText("x" + combo, W - 18, 14);
+                    }
+                }
+
+                /* d-pad */
+                function dpadBtns() {
+                    var s = dpadR * 2, g = dpadR * 0.3;
+                    return {
+                        u: { x: dpadCX - dpadR, y: dpadCY - dpadR * 3 - g, w: s, h: s, dir: "u" },
+                        d: { x: dpadCX - dpadR, y: dpadCY + dpadR + g, w: s, h: s, dir: "d" },
+                        l: { x: dpadCX - dpadR * 3 - g, y: dpadCY - dpadR, w: s, h: s, dir: "l" },
+                        r: { x: dpadCX + dpadR + g, y: dpadCY - dpadR, w: s, h: s, dir: "r" }
+                    };
+                }
+                function drawDpad() {
+                    var btns = dpadBtns();
+                    var labels = { u: "\u25B2", d: "\u25BC", l: "\u25C0", r: "\u25B6" };
+                    var keys = ["u", "d", "l", "r"];
+                    for (var k = 0; k < keys.length; k++) {
+                        var b = btns[keys[k]];
+                        ctx.save();
+                        ctx.shadowBlur = 7; ctx.shadowColor = "#3070d0";
+                        rrect(b.x, b.y, b.w, b.h, b.h * 0.24);
+                        ctx.fillStyle = "rgba(50,100,190,0.14)"; ctx.fill();
+                        ctx.lineWidth = 1.8; ctx.strokeStyle = "rgba(100,160,255,0.60)"; ctx.stroke();
+                        ctx.shadowBlur = 0; ctx.fillStyle = "#c8deff";
+                        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                        ctx.font = "800 " + Math.round(b.h * 0.44) + "px -apple-system,system-ui,sans-serif";
+                        ctx.fillText(labels[keys[k]], b.x + b.w / 2, b.y + b.h / 2);
+                        ctx.restore();
+                    }
+                    ctx.fillStyle = "rgba(160,190,220,0.32)"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.font = "500 " + clamp(W * 0.026, 10, 14) + "px -apple-system,system-ui,sans-serif";
+                    ctx.fillText(isTouch ? "swipe grid or use pad \u2022 WASD+arrows on keyboard" : "WASD = move cursor \u2022 Arrow keys = slide", W / 2, dpadCY + dpadR * 3.6);
+                }
+
+                /* center text overlay */
+                function drawOverlay(title, sub, sub2) {
+                    /* dim */
+                    ctx.fillStyle = "rgba(8,12,16,0.72)"; ctx.fillRect(0, 0, W, H);
+
+                    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+                    ctx.fillStyle = "#e8f0f8"; ctx.shadowBlur = 26; ctx.shadowColor = "#3070d0";
+                    ctx.font = "800 " + clamp(W * 0.10, 32, 64) + "px -apple-system,system-ui,sans-serif";
+                    ctx.fillText(title, W / 2, H * 0.38); ctx.shadowBlur = 0;
+                    if (sub) {
+                        ctx.fillStyle = "rgba(230,240,250,0.90)";
+                        ctx.font = "600 " + clamp(W * 0.04, 15, 24) + "px -apple-system,system-ui,sans-serif";
+                        ctx.fillText(sub, W / 2, H * 0.38 + clamp(W * 0.08, 40, 60));
+                    }
+                    if (sub2) {
+                        ctx.fillStyle = "rgba(180,210,240,0.52)";
+                        ctx.font = "500 " + clamp(W * 0.03, 11, 17) + "px -apple-system,system-ui,sans-serif";
+                        var lines = sub2.split("\n");
+                        for (var i = 0; i < lines.length; i++)
+                            ctx.fillText(lines[i], W / 2, H * 0.38 + clamp(W * 0.135, 68, 100) + i * clamp(W * 0.04, 18, 24));
+                    }
+                }
+
+                /* ════════════════════════════════════════════════════════════
+                   FRAME
+                   ════════════════════════════════════════════════════════════ */
+                var booted = false, lastT = performance.now();
+                function frame(now) {
+                    if (!booted) { booted = true; var b = document.getElementById("boot"); if (b) b.style.display = "none"; }
+                    var dt = (now - lastT) / 1000; lastT = now; if (dt > 0.06) dt = 0.06;
+                    update(dt);
+                    dScore += (score - dScore) * Math.min(1, dt * 14);
+                    dScore = Math.round(dScore);
+
+                    /* clear */
+                    ctx.fillStyle = "#080c10"; ctx.fillRect(0, 0, W, H);
+
+                    ctx.save();
+                    if (shake > 0) { var s = shake; ctx.translate(rnd(-s, s), rnd(-s, s)); }
+
+                    drawGrid();
+                    drawVents();
+                    drawDots();
+                    drawCursor();
+                    drawFlys();
+                    drawParts();
+
+                    if (state === S_PLAY) {
+                        drawHUD(); drawDpad();
+                    } else if (state === S_START) {
+                        drawHUD();
+                        drawOverlay("THE CLEANROOM",
+                            isTouch ? "Tap to Start" : "Click to Start",
+                            "Contaminants spread. You can\u2019t touch them.\nSlide rows & columns to push each\ndot into a vent of the SAME color.");
+                    } else if (state === S_OVER) {
+                        drawHUD();
+                        drawOverlay("CONTAMINATED", "Score " + score + "  \u2022  Best " + best,
+                            goCd > 0 ? "..." : (isTouch ? "Tap to Restart" : "Click / Space to Restart"));
+                    }
+                    ctx.restore();
+
+                    if (flash > 0) { ctx.fillStyle = "rgba(255,255,255," + (flash * 0.45) + ")"; ctx.fillRect(0, 0, W, H); }
+                    requestAnimationFrame(frame);
+                }
+                requestAnimationFrame(frame);
+
+                /* ════════════════════════════════════════════════════════════
+                   INPUT
+                   ════════════════════════════════════════════════════════════ */
+                function cXY(e) { var r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+                function cellHit(x, y) {
+                    if (x < gx || x > gx + gridPx || y < gy || y > gy + gridPx) return null;
+                    var c = Math.floor((x - gx) / cellSz), r = Math.floor((y - gy) / cellSz);
+                    if (r < 0 || r >= GS || c < 0 || c >= GS) return null;
+                    return { r: r, c: c };
+                }
+                function dpadHit(x, y) {
+                    var btns = dpadBtns();
+                    var keys = ["u", "d", "l", "r"];
+                    for (var k = 0; k < keys.length; k++) {
+                        var b = btns[keys[k]];
+                        if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) return b.dir;
+                    }
+                    return null;
+                }
+
+                /* swipe on grid */
+                var dragS = null;
+                function onDown(x, y) {
+                    if (state === S_START) { startGame(); return; }
+                    if (state === S_OVER) { if (goCd <= 0) startGame(); return; }
+                    /* d-pad tap */
+                    var dp = dpadHit(x, y);
+                    if (dp) { slideCursor(dp); dragS = null; return; }
+                    /* vent-arrow taps */
+                    var leftArrow = (x >= gx - VENT_THICK && x < gx && y >= gy && y < gy + gridPx);
+                    var rightArrow = (x > gx + gridPx && x <= gx + gridPx + VENT_THICK && y >= gy && y < gy + gridPx);
+                    var topArrow = (y >= gy - VENT_THICK && y < gy && x >= gx && x < gx + gridPx);
+                    var bottomArrow = (y > gy + gridPx && y <= gy + gridPx + VENT_THICK && x >= gx && x < gx + gridPx);
+                    if (leftArrow) { var r = Math.floor((y - gy) / cellSz); curR = clamp(r, 0, GS - 1); slideRow(curR, -1); return; }
+                    if (rightArrow) { var r = Math.floor((y - gy) / cellSz); curR = clamp(r, 0, GS - 1); slideRow(curR, +1); return; }
+                    if (topArrow) { var c = Math.floor((x - gx) / cellSz); curC = clamp(c, 0, GS - 1); slideCol(curC, -1); return; }
+                    if (bottomArrow) { var c = Math.floor((x - gx) / cellSz); curC = clamp(c, 0, GS - 1); slideCol(curC, +1); return; }
+                    /* grid cell → start drag */
+                    var h = cellHit(x, y);
+                    if (h) dragS = { x: x, y: y, r: h.r, c: h.c };
+                    else dragS = null;
+                }
+                function onUp(x, y) {
+                    if (state !== S_PLAY || !dragS) { dragS = null; return; }
+                    var dx = x - dragS.x, dy = y - dragS.y;
+                    var dist = Math.hypot(dx, dy);
+                    if (dist < cellSz * 0.35) {
+                        /* tap → just move cursor */
+                        curR = dragS.r; curC = dragS.c;
+                    } else if (Math.abs(dx) > Math.abs(dy)) {
+                        curR = dragS.r; curC = dragS.c;
+                        slideRow(dragS.r, dx > 0 ? 1 : -1);
+                    } else {
+                        curR = dragS.r; curC = dragS.c;
+                        slideCol(dragS.c, dy > 0 ? 1 : -1);
+                    }
+                    dragS = null;
+                }
+
+                /* Pointer events (covers mouse + touch) */
+                if (window.PointerEvent) {
+                    canvas.addEventListener("pointerdown", function (e) { e.preventDefault(); var p = cXY(e); onDown(p.x, p.y); }, { passive: false });
+                    canvas.addEventListener("pointerup", function (e) { e.preventDefault(); var p = cXY(e); onUp(p.x, p.y); }, { passive: false });
+                    canvas.addEventListener("pointercancel", function () { dragS = null; });
+                } else {
+                    canvas.addEventListener("mousedown", function (e) { e.preventDefault(); var p = cXY(e); onDown(p.x, p.y); });
+                    canvas.addEventListener("mouseup", function (e) { e.preventDefault(); var p = cXY(e); onUp(p.x, p.y); });
+                    canvas.addEventListener("touchstart", function (e) { e.preventDefault(); var t = e.changedTouches[0]; var p = cXY(t); onDown(p.x, p.y); }, { passive: false });
+                    canvas.addEventListener("touchend", function (e) { e.preventDefault(); var t = e.changedTouches[0]; var p = cXY(t); onUp(p.x, p.y); }, { passive: false });
+                }
+
+                /* Keyboard */
+                window.addEventListener("keydown", function (e) {
+                    if (state === S_START) {
+                        if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); startGame(); }
+                        return;
+                    }
+                    if (state === S_OVER) {
+                        if (e.code === "Space" || e.code === "Enter") { e.preventDefault(); if (goCd <= 0) startGame(); }
+                        return;
+                    }
+                    /* PLAYING */
+                    switch (e.code) {
+                        case "KeyW": e.preventDefault(); curR = clamp(curR - 1, 0, GS - 1); break;
+                        case "KeyS": e.preventDefault(); curR = clamp(curR + 1, 0, GS - 1); break;
+                        case "KeyA": e.preventDefault(); curC = clamp(curC - 1, 0, GS - 1); break;
+                        case "KeyD": e.preventDefault(); curC = clamp(curC + 1, 0, GS - 1); break;
+                        case "ArrowUp": e.preventDefault(); slideCol(curC, -1); break;
+                        case "ArrowDown": e.preventDefault(); slideCol(curC, +1); break;
+                        case "ArrowLeft": e.preventDefault(); slideRow(curR, -1); break;
+                        case "ArrowRight": e.preventDefault(); slideRow(curR, +1); break;
+                        default: break;
+                    }
+                }, { passive: false });
+
+            })();
+        } catch (e) { showErr((e && e.stack) || ("" + e)); }
     </script>
 </body>
-
 
 </html>
