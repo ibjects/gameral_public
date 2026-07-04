@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blocktown Component: Special Building</title>
+    <style>
+        /* Base Theme */
+        :root {
+            --bg-color: #101216;
+            --text-main: #e7e9ee;
+            --text-muted: #8b8fa3;
+            --accent: #fbbf24;
+            --accent-glow: rgba(251, 191, 36, 0.2);
+            --road-special: #2a2312;
+            --road-lines: rgba(255, 220, 120, 0.28);
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: ui-monospace, Menlo, monospace;
+            overflow: hidden;
+        }
+
+        /* Split Screen Layout */
+        .layout {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Left Side: Documentation/Lore */
+        .docs-side {
+            flex: 1;
+            padding: 5rem 4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border-right: 1px dashed rgba(255, 255, 255, 0.1);
+            background: linear-gradient(90deg, #101216 0%, #14161d 100%);
+            z-index: 10;
+        }
+
+        .docs-side span.tag {
+            color: var(--accent);
+            font-size: 11px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .docs-side h1 {
+            font-size: 4rem;
+            margin: 0 0 1.5rem 0;
+            color: var(--accent);
+            text-shadow: 0 4px 12px var(--accent-glow);
+            letter-spacing: -0.02em;
+        }
+
+        .docs-side p {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: var(--text-muted);
+            max-width: 480px;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            background: rgba(255, 209, 102, 0.13);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 12px 24px;
+            font-family: ui-monospace, Menlo, monospace;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            align-self: flex-start;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 209, 102, 0.3);
+        }
+
+        /* Right Side: Seamless Block Grid */
+        .demo-side {
+            flex: 1.4;
+            background-color: #12100c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            /* Clips the massive grid so it looks infinite */
+            position: relative;
+        }
+
+        .city-grid {
+            display: grid;
+            /* A massive 6x6 grid (1560px wide) guarantees it bleeds off most screens */
+            grid-template-columns: repeat(6, 260px);
+            gap: 0;
+            /* Rotated slightly for an isometric-lite view? Keeping flat to match game logic */
+        }
+
+        /* --- THE GOLDEN CITY BLOCK --- */
+        .city-block {
+            width: 260px;
+            height: 260px;
+            background-color: var(--road-special);
+            position: relative;
+            box-sizing: border-box;
+            border: 2px dashed var(--road-lines);
+            margin-right: -2px;
+            margin-bottom: -2px;
+            transition: filter 0.3s ease;
+        }
+
+        .city-block:hover {
+            filter: brightness(1.2);
+            z-index: 10;
+        }
+
+        .bldg-shadow {
+            position: absolute;
+            width: 170px;
+            height: 170px;
+            left: 53px;
+            top: 55px;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .bldg-base {
+            width: 170px;
+            height: 170px;
+            background-color: #191d27;
+            position: absolute;
+            left: 45px;
+            top: 45px;
+            border: 1px solid rgba(0, 0, 0, 0.4);
+            box-sizing: border-box;
+        }
+
+        .bldg-roof {
+            width: 162px;
+            height: 162px;
+            position: absolute;
+            top: 0;
+            left: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .bldg-highlight-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .bldg-highlight-left {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        /* SVG Blueprint Icons */
+        .wonder-icon {
+            width: 80px;
+            height: 80px;
+            color: var(--accent);
+            filter: drop-shadow(0 0 6px var(--accent-glow));
+            opacity: 0.9;
+            z-index: 5;
+        }
+
+        /* Architectural Label */
+        .wonder-label {
+            position: absolute;
+            bottom: 8px;
+            font-size: 10px;
+            letter-spacing: 0.1em;
+            color: rgba(255, 209, 102, 0.6);
+            text-transform: uppercase;
+            font-weight: bold;
+            z-index: 5;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="layout">
+        <div class="docs-side">
+            <span class="tag">World Module // Landmarks</span>
+            <h1>Special Building</h1>
+            <p>
+                When the AI Director mandates a landmark, standard mega-blocks are replaced by <strong>Special
+                    Buildings</strong>. These act as high-value properties, mission hubs, or narrative anchors.
+                <br><br>
+                Structurally, they adhere to the strict 260px grid and retain the standard yellow dashed road markings.
+                However, the asphalt is painted a rich, dark gold. On the roof, glowing architectural holograms (icon
+                art) represent world-famous monuments from a perfect top-down perspective, seamlessly blending with the
+                game's UI.
+            </p>
+            <button class="btn" onclick="generateWonders()">SHUFFLE SECTOR</button>
+        </div>
+
+        <div class="demo-side">
+            <div class="city-grid" id="cityContainer">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game Palettes
+        const BPAL = ['#2b3242', '#343049', '#3a2f3b', '#2e3a3a', '#373430', '#303648'];
+        const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+        // The 9 Special Buildings (Name + Top-Down SVG Icon Art)
+        const wonders = [
+            {
+                name: "The Pyramid",
+                icon: `<svg class="wonder-icon" viewBox="0 0 100 100" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="10" y="10" width="80" height="80" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <line x1="10" y1="10" x2="90" y2="90" stroke="currentColor" stroke-width="4"/>
+                        <line x1="90" y1="10" x2="10" y2="90" stroke="currentColor" stroke-width="4"/>
+                       </svg>`
+            },
+            {
+                name: "Taj Mahal",
+                icon: `<svg class="wonder-icon" viewBox="0 0 100 100" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="50" cy="50" r="25" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <circle cx="20" cy="20" r="6" fill="currentColor"/>
+                        <circle cx="80" cy="20" r="6" fill="currentColor"/>
+                        <circle cx="20" cy="80" r="6" fill="currentColor"/>
+                        <circle cx="80" cy="80" r="6" fill="currentColor"/>
+                        <rect x="35" y="35" width="30" height="30" fill="none" stroke="currentColor" stroke-width="2"/>
+                       </svg>`
+            },
+            {
+                name: "The Pentagon",
+                icon: `<svg class="wonder-icon" viewBox="0 0 100 100" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="50,10 90,38 75,85 25,85 10,38" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <polygon points="50,28 72,48 64,72 36,72 28,48" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <circle cx="50" cy="53" r="5" fill="currentColor"/>
+                       </svg>`
+            },
+            {
+                name: "Colosseum",
+                icon: `<svg class="wonder-icon" viewBox="0 0 100 100" stroke-linecap="round" stroke-linejoin="round">
+                        <ellipse cx="50" cy="50" rx="42" ry="32" fill="none" stroke="currentColor" stroke-width="6" stroke-dasharray="8 6"/>
+                        <ellipse cx="50" cy="50" rx="25" ry="18" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <ellipse cx="50" cy="50" rx="10" ry="6" fill="currentColor"/>
+                       </svg>`
+            },
+            {
+                name: "Eiffel Tower",
+                icon: `<svg class="wonder-icon" viewBox="0 0 100 100" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="15" y="15" width="70" height="70" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <rect x="32" y="32" width="36" height="36" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <circle cx="50" cy="50" r="6" fill="currentColor"/>
+                        <line x1="15" y1="15" x2="85" y2="85" stroke="currentColor" stroke-width="4"/>
+                        <line x1="85" y1="15" x2="15" y2="85" stroke="currentColor" stroke-width="4"/>
+                       </svg>`
+            },
+            {
+                name: "Empire State",
+                icon: `<svg class="wonder-icon" viewBox="0 0 100 100" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="20" y="20" width="60" height="60" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <rect x="35" y="35" width="30" height="30" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <circle cx="50" cy="50" r="8" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <circle cx="50" cy="50" r="2" fill="currentColor"/>
+                       </svg>`
+            },
+            {
+                name: "Parthenon",
+                icon: `<svg class="wonder-icon" viewBox="0 0 100 100" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="10" y="25" width="80" height="50" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <rect x="22" y="35" width="56" height="30" fill="none" stroke="currentColor" stroke-width="2"/>
+                        <line x1="15" y1="30" x2="85" y2="30" stroke="currentColor" stroke-width="4" stroke-dasharray="4 6"/>
+                        <line x1="15" y1="70" x2="85" y2="70" stroke="currentColor" stroke-width="4" stroke-dasharray="4 6"/>
+                       </svg>`
+            },
+            {
+                name: "Burj Khalifa",
+                icon: `<svg class="wonder-icon" viewBox="0 0 100 100" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="50,10 58,42 90,50 58,58 50,90 42,58 10,50 42,42" fill="none" stroke="currentColor" stroke-width="4"/>
+                        <circle cx="50" cy="50" r="6" fill="currentColor"/>
+                       </svg>`
+            },
+            {
+                name: "Stonehenge",
+                icon: `<svg class="wonder-icon" viewBox="0 0 100 100" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="50" cy="50" r="35" fill="none" stroke="currentColor" stroke-width="8" stroke-dasharray="14 10"/>
+                        <circle cx="50" cy="50" r="16" fill="none" stroke="currentColor" stroke-width="6" stroke-dasharray="10 8"/>
+                       </svg>`
+            }
+        ];
+
+        function createWonderBlock(wonder) {
+            const block = document.createElement('div');
+            block.className = 'city-block';
+
+            const shadow = document.createElement('div');
+            shadow.className = 'bldg-shadow';
+            block.appendChild(shadow);
+
+            const base = document.createElement('div');
+            base.className = 'bldg-base';
+
+            const roofColor = BPAL[randInt(0, BPAL.length - 1)];
+            const roof = document.createElement('div');
+            roof.className = 'bldg-roof';
+            roof.style.backgroundColor = roofColor;
+
+            const hlTop = document.createElement('div');
+            hlTop.className = 'bldg-highlight-top';
+            const hlLeft = document.createElement('div');
+            hlLeft.className = 'bldg-highlight-left';
+            roof.appendChild(hlTop);
+            roof.appendChild(hlLeft);
+
+            roof.innerHTML += wonder.icon;
+
+            const label = document.createElement('div');
+            label.className = 'wonder-label';
+            label.innerText = wonder.name;
+            roof.appendChild(label);
+
+            base.appendChild(roof);
+            block.appendChild(base);
+
+            return block;
+        }
+
+        function generateWonders() {
+            const container = document.getElementById('cityContainer');
+            container.innerHTML = '';
+
+            // Generate 36 tiles (6x6 grid) to completely fill and bleed off the right screen
+            for (let i = 0; i < 36; i++) {
+                // Randomly select a wonder for each of the 36 tiles
+                const randomWonder = wonders[randInt(0, wonders.length - 1)];
+                const block = createWonderBlock(randomWonder);
+                container.appendChild(block);
+            }
+        }
+
+        window.onload = generateWonders;
+    </script>
+</body>
+
+</html>

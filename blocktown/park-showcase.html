@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blocktown Component: Park</title>
+    <style>
+        /* Base Theme */
+        :root {
+            --bg-color: #101216;
+            --text-main: #e7e9ee;
+            --text-muted: #8b8fa3;
+            --accent: #4ade80;
+            /* Nature Green Accent */
+            --accent-glow: rgba(74, 222, 128, 0.2);
+            --road-color: #22252c;
+            --road-lines: rgba(255, 220, 120, 0.28);
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: ui-monospace, Menlo, monospace;
+            overflow: hidden;
+        }
+
+        /* Split Screen Layout */
+        .layout {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Left Side: Documentation/Lore */
+        .docs-side {
+            flex: 1;
+            padding: 5rem 4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border-right: 1px dashed rgba(255, 255, 255, 0.1);
+            background: linear-gradient(90deg, #101216 0%, #14161d 100%);
+            z-index: 10;
+        }
+
+        .docs-side span.tag {
+            color: var(--accent);
+            font-size: 11px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .docs-side h1 {
+            font-size: 4rem;
+            margin: 0 0 1.5rem 0;
+            color: var(--accent);
+            text-shadow: 0 4px 12px var(--accent-glow);
+            letter-spacing: -0.02em;
+        }
+
+        .docs-side p {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: var(--text-muted);
+            max-width: 480px;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            background: rgba(74, 222, 128, 0.13);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 12px 24px;
+            font-family: ui-monospace, Menlo, monospace;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            align-self: flex-start;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+            background: rgba(74, 222, 128, 0.3);
+        }
+
+        /* Right Side: Seamless Block Grid */
+        .demo-side {
+            flex: 1.4;
+            background-color: #15171c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .city-grid {
+            display: grid;
+            /* A massive 6x6 grid ensures it bleeds off the edges seamlessly */
+            grid-template-columns: repeat(6, 260px);
+            gap: 0;
+        }
+
+        /* --- THE CITY BLOCK COMPONENT CSS --- */
+        .city-block {
+            width: 260px;
+            height: 260px;
+            background-color: var(--road-color);
+            position: relative;
+            box-sizing: border-box;
+            border: 2px dashed var(--road-lines);
+            /* Negative margin overlaps dashed borders */
+            margin-right: -2px;
+            margin-bottom: -2px;
+        }
+
+        .park-base {
+            width: 170px;
+            /* BS = 170 in game */
+            height: 170px;
+            background-color: #233327;
+            /* Game's exact park grass color */
+            position: absolute;
+            left: 45px;
+            /* Centers in 260 block */
+            top: 45px;
+            box-sizing: border-box;
+            transition: filter 0.2s ease;
+            cursor: crosshair;
+            overflow: hidden;
+        }
+
+        .park-base:hover {
+            filter: brightness(1.2);
+        }
+
+        .park-tree {
+            position: absolute;
+            background-color: #2f4a33;
+            /* Game's exact tree canopy color */
+            border-radius: 50%;
+            /* Emulates the canvas: arc(tx+3, ty+4) shadow draw */
+            box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.25);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="layout">
+        <div class="docs-side">
+            <span class="tag">World Module // Green Space</span>
+            <h1>Park</h1>
+            <p>
+                When the terrain hash falls below <code>0.14</code>, the brutalist concrete recedes to form a
+                <strong>Park</strong>. Providing a visual breather for the endless city, these tiles lack the massive
+                drop-shadows of buildings, anchoring them firmly to the ground layer.
+                <br><br>
+                The procedural engine scatters exactly five tree clusters per block. Each canopy utilizes a randomized
+                radius and a precise <code>+3px, +4px</code> offset drop-shadow to emulate top-down volumetric depth
+                without adding geometric complexity to the rendering loop.
+            </p>
+            <button class="btn" onclick="generateParks()">RESEED FLORA</button>
+        </div>
+
+        <div class="demo-side">
+            <div class="city-grid" id="cityContainer">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // RNG Helpers
+        const rand = (min, max) => Math.random() * (max - min) + min;
+
+        // Constructs a full 260x260 Blocktown tile, strictly for parks
+        function createParkBlock() {
+            // 1. The Block Container (The Road & Borders)
+            const block = document.createElement('div');
+            block.className = 'city-block';
+
+            // 2. The Park Base (170x170 centered, NO outer drop shadow)
+            const base = document.createElement('div');
+            base.className = 'park-base';
+
+            // 3. Generate Trees exactly as the game canvas does
+            // game logic: loop 5 times.
+            for (let i = 0; i < 5; i++) {
+                // game logic radius: 10 + Math.random() * 8
+                const r = 10 + Math.random() * 8;
+
+                // game logic position: 20 + Math.random() * (BS - 40)
+                // BS is 170, so BS - 40 = 130
+                const tx = 20 + Math.random() * 130;
+                const ty = 20 + Math.random() * 130;
+
+                const tree = document.createElement('div');
+                tree.className = 'park-tree';
+
+                // Set sizes (radius * 2)
+                tree.style.width = `${r * 2}px`;
+                tree.style.height = `${r * 2}px`;
+
+                // In canvas, tx/ty is the center of the arc. In CSS, left/top is the top-left corner.
+                // So we subtract the radius to perfectly center it on the tx/ty coordinates.
+                tree.style.left = `${tx - r}px`;
+                tree.style.top = `${ty - r}px`;
+
+                base.appendChild(tree);
+            }
+
+            block.appendChild(base);
+            return block;
+        }
+
+        // Fills the right panel with a 6x6 grid
+        function generateParks() {
+            const container = document.getElementById('cityContainer');
+            container.innerHTML = '';
+
+            // Generate 36 tiles (6x6 grid) to completely fill and bleed off the right screen
+            for (let i = 0; i < 36; i++) {
+                const block = createParkBlock();
+                container.appendChild(block);
+            }
+        }
+
+        window.onload = generateParks;
+    </script>
+</body>
+
+</html>

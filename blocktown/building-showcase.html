@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blocktown Component: City Block</title>
+    <style>
+        /* Base Theme */
+        :root {
+            --bg-color: #101216;
+            --text-main: #e7e9ee;
+            --text-muted: #8b8fa3;
+            --accent: #ffd166;
+            --accent-glow: rgba(255, 209, 102, 0.2);
+            --road-color: #22252c;
+            --road-lines: rgba(255, 220, 120, 0.28);
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: ui-monospace, Menlo, monospace;
+            overflow: hidden;
+        }
+
+        /* Split Screen Layout */
+        .layout {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Left Side: Documentation/Lore */
+        .docs-side {
+            flex: 1;
+            padding: 5rem 4rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            border-right: 1px dashed rgba(255, 255, 255, 0.1);
+            background: linear-gradient(90deg, #101216 0%, #14161d 100%);
+            z-index: 10;
+        }
+
+        .docs-side span.tag {
+            color: #f87171;
+            font-size: 11px;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            font-weight: 900;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .docs-side h1 {
+            font-size: 4rem;
+            margin: 0 0 1.5rem 0;
+            color: var(--accent);
+            text-shadow: 0 4px 12px var(--accent-glow);
+            letter-spacing: -0.02em;
+        }
+
+        .docs-side p {
+            font-size: 1.1rem;
+            line-height: 1.7;
+            color: var(--text-muted);
+            max-width: 480px;
+            margin-bottom: 2rem;
+        }
+
+        .btn {
+            background: rgba(255, 209, 102, 0.13);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 12px 24px;
+            font-family: ui-monospace, Menlo, monospace;
+            font-weight: 700;
+            font-size: 13px;
+            letter-spacing: 0.08em;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            align-self: flex-start;
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 209, 102, 0.3);
+        }
+
+        /* Right Side: Seamless Block Grid */
+        .demo-side {
+            flex: 1.4;
+            background-color: #15171c;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            /* Clips the massive grid so it looks infinite */
+            position: relative;
+        }
+
+        .city-grid {
+            display: grid;
+            /* A massive 6x6 grid (1560px wide) guarantees it bleeds off most screens */
+            grid-template-columns: repeat(6, 260px);
+            gap: 0;
+        }
+
+        /* --- THE CITY BLOCK COMPONENT CSS --- */
+        .city-block {
+            width: 260px;
+            /* Blocktown 'T' constant */
+            height: 260px;
+            background-color: var(--road-color);
+            position: relative;
+            box-sizing: border-box;
+            border: 2px dashed var(--road-lines);
+            /* Negative margin overlaps the dashed borders so they don't double up in the grid */
+            margin-right: -2px;
+            margin-bottom: -2px;
+        }
+
+        /* The 8px/10px offset drop shadow */
+        .bldg-shadow {
+            position: absolute;
+            width: 170px;
+            /* Blocktown 'BS' constant */
+            height: 170px;
+            left: 53px;
+            /* 45px road + 8px shadow offset */
+            top: 55px;
+            /* 45px road + 10px shadow offset */
+            background-color: rgba(0, 0, 0, 0.24);
+        }
+
+        .bldg-base {
+            width: 170px;
+            height: 170px;
+            background-color: #191d27;
+            /* Dark wall color */
+            position: absolute;
+            left: 45px;
+            /* Centers exactly in the 260px block (90/2) */
+            top: 45px;
+            border: 1px solid rgba(0, 0, 0, 0.4);
+            box-sizing: border-box;
+            transition: transform 0.2s ease, filter 0.2s ease;
+            cursor: crosshair;
+        }
+
+        .bldg-base:hover {
+            transform: scale(1.03);
+            filter: brightness(1.2);
+            z-index: 10;
+        }
+
+        .bldg-roof {
+            /* Roof is 8px smaller to reveal bottom/right wall (pseudo 3D) */
+            width: 162px;
+            height: 162px;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        /* Roof Edge Highlights */
+        .bldg-highlight-top {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .bldg-highlight-left {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        /* Tiny details on the roof */
+        .bldg-detail {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        /* Windows/Skylights */
+        .bldg-window {
+            position: absolute;
+            width: 8px;
+            height: 10px;
+            background: rgba(255, 240, 170, 0.12);
+            /* Base unlit */
+        }
+
+        .bldg-window.lit {
+            background: rgba(255, 240, 170, 0.4);
+            /* Lit up window */
+            box-shadow: 0 0 6px rgba(255, 240, 170, 0.2);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="layout">
+        <div class="docs-side">
+            <span class="tag">World Module // Core Grid</span>
+            <h1>City Block</h1>
+            <p>
+                The fundamental unit of the Blocktown map renderer. Each grid cell is exactly <strong>260x260
+                    pixels</strong>.
+                <br><br>
+                Instead of drawing independent roads and buildings, the engine assigns an inner 45px margin to represent
+                half-width roads. The intersecting borders are dashed yellow lines, forming seamless street
+                intersections when placed side-by-side.
+                <br><br>
+                The structure itself is constrained to a <strong>170px</strong> footprint perfectly centered within this
+                dark asphalt square.
+            </p>
+            <button class="btn" onclick="generateCity()">REGENERATE SECTOR</button>
+        </div>
+
+        <div class="demo-side">
+            <div class="city-grid" id="cityContainer">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Blocktown Palettes
+        const BPAL = ['#2b3242', '#343049', '#3a2f3b', '#2e3a3a', '#373430', '#303648'];
+
+        // RNG Helpers
+        const rand = (min, max) => Math.random() * (max - min) + min;
+        const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+        // Constructs a full 260x260 Blocktown tile
+        function createCityBlock() {
+            // 1. The Block Container (The Road & Borders)
+            const block = document.createElement('div');
+            block.className = 'city-block';
+
+            // 2. The Cast Shadow (Offset +8, +10)
+            const shadow = document.createElement('div');
+            shadow.className = 'bldg-shadow';
+            block.appendChild(shadow);
+
+            // 3. The Building Base (170x170 centered)
+            const base = document.createElement('div');
+            base.className = 'bldg-base';
+
+            // 4. The Roof (162x162)
+            const roofColor = BPAL[randInt(0, BPAL.length - 1)];
+            const roof = document.createElement('div');
+            roof.className = 'bldg-roof';
+            roof.style.backgroundColor = roofColor;
+
+            // 5. Edge Highlights (3D pop)
+            const hlTop = document.createElement('div');
+            hlTop.className = 'bldg-highlight-top';
+            const hlLeft = document.createElement('div');
+            hlLeft.className = 'bldg-highlight-left';
+            roof.appendChild(hlTop);
+            roof.appendChild(hlLeft);
+
+            // 6. Windows / Skylights
+            const wn = randInt(3, 5);
+            const roofInnerSize = 140;
+            const step = roofInnerSize / wn;
+
+            for (let a = 0; a < wn; a++) {
+                for (let b = 0; b < wn; b++) {
+                    if (Math.random() < 0.35) {
+                        const win = document.createElement('div');
+                        win.className = 'bldg-window';
+
+                        if (Math.random() < 0.15) {
+                            win.classList.add('lit');
+                        }
+
+                        // Align matching game rendering coordinates
+                        win.style.left = `${12 + a * step}px`;
+                        win.style.top = `${12 + b * step}px`;
+                        roof.appendChild(win);
+                    }
+                }
+            }
+
+            // 7. Roof Hardware (Vents, AC)
+            if (Math.random() < 0.7) {
+                const vent1 = document.createElement('div');
+                vent1.className = 'bldg-detail';
+                vent1.style.width = '16px';
+                vent1.style.height = '14px';
+                vent1.style.left = `${18 + Math.random() * 70}px`;
+                vent1.style.top = `${18 + Math.random() * 70}px`;
+                roof.appendChild(vent1);
+            }
+
+            if (Math.random() < 0.4) {
+                const vent2 = document.createElement('div');
+                vent2.className = 'bldg-detail';
+                vent2.style.width = '12px';
+                vent2.style.height = '12px';
+                vent2.style.left = `${30 + Math.random() * 60}px`;
+                vent2.style.top = `${40 + Math.random() * 60}px`;
+                roof.appendChild(vent2);
+            }
+
+            base.appendChild(roof);
+            block.appendChild(base);
+
+            return block;
+        }
+
+        // Fills the right panel with a 6x6 grid
+        function generateCity() {
+            const container = document.getElementById('cityContainer');
+            container.innerHTML = '';
+
+            // Generate 36 tiles (6x6 grid) to completely fill and bleed off the right screen
+            for (let i = 0; i < 36; i++) {
+                const block = createCityBlock();
+                container.appendChild(block);
+            }
+        }
+
+        window.onload = generateCity;
+    </script>
+</body>
+
+</html>
