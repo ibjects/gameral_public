@@ -1,0 +1,116 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Spice</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#130f0b;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// SPICE — a market with a knife at your back. Prices drift, news moves them,
+// and every 20 days the debt collector wants MORE THAN DOUBLE. Trade or die broke.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const GOODS=[{n:'SAFFRON',c:'#f59e0b',b:24},{n:'SILK',c:'#f472b6',b:38},
+ {n:'INDIGO',c:'#818cf8',b:15},{n:'PEPPER',c:'#84cc16',b:52}];
+let state='menu',day=0,best=0,cash=100,own=[0,0,0,0],px=GOODS.map(gd=>gd.b),hist=GOODS.map(gd=>[gd.b]),cap=8,capCost=120,debt=150,dueDay=20,evT=8,news='',newsT=0,t=0,paid=0;
+function reset(){day=0;cash=100;own=[0,0,0,0];cap=8;capCost=120;debt=150;dueDay=20;evT=8;news='a lender smiles: "150 gold, due day 20"';newsT=5;paid=0;
+ px=GOODS.map(gd=>gd.b*(0.8+Math.random()*.4));hist=GOODS.map((gd,i)=>[px[i]])}
+function carried(){return own.reduce((a,b)=>a+b,0)}
+const ROWY=i=>120+i*96;
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ const x=e.clientX,y=e.clientY;
+ for(let i=0;i<4;i++){const ry=ROWY(i);
+  if(y>ry&&y<ry+86){
+   if(x>W-150&&x<W-80){ // buy
+    if(cash>=px[i]&&carried()<cap){cash-=px[i];own[i]++}
+   }else if(x>W-74&&x<W-8){ // sell
+    if(own[i]>0){own[i]--;cash+=px[i]}}
+   return}}
+ // cart upgrade
+ if(y>H-56&&cash>=capCost){cash-=capCost;cap+=4;capCost=Math.round(capCost*1.9);
+  news='bigger cart! capacity '+cap;newsT=3}});
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+const EVENTS=[
+ [0,'monsoon ruins the saffron crop!',1.9],[0,'saffron gluts the bazaar',0.55],
+ [1,'storm sinks the silk convoy!',2.1],[1,'silkworm boom floods the market',0.5],
+ [2,'royal decree: everyone wears indigo!',1.8],[2,'indigo dye recalled',0.55],
+ [3,'pepper caravan raided!',2.2],[3,'bumper pepper harvest',0.5]];
+function update(dt){if(state!=='play')return;
+ day+=dt/1.9;newsT=Math.max(0,newsT-dt);
+ // price walk (mean reverting)
+ for(let i=0;i<4;i++){px[i]+=(GOODS[i].b-px[i])*.25*dt+(Math.random()-.5)*GOODS[i].b*.16;
+  px[i]=Math.max(2,px[i])}
+ if(Math.floor(day*4)!==Math.floor((day-dt/1.9)*4)){
+  hist.forEach((h,i)=>{h.push(px[i]);if(h.length>34)h.shift()})}
+ // events
+ evT-=dt;
+ if(evT<=0){evT=7+Math.random()*8;
+  const ev=EVENTS[Math.random()*EVENTS.length|0];
+  px[ev[0]]*=ev[2];news=ev[1]+(ev[2]>1?' ▲':' ▼');newsT=4}
+ // debt due
+ if(day>=dueDay){
+  if(cash>=debt){cash-=debt;paid+=debt;
+   debt=Math.round(debt*2.3);dueDay+=20;
+   news='debt paid! next: '+debt+' gold, day '+dueDay;newsT=4}
+  else{state='over';best=Math.max(best,Math.floor(day))}}
+}
+function draw(){
+ g.fillStyle='#130f0b';g.fillRect(0,0,W,H);
+ // header
+ g.textAlign='left';g.fillStyle='#fde68a';g.font='bold 22px ui-monospace';
+ g.fillText(Math.floor(cash)+'g',12,34);
+ g.fillStyle='rgba(253,230,138,.6)';g.font='11px ui-monospace';
+ g.fillText('day '+Math.floor(day)+' · cart '+carried()+'/'+cap,12,54);
+ // debt doom bar
+ const frac=Math.max(0,Math.min(1,(dueDay-day)/20));
+ g.textAlign='right';g.fillStyle=cash>=debt?'#86efac':'#f87171';g.font='bold 14px ui-monospace';
+ g.fillText('DEBT '+debt+'g · day '+dueDay,W-12,32);
+ g.fillStyle='rgba(255,255,255,.14)';g.fillRect(W-172,40,160,7);
+ g.fillStyle=frac>.3?'#fbbf24':'#f87171';g.fillRect(W-172,40,160*frac,7);
+ // news ticker
+ if(newsT>0){g.globalAlpha=Math.min(1,newsT);g.textAlign='center';
+  g.fillStyle='#fef3c7';g.font='12px ui-monospace';
+  g.fillText('❝ '+news+' ❞',W/2,84);g.globalAlpha=1}
+ // goods rows
+ for(let i=0;i<4;i++){const gd=GOODS[i],ry=ROWY(i);
+  g.fillStyle='rgba(255,255,255,.05)';g.fillRect(8,ry,W-16,86);
+  g.strokeStyle='rgba(255,255,255,.1)';g.strokeRect(8,ry,W-16,86);
+  g.fillStyle=gd.c;g.font='bold 14px ui-monospace';g.textAlign='left';
+  g.fillText(gd.n,20,ry+22);
+  const h=hist[i],prev=h.length>1?h[h.length-2]:px[i];
+  g.fillStyle='#f8f4ea';g.font='bold 19px ui-monospace';
+  g.fillText(Math.round(px[i])+'g',20,ry+48);
+  g.fillStyle=px[i]>=prev?'#86efac':'#f87171';g.font='12px ui-monospace';
+  g.fillText(px[i]>=prev?'▲':'▼',86,ry+48);
+  g.fillStyle='rgba(248,244,234,.7)';g.fillText('own '+own[i],20,ry+70);
+  // sparkline
+  const sx=118,sw=W-290,sy=ry+14,sh=58;
+  if(sw>40&&h.length>1){const mn=Math.min(...h),mx=Math.max(...h)||1;
+   g.strokeStyle=gd.c;g.lineWidth=1.5;g.beginPath();
+   h.forEach((v,k)=>{const xx=sx+k/(h.length-1)*sw,yy=sy+sh-(v-mn)/(mx-mn+.001)*sh;
+    k?g.lineTo(xx,yy):g.moveTo(xx,yy)});g.stroke()}
+  // buy / sell
+  const canB=cash>=px[i]&&carried()<cap,canS=own[i]>0;
+  g.fillStyle=canB?'rgba(134,239,172,.16)':'rgba(255,255,255,.04)';
+  g.fillRect(W-150,ry+14,66,58);
+  g.fillStyle=canB?'#86efac':'rgba(255,255,255,.25)';
+  g.font='bold 13px ui-monospace';g.textAlign='center';g.fillText('BUY',W-117,ry+48);
+  g.fillStyle=canS?'rgba(248,113,113,.16)':'rgba(255,255,255,.04)';
+  g.fillRect(W-74,ry+14,66,58);
+  g.fillStyle=canS?'#fca5a5':'rgba(255,255,255,.25)';
+  g.fillText('SELL',W-41,ry+48)}
+ // cart upgrade
+ g.fillStyle=cash>=capCost?'rgba(253,230,138,.15)':'rgba(255,255,255,.04)';
+ g.fillRect(8,H-52,W-16,44);
+ g.fillStyle=cash>=capCost?'#fde68a':'rgba(255,255,255,.3)';
+ g.font='bold 13px ui-monospace';g.textAlign='center';
+ g.fillText('UPGRADE CART +4 SLOTS — '+capCost+'g',W/2,H-25);
+ if(state==='menu')title('SPICE','Buy low, sell high, read the news —','and outrun a debt that MORE than doubles. Forever.');
+ if(state==='over')title('DEBTOR\'S CELL','Survived '+Math.floor(day)+' days · repaid '+paid+'g · Best '+best+' days','Tap to sign a new loan');
+}
+function title(a,b,c){g.fillStyle='rgba(19,15,11,.88)';g.fillRect(0,0,W,H);
+ g.fillStyle='#fde68a';g.font='bold '+Math.min(48,W/9)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#f8f4ea';g.font='13px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+38);g.fillStyle='rgba(248,244,234,.6)';g.fillText(c,W/2,H*.4+60)}
+</script></body></html>

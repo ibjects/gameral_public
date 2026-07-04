@@ -1,0 +1,127 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Kingdomlet</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0e0c0a;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// KINGDOMLET — an entire RTS on one screen. Shuffle six villagers between food,
+// wood and gold; spend it on troops; topple keep after keep as the ages rise forever.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+let state='menu',age=1,best=0,res={f:50,w:30,g:0},wk={f:2,w:2,g:1},idle=1,units=[],myHP=150,foeHP=150,waveT=14,kills=0,t=0,msg='',msgT=0;
+const RATE={f:2.4,w:1.9,g:1.3};
+const TYPES=[{k:'M',n:'MILITIA',cost:{f:40},hp:22,dm:5,rg:16,sp:58,col:'#e2b714'},
+ {k:'A',n:'ARCHER',cost:{w:35},hp:13,dm:6,rg:105,sp:52,col:'#7bd88f'},
+ {k:'K',n:'KNIGHT',cost:{f:45,g:35},hp:60,dm:11,rg:16,sp:46,col:'#7aa2f7'}];
+function reset(){age=1;res={f:50,w:30,g:0};wk={f:2,w:2,g:1};idle=1;units=[];myHP=150;foeHP=150;waveT=12;kills=0}
+function say(s){msg=s;msgT=2}
+function mult(){return Math.pow(1.16,age-1)}
+function spawn(side,tp,boost){units.push({side,x:side>0?70:W-70,hp:tp.hp*boost,mhp:tp.hp*boost,
+ dm:tp.dm*boost,rg:tp.rg,sp:tp.sp,col:tp.col,cd:0,y:H*.56+Math.random()*40})}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ const x=e.clientX,y=e.clientY;
+ // worker cards
+ if(y>44&&y<108){const i=Math.floor(x/(W/3)),key=['f','w','g'][i];
+  if(x%(W/3)<W/6){if(wk[key]>0){wk[key]--;idle++}}
+  else if(idle>0){idle--;wk[key]++}
+  return}
+ // unit buttons
+ if(y>H-92){const i=Math.floor(x/(W/3)),tp=TYPES[i];if(!tp)return;
+  let ok=true;for(const k in tp.cost)if(res[k]<tp.cost[k])ok=false;
+  if(ok){for(const k in tp.cost)res[k]-=tp.cost[k];spawn(1,tp,mult());}
+  else say('not enough resources');
+  return}});
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function update(dt){if(state!=='play')return;
+ msgT=Math.max(0,msgT-dt);
+ res.f+=RATE.f*wk.f*dt;res.w+=RATE.w*wk.w*dt;res.g+=RATE.g*wk.g*dt;
+ // enemy waves + trickle
+ waveT-=dt;
+ if(waveT<=0){waveT=Math.max(7,14-age*.5);
+  const n=1+Math.floor(age*.8);
+  for(let i=0;i<n;i++)spawn(-1,TYPES[Math.random()<.3?1:0],mult()*1.02);
+  if(age>2&&Math.random()<.5)spawn(-1,TYPES[2],mult());
+  say('enemy wave!')}
+ // combat
+ for(const u of units){u.cd-=dt;
+  // nearest foe ahead
+  let tgt=null,bd=1e9;
+  for(const o of units)if(o.side!==u.side&&!o.dead){
+   const d=(o.x-u.x)*u.side;if(d>-10&&d<bd){bd=d;tgt=o}}
+  const keepX=u.side>0?W-56:56;
+  const keepD=(keepX-u.x)*u.side;
+  if(tgt&&bd<=u.rg){if(u.cd<=0){u.cd=.8;tgt.hp-=u.dm;
+   if(tgt.hp<=0){tgt.dead=true;if(u.side>0)kills++}}}
+  else if(keepD<=u.rg){if(u.cd<=0){u.cd=.8;
+   if(u.side>0)foeHP-=u.dm;else myHP-=u.dm}}
+  else if(!tgt||bd>u.rg)u.x+=u.side*u.sp*dt;
+ }
+ units=units.filter(u=>!u.dead);
+ if(foeHP<=0){age++;units=units.filter(u=>u.side>0);
+  foeHP=150*Math.pow(1.25,age-1);myHP=Math.min(150,myHP+40);
+  res.f+=60;res.w+=40;res.g+=30;waveT=10;
+  say('AGE '+age+' — the enemy rebuilds, stronger')}
+ if(myHP<=0){state='over';best=Math.max(best,age)}
+}
+function draw(){
+ g.fillStyle='#0e0c0a';g.fillRect(0,0,W,H);
+ // battlefield ground
+ g.fillStyle='#171310';g.fillRect(0,H*.52,W,H*.24);
+ g.strokeStyle='rgba(255,255,255,.06)';
+ for(let x=0;x<W;x+=30){g.beginPath();g.moveTo(x,H*.52);g.lineTo(x-14,H*.76);g.stroke()}
+ // keeps
+ keep(56,H*.52,'#e2b714',myHP,150);
+ keep(W-56,H*.52,'#c0504d',foeHP,150*Math.pow(1.25,age-1));
+ // units
+ for(const u of units){
+  g.fillStyle=u.side>0?u.col:'#c0504d';
+  if(u.rg>50){g.beginPath();g.arc(u.x,u.y,7,0,7);g.fill();
+   g.strokeStyle=g.fillStyle;g.beginPath();g.moveTo(u.x-6,u.y-8);g.quadraticCurveTo(u.x+8*u.side,u.y,u.x-6,u.y+8);g.stroke()}
+  else g.fillRect(u.x-6,u.y-9,12,18);
+  g.fillStyle='rgba(0,0,0,.5)';g.fillRect(u.x-8,u.y-15,16,3);
+  g.fillStyle='#86efac';g.fillRect(u.x-8,u.y-15,16*Math.max(0,u.hp/u.mhp),3)}
+ // worker cards
+ const keys=['f','w','g'],names=['FOOD','WOOD','GOLD'],cols=['#e2b714','#8bd17c','#ffd166'];
+ g.fillStyle='rgba(0,0,0,.4)';g.fillRect(0,40,W,72);
+ keys.forEach((k,i)=>{const x=i*W/3;
+  g.fillStyle='rgba(255,255,255,.06)';g.fillRect(x+4,48,W/3-8,54);
+  g.fillStyle=cols[i];g.font='bold 12px ui-monospace';g.textAlign='center';
+  g.fillText(names[i]+' '+Math.floor(res[k]),x+W/6,66);
+  g.fillStyle='#f5f0e6';g.font='11px ui-monospace';
+  g.fillText('− '+'●'.repeat(wk[k])+' +',x+W/6,88);});
+ g.textAlign='center';g.fillStyle='rgba(245,240,230,.6)';g.font='10px ui-monospace';
+ g.fillText('idle villagers: '+idle+' (tap − / + sides of a card)',W/2,122);
+ // unit buttons
+ TYPES.forEach((tp,i)=>{const x=i*W/3;
+  let ok=true,costS='';for(const k in tp.cost){if(res[k]<tp.cost[k])ok=false;costS+=tp.cost[k]+k+' '}
+  g.fillStyle=ok?'rgba(255,255,255,.1)':'rgba(255,255,255,.04)';
+  g.fillRect(x+4,H-88,W/3-8,80);
+  g.fillStyle=ok?tp.col:'rgba(255,255,255,.3)';
+  g.font='bold 13px ui-monospace';g.textAlign='center';
+  g.fillText(tp.n,x+W/6,H-58);g.font='10px ui-monospace';
+  g.fillText(costS.trim(),x+W/6,H-40);
+  g.fillText('hp'+Math.round(tp.hp*mult())+' dmg'+Math.round(tp.dm*mult()),x+W/6,H-24)});
+ // HUD
+ g.textAlign='left';g.fillStyle='#f5f0e6';g.font='bold 16px ui-monospace';
+ g.fillText('AGE '+age,10,28);
+ g.textAlign='right';g.font='11px ui-monospace';g.fillStyle='rgba(245,240,230,.6)';
+ g.fillText('kills '+kills+' · wave in '+Math.ceil(waveT)+'s',W-10,28);
+ if(msgT>0){g.globalAlpha=Math.min(1,msgT);g.textAlign='center';g.fillStyle='#ffd166';
+  g.font='12px ui-monospace';g.fillText(msg,W/2,H*.5);g.globalAlpha=1}
+ if(state==='menu')title('KINGDOMLET','A whole RTS on one screen. Assign villagers,','raise troops, topple keep after keep. Ages never end.');
+ if(state==='over')title('KEEP FALLEN','Reached AGE '+age+' with '+kills+' kills · Best age '+best,'Tap to found a new kingdom');
+}
+function keep(x,gy,col,hp,mhp){
+ g.fillStyle=col;g.fillRect(x-26,gy-64,52,64);
+ g.fillRect(x-34,gy-78,16,16);g.fillRect(x+18,gy-78,16,16);
+ g.fillStyle='#0e0c0a';g.fillRect(x-8,gy-26,16,26);
+ g.fillStyle='rgba(0,0,0,.5)';g.fillRect(x-28,gy-90,56,6);
+ g.fillStyle='#86efac';g.fillRect(x-28,gy-90,56*Math.max(0,hp/mhp),6)}
+function title(a,b,c){g.fillStyle='rgba(14,12,10,.86)';g.fillRect(0,0,W,H);
+ g.fillStyle='#e2b714';g.font='bold '+Math.min(44,W/10)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#f5f0e6';g.font='13px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+38);g.fillStyle='rgba(245,240,230,.6)';g.fillText(c,W/2,H*.4+60)}
+</script></body></html>

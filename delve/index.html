@@ -1,0 +1,136 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Delve</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0c0a10;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// DELVE — a roguelike in your thumb. Swipe to step; the dungeon only moves when you do.
+// Bump to fight, grab loot, find the stairs. Every floor is deeper, meaner, procedural.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const CW=6,CH=8;
+let state='menu',floor=1,best=0,gold=0,hp=8,mhp=8,atk=1,rocks=[],mobs=[],items=[],exit={},pc=0,pr=0,swipe=null,t=0,fx=[],msg='',msgT=0;
+function occ(c,r){return rocks.some(k=>k[0]===c&&k[1]===r)}
+function mobAt(c,r){return mobs.find(m=>m.c===c&&m.r===r)}
+function gen(){rocks=[];mobs=[];items=[];
+ pc=(CW/2)|0;pr=CH-1;
+ const free=()=>{for(let i=0;i<80;i++){const c=Math.random()*CW|0,r=Math.random()*CH|0;
+  if((c!==pc||r!==pr)&&!occ(c,r)&&!mobAt(c,r)&&!items.some(it=>it.c===c&&it.r===r)&&!(exit.c===c&&exit.r===r))return[c,r]}return null}
+ exit={};const e=[Math.random()*CW|0,0];exit={c:e[0],r:e[1]};
+ for(let i=0;i<6;i++){const f=free();if(f)rocks.push(f)}
+ const n=Math.min(9,2+floor);
+ for(let i=0;i<n;i++){const f=free();if(!f)continue;
+  const wolf=floor>2&&Math.random()<.4;
+  mobs.push({c:f[0],r:f[1],hp:wolf?2+((floor/3)|0):1+((floor/4)|0),
+   dm:wolf?2:1,wolf})}
+ const ni=1+(Math.random()*2|0);
+ for(let i=0;i<ni;i++){const f=free();if(f)items.push({c:f[0],r:f[1],k:Math.random()<.5?'potion':'gold'})}
+ if(floor%3===0){const f=free();if(f)items.push({c:f[0],r:f[1],k:'sword'})}}
+function reset(){floor=1;gold=0;hp=8;mhp=8;atk=1;gen()}
+function say(s){msg=s;msgT=1.6}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ swipe={x:e.clientX,y:e.clientY}});
+addEventListener('pointerup',e=>{
+ if(state!=='play'||!swipe)return;
+ const dx=e.clientX-swipe.x,dy=e.clientY-swipe.y;swipe=null;
+ if(Math.hypot(dx,dy)<16)return;
+ const d=Math.abs(dx)>Math.abs(dy)?(dx>0?[1,0]:[-1,0]):(dy>0?[0,1]:[0,-1]);
+ turn(d)});
+function turn(d){
+ const nc=pc+d[0],nr=pr+d[1];
+ if(nc<0||nr<0||nc>=CW||nr>=CH||occ(nc,nr)){/*bump wall*/}
+ else{const m=mobAt(nc,nr);
+  if(m){m.hp-=atk;fx.push({c:nc,r:nr,a:1,c2:'#fff'});
+   if(m.hp<=0){mobs.splice(mobs.indexOf(m),1);say(m.wolf?'wolf slain':'slime splat')}}
+  else{pc=nc;pr=nr;
+   const it=items.find(i=>i.c===pc&&i.r===pr);
+   if(it){items.splice(items.indexOf(it),1);
+    if(it.k==='gold'){const v=2+(Math.random()*4|0)+floor;gold+=v;say('+'+v+' gold')}
+    if(it.k==='potion'){hp=Math.min(mhp,hp+3);say('+3 hp')}
+    if(it.k==='sword'){atk++;say('sharper blade! atk '+atk)}}
+   if(pc===exit.c&&pr===exit.r){floor++;
+    mhp=8+((floor/2)|0);gen();say('floor '+floor);return}}}
+ // monsters move
+ for(const m of mobs){
+  const ddc=pc-m.c,ddr=pr-m.r;
+  if(Math.abs(ddc)+Math.abs(ddr)===1){hp-=m.dm;fx.push({c:pc,r:pr,a:1,c2:'#f87171'});
+   if(hp<=0){state='over';best=Math.max(best,floor);return}continue}
+  const opts=[];
+  if(Math.abs(ddc)>=Math.abs(ddr)){opts.push([Math.sign(ddc),0],[0,Math.sign(ddr)])}
+  else{opts.push([0,Math.sign(ddr)],[Math.sign(ddc),0])}
+  if(!m.wolf&&Math.random()<.25)continue; // slimes are lazy
+  for(const o of opts){if(!o[0]&&!o[1])continue;
+   const mc=m.c+o[0],mr=m.r+o[1];
+   if(mc<0||mr<0||mc>=CW||mr>=CH)continue;
+   if(occ(mc,mr)||mobAt(mc,mr)||(mc===pc&&mr===pr))continue;
+   if(exit.c===mc&&exit.r===mr)continue;
+   m.c=mc;m.r=mr;break}}
+}
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;t+=dt;
+ msgT=Math.max(0,msgT-dt);
+ for(const f of fx)f.a-=dt*3;fx=fx.filter(f=>f.a>0);
+ draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function cellGeom(){const cs=Math.min((W-20)/CW,(H-160)/CH);
+ return{cs,ox:(W-cs*CW)/2,oy:96}}
+function draw(){
+ g.fillStyle='#0c0a10';g.fillRect(0,0,W,H);
+ const{cs,ox,oy}=cellGeom();
+ for(let r=0;r<CH;r++)for(let c=0;c<CW;c++){
+  const x=ox+c*cs,y=oy+r*cs;
+  g.fillStyle=(c+r)%2?'#171420':'#1b1826';g.fillRect(x+1,y+1,cs-2,cs-2)}
+ // exit
+ {const x=ox+exit.c*cs,y=oy+exit.r*cs;
+  g.fillStyle='#0c0a10';g.fillRect(x+5,y+5,cs-10,cs-10);
+  g.strokeStyle='#c4b5fd';g.strokeRect(x+5,y+5,cs-10,cs-10);
+  g.fillStyle='#c4b5fd';g.font='bold '+cs*.26+'px ui-monospace';g.textAlign='center';
+  g.fillText('▼',x+cs/2,y+cs*.62)}
+ // rocks
+ for(const k of rocks){const x=ox+k[0]*cs,y=oy+k[1]*cs;
+  g.fillStyle='#2c2838';g.fillRect(x+4,y+4,cs-8,cs-8);
+  g.strokeStyle='#443e58';g.strokeRect(x+4,y+4,cs-8,cs-8)}
+ // items
+ for(const it of items){const x=ox+it.c*cs+cs/2,y=oy+it.r*cs+cs/2;
+  if(it.k==='gold'){g.fillStyle='#fbbf24';g.beginPath();g.arc(x,y,cs*.16,0,7);g.fill();
+   g.fillStyle='#78350f';g.font=cs*.18+'px ui-monospace';g.textAlign='center';g.fillText('$',x,y+cs*.07)}
+  if(it.k==='potion'){g.fillStyle='#f472b6';g.fillRect(x-cs*.1,y-cs*.12,cs*.2,cs*.26);
+   g.fillRect(x-cs*.05,y-cs*.2,cs*.1,cs*.1)}
+  if(it.k==='sword'){g.strokeStyle='#e5e7eb';g.lineWidth=3;
+   g.beginPath();g.moveTo(x-cs*.14,y+cs*.14);g.lineTo(x+cs*.14,y-cs*.14);g.stroke();
+   g.beginPath();g.moveTo(x-cs*.04,y-cs*.04);g.lineTo(x-cs*.14,y-cs*.14);g.stroke()}}
+ // mobs
+ for(const m of mobs){const x=ox+m.c*cs+cs/2,y=oy+m.r*cs+cs/2;
+  if(m.wolf){g.fillStyle='#94a3b8';
+   g.beginPath();g.moveTo(x-cs*.2,y+cs*.15);g.lineTo(x,y-cs*.22);g.lineTo(x+cs*.2,y+cs*.15);g.closePath();g.fill();
+   g.fillStyle='#0c0a10';g.beginPath();g.arc(x-4,y,2,0,7);g.arc(x+4,y,2,0,7);g.fill()}
+  else{g.fillStyle='#84cc16';
+   g.beginPath();g.arc(x,y+cs*.06,cs*.2,3.1416,0);g.fill();
+   g.fillRect(x-cs*.2,y+cs*.06,cs*.4,cs*.1);
+   g.fillStyle='#0c0a10';g.beginPath();g.arc(x-4,y,2,0,7);g.arc(x+4,y,2,0,7);g.fill()}
+  if(m.hp>1){g.fillStyle='#f8fafc';g.font='9px ui-monospace';g.textAlign='center';
+   g.fillText(m.hp,x,y-cs*.28)}}
+ // player
+ {const x=ox+pc*cs+cs/2,y=oy+pr*cs+cs/2;
+  g.fillStyle='#fbbf24';g.beginPath();g.arc(x,y,cs*.24,0,7);g.fill();
+  g.fillStyle='#0c0a10';g.beginPath();g.arc(x-4,y-3,2.5,0,7);g.arc(x+4,y-3,2.5,0,7);g.fill()}
+ for(const f of fx){const x=ox+f.c*cs+cs/2,y=oy+f.r*cs+cs/2;
+  g.globalAlpha=f.a;g.strokeStyle=f.c2;g.lineWidth=3;
+  g.beginPath();g.arc(x,y,cs*(1-f.a)*.5+6,0,7);g.stroke();g.globalAlpha=1}
+ // HUD
+ g.textAlign='left';g.fillStyle='#e9e4f5';g.font='bold 17px ui-monospace';
+ g.fillText('FLOOR '+floor,14,32);
+ g.fillStyle='#f87171';g.fillText('♥'.repeat(Math.max(0,hp))+'♡'.repeat(Math.max(0,mhp-hp)),14,56);
+ g.textAlign='right';g.fillStyle='#fbbf24';g.fillText('$'+gold,W-14,32);
+ g.fillStyle='#e5e7eb';g.font='12px ui-monospace';g.fillText('atk '+atk,W-14,54);
+ if(msgT>0){g.globalAlpha=Math.min(1,msgT*2);g.textAlign='center';g.fillStyle='#c4b5fd';
+  g.font='13px ui-monospace';g.fillText(msg,W/2,H-20);g.globalAlpha=1}
+ if(state==='menu')title('DELVE','Swipe to step — the dungeon only moves when you do.','Bump to fight. Find the stairs. It goes down forever.');
+ if(state==='over')title('SLAIN','Died on floor '+floor+' with $'+gold+' · Best floor '+best,'Tap to delve again');
+}
+function title(a,b,c){g.fillStyle='rgba(12,10,16,.87)';g.fillRect(0,0,W,H);
+ g.fillStyle='#c4b5fd';g.font='bold '+Math.min(56,W/7)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#e9e4f5';g.font='13px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+38);g.fillStyle='rgba(233,228,245,.6)';g.fillText(c,W/2,H*.4+60)}
+</script></body></html>

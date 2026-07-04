@@ -1,0 +1,142 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Pheromone</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#12100a;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// PHEROMONE — you can't command a single ant. You can only paint scent trails
+// they'll want to follow. Route them to sugar, swarm them onto spiders, beat the rain.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+let state='menu',food=0,best=0,ants=[],pher=[],piles=[],spiders=[],rainT=40,raining=0,t=0,ptr=null,lastP=null,msg='',msgT=0,spent=0;
+const NEST=()=>({x:W/2,y:H-70});
+function reset(){food=0;spent=0;ants=[];pher=[];piles=[];spiders=[];rainT=36;raining=0;
+ for(let i=0;i<9;i++)ants.push(mkAnt());
+ for(let i=0;i<3;i++)addPile()}
+function mkAnt(){const n=NEST();return{x:n.x+(Math.random()-.5)*30,y:n.y+(Math.random()-.5)*30,
+ a:Math.random()*7,mode:'out',cool:0}}
+function addPile(){piles.push({x:30+Math.random()*(W-60),y:60+Math.random()*(H*.6),n:14+(Math.random()*10|0)})}
+function say(s){msg=s;msgT=2.5}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ ptr={x:e.clientX,y:e.clientY};lastP=null});
+addEventListener('pointermove',e=>{if(!ptr||state!=='play')return;
+ ptr={x:e.clientX,y:e.clientY};
+ if(!lastP||Math.hypot(ptr.x-lastP.x,ptr.y-lastP.y)>13){
+  pher.push({x:ptr.x,y:ptr.y,s:1});lastP={...ptr};
+  if(pher.length>240)pher.shift()}});
+addEventListener('pointerup',()=>{ptr=null;lastP=null});
+addEventListener('pointercancel',()=>{ptr=null;lastP=null});
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function update(dt){if(state!=='play')return;
+ msgT=Math.max(0,msgT-dt);
+ // rain cycle
+ rainT-=dt;
+ if(rainT<=0&&raining===0){raining=2.5;say('RAIN! trails washing away')}
+ if(raining>0){raining-=dt;
+  for(const p of pher)p.s-=dt*.7;
+  if(raining<=0)rainT=30+Math.random()*15}
+ for(const p of pher)p.s-=dt/9;
+ pher=pher.filter(p=>p.s>0);
+ // ants
+ for(const a of ants){a.cool=Math.max(0,a.cool-dt);
+  if(a.mode==='out'){
+   // strongest pheromone nearby pulls
+   let bp=null,bs=.12;
+   for(const p of pher){const d=Math.hypot(p.x-a.x,p.y-a.y);
+    if(d<70&&d>6){const w=p.s*(1-d/70);if(w>bs){bs=w;bp=p}}}
+   if(bp){const d=Math.hypot(bp.x-a.x,bp.y-a.y)||1;
+    a.a=Math.atan2(bp.y-a.y,bp.x-a.x)+(Math.random()-.5)*.6}
+   else a.a+=(Math.random()-.5)*dt*6;
+   a.x+=Math.cos(a.a)*62*dt;a.y+=Math.sin(a.a)*62*dt;
+   for(const pl of piles)if(pl.n>0&&Math.hypot(pl.x-a.x,pl.y-a.y)<14){
+    pl.n--;a.mode='home';break}
+  }else{ // homing
+   const n=NEST(),d=Math.hypot(n.x-a.x,n.y-a.y)||1;
+   a.x+=(n.x-a.x)/d*70*dt;a.y+=(n.y-a.y)/d*70*dt;
+   if(d<16){a.mode='out';food++;
+    if(food-spent>=12&&ants.length<40){spent+=12;ants.push(mkAnt());say('a new ant hatches ('+ants.length+')')}}
+  }
+  if(a.x<6)a.x=6;if(a.x>W-6)a.x=W-6;if(a.y<6)a.y=6;if(a.y>H-6)a.y=H-6;
+ }
+ piles=piles.filter(p=>p.n>0);
+ while(piles.length<3)addPile();
+ // spiders
+ if(Math.random()<dt*.05&&spiders.length<2){
+  const side=Math.random()*4|0;
+  spiders.push({x:side===0?0:side===1?W:Math.random()*W,
+   y:side<2?Math.random()*H*.6:0,hp:10,eat:0})}
+ for(const s of spiders){const n=NEST();
+  const d=Math.hypot(n.x-s.x,n.y-s.y)||1;
+  s.x+=(n.x-s.x)/d*17*dt;s.y+=(n.y-s.y)/d*17*dt;
+  s.eat=Math.max(0,s.eat-dt);
+  let swarm=0;
+  for(const a of ants){const ad=Math.hypot(a.x-s.x,a.y-s.y);
+   if(ad<14&&s.eat<=0&&swarm===0){a.dead=true;s.eat=1.6}
+   if(ad<36)swarm++}
+  if(swarm>=4){s.hp-=swarm*dt*.9;
+   if(s.hp<=0){s.dead=true;food+=8;say('the swarm took down a spider! +8')}}
+  if(d<26){ // spider at the nest door: eats fast
+   if(s.eat<=0&&ants.length){ants[0].dead=true;s.eat=1}}
+ }
+ spiders=spiders.filter(s=>!s.dead);
+ ants=ants.filter(a=>!a.dead);
+ if(ants.length===0){state='over';best=Math.max(best,food)}
+}
+function draw(){
+ g.fillStyle='#12100a';g.fillRect(0,0,W,H);
+ // dirt speckle
+ g.fillStyle='rgba(255,255,255,.03)';
+ for(let i=0;i<40;i++)g.fillRect((i*97)%W,(i*61)%H,2,2);
+ // pheromone
+ for(const p of pher){g.fillStyle='rgba(94,234,212,'+p.s*.5+')';
+  g.beginPath();g.arc(p.x,p.y,5+p.s*4,0,7);g.fill()}
+ // nest
+ const n=NEST();
+ g.fillStyle='#5b4423';g.beginPath();g.arc(n.x,n.y,26,0,7);g.fill();
+ g.fillStyle='#2e2213';g.beginPath();g.arc(n.x,n.y,12,0,7);g.fill();
+ // piles
+ for(const pl of piles){g.fillStyle='#fde68a';
+  for(let i=0;i<Math.min(9,pl.n);i++){
+   g.beginPath();g.arc(pl.x+(i%3-1)*7,pl.y+((i/3|0)-1)*6,4,0,7);g.fill()}
+  g.fillStyle='rgba(253,230,138,.7)';g.font='9px ui-monospace';g.textAlign='center';
+  g.fillText(pl.n,pl.x,pl.y-16)}
+ // ants
+ for(const a of ants){g.fillStyle=a.mode==='home'?'#fde68a':'#d9c7a5';
+  g.save();g.translate(a.x,a.y);g.rotate(a.a);
+  g.fillRect(-4,-1.5,3,3);g.fillRect(-1,-2,3,4);g.fillRect(2,-1.5,3,3);
+  g.restore()}
+ // spiders
+ for(const s of spiders){g.fillStyle='#4b3654';
+  g.beginPath();g.arc(s.x,s.y,11,0,7);g.fill();
+  g.strokeStyle='#4b3654';g.lineWidth=2;
+  for(let i=0;i<4;i++){const an=i*.8-1.2;
+   g.beginPath();g.moveTo(s.x,s.y);
+   g.lineTo(s.x+Math.cos(an)*20,s.y+Math.sin(an)*20+Math.sin(t*10+i)*3);
+   g.moveTo(s.x,s.y);
+   g.lineTo(s.x-Math.cos(an)*20,s.y+Math.sin(an)*20+Math.cos(t*10+i)*3);g.stroke()}
+  g.fillStyle='rgba(0,0,0,.5)';g.fillRect(s.x-12,s.y-20,24,4);
+  g.fillStyle='#f87171';g.fillRect(s.x-12,s.y-20,24*Math.max(0,s.hp/10),4)}
+ // rain
+ if(raining>0){g.strokeStyle='rgba(150,200,255,.4)';
+  for(let i=0;i<30;i++){const x=(i*53+t*500)%W,y=(i*97+t*700)%H;
+   g.beginPath();g.moveTo(x,y);g.lineTo(x-3,y+12);g.stroke()}}
+ else if(rainT<5){g.fillStyle='rgba(150,200,255,'+(0.4+0.4*Math.sin(t*8))+')';
+  g.font='bold 12px ui-monospace';g.textAlign='center';g.fillText('☁ rain in '+Math.ceil(rainT)+'s',W/2,64)}
+ // HUD
+ g.textAlign='left';g.fillStyle='#fde68a';g.font='bold 20px ui-monospace';
+ g.fillText('◆ '+food,12,30);
+ g.fillStyle='rgba(253,230,138,.6)';g.font='11px ui-monospace';
+ g.fillText('ants '+ants.length+' · next ant at '+(spent+12),12,50);
+ if(msgT>0){g.globalAlpha=Math.min(1,msgT);g.textAlign='center';g.fillStyle='#5eead4';
+  g.font='12px ui-monospace';g.fillText(msg,W/2,H-14);g.globalAlpha=1}
+ if(state==='menu')title('PHEROMONE','You can\'t command ants — only paint scent trails','they\'ll follow. Route sugar home. Swarm the spiders.');
+ if(state==='over')title('COLONY LOST','Gathered '+food+' sugar · Best '+best,'Tap to found a new colony');
+}
+function title(a,b,c){g.fillStyle='rgba(18,16,10,.85)';g.fillRect(0,0,W,H);
+ g.fillStyle='#5eead4';g.font='bold '+Math.min(44,W/10)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#f4eeda';g.font='13px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+38);g.fillStyle='rgba(244,238,218,.6)';g.fillText(c,W/2,H*.4+60)}
+</script></body></html>

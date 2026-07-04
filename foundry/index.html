@@ -1,0 +1,122 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Foundry</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0d0e12;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// FOUNDRY — ore pours out of the mines whether you're ready or not. Tap tiles to lay
+// belts (tap again to rotate) and route each color to its furnace. Fill orders. Don't jam.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0);layout()}
+let COLS=7,ROWS=9,CS=44,OX=0,OY=0;
+function layout(){CS=Math.min(48,(W-16)/COLS,(H-190)/ROWS);OX=(W-COLS*CS)/2;OY=96}
+onresize=fit;fit();
+const ORE=['#f87171','#60a5fa','#fbbf24'];
+const DIRS=[[1,0],[0,1],[-1,0],[0,-1]]; // →↓←↑
+let state='menu',orders=0,best=0,belts={},ores=[],mines=[],furn=[],need=[],timer=0,tmax=0,strikes=0,spawnT=0,t=0,msg='',msgT=0,nCol=2;
+function key(c,r){return c+','+r}
+function reset(){belts={};ores=[];strikes=0;orders=0;nCol=2;
+ mines=[{c:0,r:2,col:0},{c:0,r:6,col:1}];
+ furn=[{c:COLS-1,r:2,col:0},{c:COLS-1,r:6,col:1}];
+ newOrder()}
+function newOrder(){orders++;
+ if(orders===4&&nCol===2){nCol=3;
+  mines.push({c:0,r:4,col:2});furn.push({c:COLS-1,r:4,col:2});msg='A THIRD ORE APPEARS';msgT=2.5}
+ need=[];for(let i=0;i<nCol;i++)need.push(2+Math.floor(orders*.8)+(Math.random()*2|0));
+ tmax=Math.max(22,46-orders*1.5);timer=tmax}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ const c=Math.floor((e.clientX-OX)/CS),r=Math.floor((e.clientY-OY)/CS);
+ if(c<1||c>=COLS-1||r<0||r>=ROWS)return;
+ const k=key(c,r);
+ belts[k]=belts[k]===undefined?0:(belts[k]+1);
+ if(belts[k]>3)delete belts[k]});
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function update(dt){if(state!=='play')return;
+ msgT=Math.max(0,msgT-dt);
+ timer-=dt;
+ if(timer<=0){strike('order expired!');newOrder();return}
+ spawnT-=dt;
+ if(spawnT<=0){spawnT=Math.max(.9,2.2-orders*.08);
+  const m=mines[Math.random()*mines.length|0];
+  ores.push({c:m.c,r:m.r,col:m.col,u:0,stall:0})}
+ for(const o of ores){
+  const fromK=key(o.c,o.r);
+  let dir=null;
+  if(o.c===0)dir=0; // mines push right
+  else if(belts[fromK]!==undefined)dir=belts[fromK];
+  if(dir===null){o.stall+=dt;
+   if(o.stall>3){o.dead=true;strike('ore overflowed!')}
+   continue}
+  o.stall=0;
+  o.u+=dt*1.7;
+  if(o.u>=1){o.u=0;o.c+=DIRS[dir][0];o.r+=DIRS[dir][1];
+   // furnace?
+   const f=furn.find(f=>f.c===o.c&&f.r===o.r);
+   if(f){o.dead=true;
+    if(f.col===o.col){if(need[o.col]>0)need[o.col]--;
+     if(need.every(n=>n<=0)){msg='ORDER '+orders+' COMPLETE';msgT=2;newOrder()}}
+    else strike('wrong furnace!')}
+   else if(o.c<0||o.c>=COLS||o.r<0||o.r>=ROWS){o.dead=true;strike('ore fell off!')}
+  }}
+ ores=ores.filter(o=>!o.dead);
+}
+function strike(s){strikes++;msg=s;msgT=2;
+ if(strikes>=3){state='over';best=Math.max(best,orders-1)}}
+function draw(){
+ g.fillStyle='#0d0e12';g.fillRect(0,0,W,H);
+ // grid
+ for(let c=0;c<COLS;c++)for(let r=0;r<ROWS;r++){
+  const x=OX+c*CS,y=OY+r*CS;
+  g.fillStyle=(c===0||c===COLS-1)?'rgba(255,255,255,.03)':'rgba(255,255,255,.05)';
+  g.fillRect(x+1,y+1,CS-2,CS-2);
+  const b=belts[key(c,r)];
+  if(b!==undefined){g.save();g.translate(x+CS/2,y+CS/2);g.rotate(b*1.5708);
+   g.fillStyle='rgba(148,163,184,.25)';g.fillRect(-CS/2+3,-8,CS-6,16);
+   g.fillStyle='#94a3b8';
+   const off=((t*30)%12)-6;
+   for(let i=-1;i<=1;i++){g.beginPath();g.moveTo(i*12+off,-6);g.lineTo(i*12+off+7,0);g.lineTo(i*12+off,6);g.closePath();g.fill()}
+   g.restore()}}
+ // mines & furnaces
+ for(const m of mines){const x=OX+m.c*CS,y=OY+m.r*CS;
+  g.fillStyle='#1f2430';g.fillRect(x+2,y+2,CS-4,CS-4);
+  g.fillStyle=ORE[m.col];g.beginPath();g.arc(x+CS/2,y+CS/2,CS*.22,0,7);g.fill();
+  g.strokeStyle=ORE[m.col];g.strokeRect(x+2,y+2,CS-4,CS-4)}
+ for(const f of furn){const x=OX+f.c*CS,y=OY+f.r*CS;
+  g.fillStyle='#2a1e16';g.fillRect(x+2,y+2,CS-4,CS-4);
+  g.fillStyle=ORE[f.col];
+  g.beginPath();g.moveTo(x+8,y+CS-8);g.lineTo(x+CS/2,y+8);g.lineTo(x+CS-8,y+CS-8);g.closePath();g.fill();
+  const fl=Math.sin(t*8+f.r)*.3+.6;
+  g.fillStyle='rgba(255,180,80,'+fl*.5+')';g.fillRect(x+CS*.3,y+CS-14,CS*.4,6)}
+ // ores in transit
+ for(const o of ores){
+  const fromK=key(o.c,o.r);let dir=o.c===0?0:belts[fromK];
+  let x=OX+o.c*CS+CS/2,y=OY+o.r*CS+CS/2;
+  if(dir!==undefined&&dir!==null){x+=DIRS[dir][0]*CS*o.u;y+=DIRS[dir][1]*CS*o.u}
+  g.fillStyle=ORE[o.col];g.beginPath();g.arc(x,y,CS*.18,0,7);g.fill();
+  if(o.stall>1){g.fillStyle='#f87171';g.font='10px ui-monospace';g.textAlign='center';
+   g.fillText(Math.ceil(3-o.stall)+'',x,y-14)}}
+ // HUD: order + timer + strikes
+ g.textAlign='left';g.fillStyle='#e7eaf0';g.font='bold 16px ui-monospace';
+ g.fillText('ORDER '+orders,12,28);
+ let ox=12;
+ need.forEach((n,i)=>{g.fillStyle=ORE[i];g.beginPath();g.arc(ox+8,48,7,0,7);g.fill();
+  g.fillStyle='#e7eaf0';g.font='13px ui-monospace';g.fillText('×'+Math.max(0,n),ox+20,53);ox+=64});
+ g.fillStyle='rgba(255,255,255,.15)';g.fillRect(12,64,W-24,8);
+ g.fillStyle=timer/tmax>.3?'#86efac':'#f87171';g.fillRect(12,64,(W-24)*Math.max(0,timer/tmax),8);
+ g.textAlign='right';g.fillStyle='#f87171';g.font='14px ui-monospace';
+ g.fillText('✗'.repeat(strikes)+'·'.repeat(3-strikes),W-12,28);
+ g.textAlign='center';g.fillStyle='rgba(231,234,240,.45)';g.font='10px ui-monospace';
+ g.fillText('tap a tile to lay a belt · tap again to rotate → ↓ ← ↑ · 5th tap clears',W/2,OY+ROWS*CS+22);
+ if(msgT>0){g.globalAlpha=Math.min(1,msgT);g.textAlign='center';
+  g.fillStyle=msg.includes('COMPLETE')||msg.includes('THIRD')?'#86efac':'#f87171';
+  g.font='bold 15px ui-monospace';g.fillText(msg,W/2,H-26);g.globalAlpha=1}
+ if(state==='menu')title('FOUNDRY','Ore pours from the mines whether you\'re ready or not.','Lay belts, route colors to their furnaces, fill orders.');
+ if(state==='over')title('MELTDOWN','Filled '+(orders-1)+' orders · Best '+best,'Tap to fire up a new foundry');
+}
+function title(a,b,c){g.fillStyle='rgba(13,14,18,.87)';g.fillRect(0,0,W,H);
+ g.fillStyle='#fbbf24';g.font='bold '+Math.min(50,W/8.5)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#e7eaf0';g.font='13px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+38);g.fillStyle='rgba(231,234,240,.6)';g.fillText(c,W/2,H*.4+60)}
+</script></body></html>

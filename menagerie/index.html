@@ -1,0 +1,119 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Menagerie</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#101408;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// MENAGERIE — a whole zoo in one sitting. Feed them, clean them, and they breed;
+// neglect them and they ESCAPE. Three escapes and the inspectors shut you down.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const SP=[{n:'CAPYBARA',c:'#b08d57',t:2,f:4},{n:'FLAMINGO',c:'#fb7185',t:3,f:5},
+ {n:'PEACOCK',c:'#22d3ee',t:5,f:7},{n:'PANDA',c:'#e5e7eb',t:7,f:10},
+ {n:'TIGER',c:'#fb923c',t:10,f:14},{n:'DRAGON',c:'#a78bfa',t:15,f:20}];
+let state='menu',cash=0,earned=0,best=0,rep=3,pens=[],runaways=[],visitors=[],t=0,day=0,msg='',msgT=0;
+function penCost(){return Math.round(60*Math.pow(1.9,pens.length-1))}
+function reset(){cash=90;earned=0;rep=3;day=0;pens=[mkPen(0)];runaways=[];visitors=[];msg='welcome to your zoo!';msgT=3}
+function mkPen(i){return{sp:i,count:1,hun:.3,dirt:.2,overT:0,breedT:0,flash:0}}
+function say(s){msg=s;msgT=2.5}
+const COLS=2,PW=()=>(W-36)/COLS,PH=110,penXY=i=>({x:12+(i%COLS)*(PW()+12),y:96+Math.floor(i/COLS)*(PH+10)});
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ const x=e.clientX,y=e.clientY;
+ // buy pen
+ if(pens.length<6&&y<86&&x>W-150&&cash>=penCost()){
+  cash-=penCost();pens.push(mkPen(pens.length));say(SP[pens.length-1].n.toLowerCase()+' arrived!');return}
+ pens.forEach((p,i)=>{const c=penXY(i);
+  if(x<c.x||x>c.x+PW()||y<c.y||y>c.y+PH)return;
+  const s=SP[p.sp];
+  if(y>c.y+PH-32){ // buttons row
+   if(x<c.x+PW()/2){if(cash>=s.f){cash-=s.f;p.hun=0;p.flash=1}}
+   else{const cc=Math.ceil(s.f*.6);if(cash>=cc){cash-=cc;p.dirt=0;p.flash=1}}
+  }});
+});
+let last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function appeal(){let a=0;for(const p of pens){const s=SP[p.sp];
+ a+=s.t*p.count*Math.max(0,1-Math.max(p.hun,p.dirt))}return a}
+function update(dt){if(state!=='play')return;
+ day+=dt/8;msgT=Math.max(0,msgT-dt);
+ for(const p of pens){const s=SP[p.sp];
+  p.flash=Math.max(0,p.flash-dt*2);
+  p.hun=Math.min(1,p.hun+dt/(26-p.count*2));
+  p.dirt=Math.min(1,p.dirt+dt/(36-p.count*3));
+  const happy=1-Math.max(p.hun,p.dirt);
+  if(happy>.75&&p.count<3){p.breedT+=dt;
+   if(p.breedT>16){p.breedT=0;p.count++;say(s.n.toLowerCase()+' had a baby!')}}
+  else p.breedT=0;
+  if(p.hun>=1||p.dirt>=1){p.overT+=dt;
+   if(p.overT>5){p.overT=0;p.count=Math.max(0,p.count-1);rep--;
+    runaways.push({x:penXY(pens.indexOf(p)).x,y:penXY(pens.indexOf(p)).y+60,c:s.c,vx:220});
+    say('a '+s.n.toLowerCase()+' ESCAPED!');p.hun=.4;p.dirt=.4;
+    if(p.count===0){p.count=1;p.recap=6} // rangers recapture one eventually
+    if(rep<=0){state='over';best=Math.max(best,Math.round(earned))}}}
+  else p.overT=0;
+ }
+ // income + visitors
+ const a=appeal();
+ cash+=a*.14*dt;earned+=a*.14*dt;
+ const wantV=Math.min(14,Math.round(a/3));
+ while(visitors.length<wantV)visitors.push({x:Math.random()*W,ph:Math.random()*7});
+ if(visitors.length>wantV)visitors.length=Math.max(0,wantV);
+ for(const v of visitors){v.x+=Math.sin(t+v.ph)*30*dt}
+ for(const r of runaways){r.x+=r.vx*dt}
+ runaways=runaways.filter(r=>r.x<W+40);
+}
+function draw(){
+ g.fillStyle='#101408';g.fillRect(0,0,W,H);
+ // header
+ g.textAlign='left';g.fillStyle='#d9f99d';g.font='bold 20px ui-monospace,Menlo,monospace';
+ g.fillText('$'+Math.floor(cash),12,32);
+ g.fillStyle='#f87171';g.font='14px ui-monospace';
+ g.fillText('♥'.repeat(Math.max(0,rep))+'♡'.repeat(Math.max(0,3-rep)),12,54);
+ g.fillStyle='rgba(217,249,157,.6)';g.fillText('day '+Math.floor(day)+' · appeal '+Math.round(appeal()),12,74);
+ if(state==='play'&&pens.length<6){g.fillStyle=cash>=penCost()?'#d9f99d':'rgba(217,249,157,.35)';
+  g.fillRect(W-146,20,134,44);g.fillStyle='#101408';g.font='bold 12px ui-monospace';g.textAlign='center';
+  g.fillText('NEW PEN',W-79,38);g.fillText('$'+penCost(),W-79,54)}
+ // pens
+ pens.forEach((p,i)=>{const c=penXY(i),s=SP[p.sp],pw=PW();
+  g.fillStyle=p.flash>0?'rgba(217,249,157,.18)':'rgba(255,255,255,.05)';
+  g.fillRect(c.x,c.y,pw,PH);
+  g.strokeStyle=(p.hun>.85||p.dirt>.85)&&Math.sin(t*10)>0?'#f87171':'rgba(255,255,255,.2)';
+  g.strokeRect(c.x,c.y,pw,PH);
+  g.textAlign='left';g.fillStyle='#f4f8e8';g.font='bold 11px ui-monospace';
+  g.fillText(s.n+' ×'+p.count,c.x+8,c.y+16);
+  // animals
+  for(let k=0;k<p.count;k++){const ax=c.x+24+k*26+Math.sin(t*2+k+i)*4,ay=c.y+40+Math.cos(t*1.7+k)*3;
+   g.fillStyle=s.c;g.beginPath();g.arc(ax,ay,9,0,7);g.fill();
+   g.fillStyle='#101408';g.beginPath();g.arc(ax+3,ay-2,2,0,7);g.fill()}
+  // meters
+  meter(c.x+8,c.y+58,pw-16,'hunger',p.hun);
+  meter(c.x+8,c.y+70,pw-16,'dirt',p.dirt);
+  // buttons
+  g.fillStyle='rgba(217,249,157,.15)';g.fillRect(c.x+4,c.y+PH-28,pw/2-8,24);
+  g.fillRect(c.x+pw/2+4,c.y+PH-28,pw/2-8,24);
+  g.fillStyle='#d9f99d';g.font='10px ui-monospace';g.textAlign='center';
+  g.fillText('FEED $'+s.f,c.x+pw/4,c.y+PH-12);
+  g.fillText('CLEAN $'+Math.ceil(s.f*.6),c.x+pw*3/4,c.y+PH-12);
+  if(p.breedT>0){g.fillStyle='#f9a8d4';g.textAlign='left';g.fillText('♥ '+Math.round(p.breedT/16*100)+'%',c.x+pw-52,c.y+16)}
+ });
+ // visitors path
+ g.strokeStyle='rgba(255,255,255,.08)';g.beginPath();g.moveTo(0,H-40);g.lineTo(W,H-40);g.stroke();
+ for(const v of visitors){g.fillStyle='#94a3b8';g.beginPath();g.arc(v.x,H-46,5,0,7);g.fill()}
+ for(const r of runaways){g.fillStyle=r.c;g.beginPath();g.arc(r.x,r.y,9,0,7);g.fill();
+  g.font='9px ui-monospace';g.textAlign='center';g.fillStyle='#f87171';g.fillText('!!',r.x,r.y-12)}
+ if(msgT>0){g.globalAlpha=Math.min(1,msgT);g.textAlign='center';g.fillStyle='#f4f8e8';
+  g.font='13px ui-monospace';g.fillText(msg,W/2,H-14);g.globalAlpha=1}
+ if(state==='menu')title('MENAGERIE','Feed and clean your animals — happy ones breed,','neglected ones ESCAPE. Three escapes = shut down.');
+ if(state==='over')title('SHUT DOWN','Lifetime earnings $'+Math.round(earned)+' · Best $'+best,'Tap to open a new zoo');
+}
+function meter(x,y,w,label,v){
+ g.fillStyle='rgba(255,255,255,.12)';g.fillRect(x,y,w,7);
+ g.fillStyle=v>.85?'#f87171':v>.6?'#fbbf24':'#86efac';g.fillRect(x,y,w*v,7);
+ g.fillStyle='rgba(255,255,255,.5)';g.font='8px ui-monospace';g.textAlign='left';g.fillText(label,x+w-34,y+6)}
+function title(a,b,c){g.fillStyle='rgba(16,20,8,.85)';g.fillRect(0,0,W,H);
+ g.fillStyle='#d9f99d';g.font='bold '+Math.min(46,W/9)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#f4f8e8';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(244,248,232,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

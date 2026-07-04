@@ -198,6 +198,34 @@
         transition: none
       }
     }
+
+    .mobile-notice {
+      display: none
+    }
+
+    @media (max-width:720px) {
+      body {
+        padding-bottom: 54px
+      }
+
+      .mobile-notice {
+        display: block;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 10;
+        background: var(--amber);
+        color: var(--ink);
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: .02em;
+        text-align: center;
+        line-height: 1.5;
+        padding: 10px 16px;
+        box-shadow: 0 -2px 12px rgba(0, 0, 0, .35)
+      }
+    }
   </style>
 </head>
 
@@ -314,12 +342,74 @@
       <p>Every fake note differs from the reference in exactly one detail. Three strikes at the till.</p>
       <div class="ctrl">fake / real</div>
     </a>
+    <!-- Next 10 -->
+    <a class="stub" href="menagerie/index.html"><span class="code" style="background:#3f6212">MG-21</span>
+      <h2>Menagerie</h2>
+      <p>A zoo in one sitting: feed, clean, breed. Neglect an animal and it escapes — three escapes and the inspectors
+        arrive.</p>
+      <div class="ctrl">tap to manage</div>
+    </a>
+    <a class="stub" href="vale/index.html"><span class="code" style="background:#166534">VL-22</span>
+      <h2>Vale</h2>
+      <p>A food web that runs without you: grass, grazers, hunters. You're only the weather. Keep the whole thing alive.
+      </p>
+      <div class="ctrl">rain · bolt · spawn</div>
+    </a>
+    <a class="stub" href="kingdomlet/index.html"><span class="code" style="background:#92400e">KD-23</span>
+      <h2>Kingdomlet</h2>
+      <p>A full RTS on one screen: shuffle six villagers between food, wood and gold; raise troops; topple endless
+        keeps.
+      </p>
+      <div class="ctrl">tap cards &amp; troops</div>
+    </a>
+    <a class="stub" href="herdhopper/index.html"><span class="code" style="background:#9a3412">HH-24</span>
+      <h2>Herdhopper</h2>
+      <p>The stampede never stops, and no animal tolerates a rider for long. Leap back to back before you're bucked.</p>
+      <div class="ctrl">tap to leap</div>
+    </a>
+    <a class="stub" href="foundry/index.html"><span class="code" style="background:#a16207">FD-25</span>
+      <h2>Foundry</h2>
+      <p>Ore pours out whether you're ready or not. Lay belts, route each color to its furnace, fill escalating orders.
+      </p>
+      <div class="ctrl">tap tiles to lay belts</div>
+    </a>
+    <a class="stub" href="floe/index.html"><span class="code" style="background:#0369a1">FL-26</span>
+      <h2>Floe</h2>
+      <p>Swipe to slide — no stopping on ice. Every level is generated and machine-proven solvable. They never run out.
+      </p>
+      <div class="ctrl">swipe</div>
+    </a>
+    <a class="stub" href="bloom/index.html"><span class="code" style="background:#4d7c0f">BL-27</span>
+      <h2>Bloom</h2>
+      <p>A bonsai grows in real time, wherever it likes. You hold only the shears: manage sunlight, sap, and balance.
+      </p>
+      <div class="ctrl">tap branches to prune</div>
+    </a>
+    <a class="stub" href="pheromone/index.html"><span class="code" style="background:#0f766e">PH-28</span>
+      <h2>Pheromone</h2>
+      <p>You can't command a single ant — only paint scent trails they'll follow. Route sugar home, swarm the spiders.
+      </p>
+      <div class="ctrl">draw trails</div>
+    </a>
+    <a class="stub" href="delve/index.html"><span class="code" style="background:#5b21b6">DV-29</span>
+      <h2>Delve</h2>
+      <p>A pocket roguelike: the dungeon only moves when you do. Bump to fight, loot, descend. It goes down forever.</p>
+      <div class="ctrl">swipe to step</div>
+    </a>
+    <a class="stub" href="spice/index.html"><span class="code" style="background:#b45309">SP-30</span>
+      <h2>Spice</h2>
+      <p>Prices drift, news moves markets, and the debt collector wants more than double every 20 days. Trade or die
+        broke.
+      </p>
+      <div class="ctrl">buy / sell</div>
+    </a>
   </main>
   <footer>© 2026 Gameral Inc. To submit your game, fill out <a
       href="https://docs.google.com/forms/d/e/1FAIpQLScjUTs6FhT5UoHFt27_Wq0vGaM2NAQWzmuuTUIKE_X6ivFkDw/viewform?usp=sharing&ouid=115584573151067542695"
       target="_blank" rel="noopener">this form</a> • By <a href="https://chaudhrytalha.carrd.co/" target="_blank"
       rel="noopener">Chaudhry Talha</a>
   </footer>
+  <div class="mobile-notice">❗ These games aren't optimized for mobile yet — play on a desktop or laptop.</div>
 </body>
 
 </html>

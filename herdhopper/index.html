@@ -1,0 +1,116 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Herdhopper</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#160f08;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// HERDHOPPER — the stampede never stops and no animal tolerates you for long.
+// Tap to leap along the herd; every back you land on starts a new buck timer.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const KINDS=[{n:'gazelle',c:'#eab676',w:44,h:26,sp:[210,260]},
+ {n:'buffalo',c:'#6d4c33',w:66,h:38,sp:[170,200]},
+ {n:'rhino',c:'#8d99ae',w:74,h:40,sp:[150,300]}]; // rhinos surge randomly
+let state='menu',hops=0,best=0,herd=[],mount=null,air=false,px=0,py=0,vx=0,vy=0,buckT=0,buckMax=0,camX=0,t=0,dust=[];
+function reset(){herd=[];camX=0;hops=0;
+ for(let i=0;i<9;i++)addBeast(i*130+80);
+ mount=herd[2];air=false;setBuck()}
+function setBuck(){buckMax=Math.max(1.5,3.4-hops*.05);buckT=buckMax}
+function addBeast(x){const k=KINDS[Math.random()*KINDS.length|0];
+ herd.push({k,x,sp:k.sp[0]+Math.random()*(k.sp[1]-k.sp[0]),surge:0,ph:Math.random()*7})}
+const GY=()=>H*.78;
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ if(!air&&mount){air=true;
+  px=mount.x;py=GY()-mount.k.h-10;
+  vx=mount.sp+190;vy=-540;mount=null}});
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function update(dt){if(state!=='play')return;
+ // herd runs
+ for(const b of herd){
+  if(b.k.n==='rhino'){if(Math.random()<dt*.5)b.surge=1.2;
+   b.surge=Math.max(0,b.surge-dt)}
+  b.x+=(b.sp+(b.surge>0?130:0))*dt;
+  if(Math.random()<dt*2)dust.push({x:b.x-b.k.w/2,y:GY(),a:.6})}
+ // recycle beasts around the action
+ const ax=air?px:(mount?mount.x:camX+W/2);
+ herd=herd.filter(b=>b.x>ax-600);
+ let maxX=0;for(const b of herd)maxX=Math.max(maxX,b.x);
+ while(herd.length<11)addBeast(maxX+=90+Math.random()*120);
+ if(!air&&mount){
+  buckT-=dt;px=mount.x;py=GY()-mount.k.h-10;
+  if(buckT<=0){ // thrown!
+   air=true;vx=mount.sp*.5;vy=-620;mount.thrown=true;mount=null;thrownFlag=true}
+ }else if(air){
+  px+=vx*dt;py+=vy*dt;vy+=1250*dt;
+  if(vy>0){ // falling: check landings
+   for(const b of herd){const top=GY()-b.k.h;
+    if(py>top-14&&py<top+10&&Math.abs(px-b.x)<b.k.w/2){
+     if(thrownFlag){thrownFlag=false} // even a throw can be saved by luck
+     mount=b;air=false;hops++;setBuck();
+     for(let i=0;i<5;i++)dust.push({x:px,y:top,a:.8});
+     break}}
+   if(air&&py>GY()-4){state='over';best=Math.max(best,hops);
+    for(let i=0;i<12;i++)dust.push({x:px,y:GY(),a:1})}
+  }
+ }
+ camX+=((air?px:(mount?mount.x:camX))-W*.38-camX)*Math.min(1,dt*5);
+ for(const d of dust)d.a-=dt*1.2;dust=dust.filter(d=>d.a>0);
+}
+let thrownFlag=false;
+function draw(){
+ // savannah sky
+ const bg=g.createLinearGradient(0,0,0,H);
+ bg.addColorStop(0,'#3d2317');bg.addColorStop(.6,'#8a4a24');bg.addColorStop(.78,'#c98a4b');bg.addColorStop(.8,'#7a5230');bg.addColorStop(1,'#5c3d22');
+ g.fillStyle=bg;g.fillRect(0,0,W,H);
+ g.fillStyle='#f4c569';g.beginPath();g.arc(W*.75,H*.28,40,0,7);g.fill();
+ // acacia silhouettes (parallax)
+ g.fillStyle='rgba(30,15,8,.7)';
+ for(let i=0;i<4;i++){const x=((i*340-camX*.3)%(W+300)+W+300)%(W+300)-150;
+  g.fillRect(x,H*.6,5,H*.18);g.beginPath();g.ellipse(x+2,H*.6,46,12,0,0,7);g.fill()}
+ const gy=GY();
+ g.fillStyle='#4a3018';g.fillRect(0,gy,W,H-gy);
+ g.strokeStyle='rgba(0,0,0,.2)';
+ for(let i=0;i<10;i++){const x=((i*160-camX)%(W+160)+W+160)%(W+160)-80;
+  g.beginPath();g.moveTo(x,gy+14);g.lineTo(x+30,gy+14);g.stroke()}
+ // dust
+ for(const d of dust){g.globalAlpha=d.a;g.fillStyle='#d9b88a';
+  g.beginPath();g.arc(d.x-camX,d.y-(1-d.a)*10,5+(1-d.a)*8,0,7);g.fill()}
+ g.globalAlpha=1;
+ // herd
+ for(const b of herd){const x=b.x-camX,k=b.k;
+  if(x<-100||x>W+100)continue;
+  const bob=Math.sin(t*14+b.ph)*3;
+  g.fillStyle=k.c;
+  g.beginPath();g.ellipse(x,gy-k.h/2+bob,k.w/2,k.h/2,0,0,7);g.fill();
+  g.beginPath();g.arc(x+k.w/2,gy-k.h+4+bob,k.h*.32,0,7);g.fill();
+  if(k.n==='rhino'){g.fillStyle='#e8e0d0';
+   g.beginPath();g.moveTo(x+k.w/2+10,gy-k.h+2);g.lineTo(x+k.w/2+22,gy-k.h-8);g.lineTo(x+k.w/2+14,gy-k.h+8);g.fill()}
+  g.strokeStyle=k.c;g.lineWidth=4;
+  const leg=Math.sin(t*14+b.ph)*8;
+  g.beginPath();g.moveTo(x-k.w*.3,gy-8);g.lineTo(x-k.w*.3+leg,gy);
+  g.moveTo(x+k.w*.3,gy-8);g.lineTo(x+k.w*.3-leg,gy);g.stroke();
+  if(b.surge>0){g.fillStyle='#f87171';g.font='10px ui-monospace';g.textAlign='center';
+   g.fillText('!!',x,gy-k.h-16)}
+ }
+ // rider
+ if(state==='play'||state==='over'){
+  const rx=(air?px:(mount?mount.x:px))-camX,ry=air?py:(mount?GY()-mount.k.h-10:py);
+  g.fillStyle='#ffe8c2';g.beginPath();g.arc(rx,ry-8,7,0,7);g.fill();
+  g.fillStyle='#c0504d';g.fillRect(rx-5,ry-2,10,12);
+  // buck ring
+  if(!air&&mount){g.strokeStyle=buckT/buckMax<.35?'#f87171':'#fde68a';g.lineWidth=3;
+   g.beginPath();g.arc(rx,ry-28,10,-1.57,-1.57+6.283*(buckT/buckMax));g.stroke()}}
+ // HUD
+ g.textAlign='center';g.fillStyle='#ffe8c2';
+ g.font='bold 34px ui-monospace,Menlo,monospace';g.fillText(hops,W/2,54);
+ if(state==='menu')title('HERDHOPPER','The stampede never stops. Tap to leap along it —','the ring shows how long each animal tolerates you.');
+ if(state==='over')title('TRAMPLED','Rode '+hops+' backs · Best '+best,'Tap to rejoin the stampede');
+}
+function title(a,b,c){g.fillStyle='rgba(22,15,8,.8)';g.fillRect(0,0,W,H);
+ g.fillStyle='#f4c569';g.font='bold '+Math.min(46,W/9)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#ffe8c2';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(255,232,194,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

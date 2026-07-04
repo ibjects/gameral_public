@@ -1,0 +1,125 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Vale</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0a0f0a;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// VALE — a living food web: grass feeds grazers, grazers feed hunters, and it all
+// runs WITHOUT you. You are only the weather god. Spend mana to keep it from collapsing.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0);grid()}
+let CS=26,GC,GR,grass=[];
+function grid(){GC=Math.ceil(W/CS);GR=Math.ceil((H-92)/CS);grass=new Array(GC*GR).fill(.5)}
+onresize=fit;fit();
+let state='menu',years=0,best=0,herb=[],pred=[],mana=60,tool='rain',ptr=null,t=0,peak=0,msg='',msgT=0;
+function reset(){years=0;mana=60;tool='rain';peak=0;
+ grass=grass.map(()=>.3+Math.random()*.5);
+ herb=[];pred=[];
+ for(let i=0;i<14;i++)herb.push(mk(1));
+ for(let i=0;i<3;i++)pred.push(mk(2))}
+function mk(kind,x,y){return{x:x??Math.random()*W,y:y??92+Math.random()*(H-112),
+ a:Math.random()*7,e:6+Math.random()*3,k:kind}}
+function say(s){msg=s;msgT=2}
+const TOOLS=[['rain','RAIN',0],['bolt','BOLT',22],['herb','+GRAZER',16],['pred','+HUNTER',24]];
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ if(e.clientY<86){const i=Math.floor(e.clientX/(W/4));
+  if(TOOLS[i]){tool=TOOLS[i][0];say(TOOLS[i][1].toLowerCase()+' selected')}return}
+ ptr={x:e.clientX,y:e.clientY};act(true)});
+addEventListener('pointermove',e=>{if(ptr)ptr={x:e.clientX,y:e.clientY}});
+addEventListener('pointerup',()=>ptr=null);addEventListener('pointercancel',()=>ptr=null);
+function act(tap){if(!ptr)return;
+ if(tool==='bolt'&&tap&&mana>=22){mana-=22;
+  for(const a of[...herb,...pred])if(Math.hypot(a.x-ptr.x,a.y-ptr.y)<46)a.dead=true;
+  boltFx={x:ptr.x,y:ptr.y,a:1}}
+ if(tool==='herb'&&tap&&mana>=16){mana-=16;herb.push(mk(1,ptr.x,ptr.y))}
+ if(tool==='pred'&&tap&&mana>=24){mana-=24;pred.push(mk(2,ptr.x,ptr.y))}}
+let boltFx=null,last=0;
+function loop(ts){const dt=Math.min(.05,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function gi(x,y){const c=Math.floor(x/CS),r=Math.floor((y-92)/CS);
+ return(c<0||r<0||c>=GC||r>=GR)?-1:r*GC+c}
+function update(dt){if(state!=='play')return;
+ years+=dt/6;msgT=Math.max(0,msgT-dt);
+ mana=Math.min(100,mana+dt*7);
+ if(boltFx){boltFx.a-=dt*3;if(boltFx.a<=0)boltFx=null}
+ // grass regrows slowly, faster under rain
+ for(let i=0;i<grass.length;i++)grass[i]=Math.min(1,grass[i]+dt*.015);
+ if(tool==='rain'&&ptr&&mana>0){mana=Math.max(0,mana-dt*14);
+  for(let i=0;i<grass.length;i++){const c=i%GC,r=(i/GC)|0;
+   const x=c*CS+CS/2,y=92+r*CS+CS/2;
+   if(Math.hypot(x-ptr.x,y-ptr.y)<70)grass[i]=Math.min(1,grass[i]+dt*.9)}}
+ // herbivores
+ for(const a of herb){a.a+=(Math.random()-.5)*dt*5;
+  a.x+=Math.cos(a.a)*46*dt;a.y+=Math.sin(a.a)*46*dt;
+  bound(a);
+  const i=gi(a.x,a.y);
+  if(i>=0&&grass[i]>.15){const bite=Math.min(grass[i],dt*.5);grass[i]-=bite;a.e+=bite*7}
+  a.e-=dt*.8;
+  if(a.e>14){a.e=6;herb.push(mk(1,a.x+8,a.y))}
+  if(a.e<=0)a.dead=true}
+ // predators
+ for(const p of pred){
+  let tgt=null,bd=140;
+  for(const a of herb)if(!a.dead){const d=Math.hypot(a.x-p.x,a.y-p.y);if(d<bd){bd=d;tgt=a}}
+  if(tgt){const d=Math.hypot(tgt.x-p.x,tgt.y-p.y)||1;
+   p.x+=(tgt.x-p.x)/d*64*dt;p.y+=(tgt.y-p.y)/d*64*dt;
+   if(d<10){tgt.dead=true;p.e+=5}}
+  else{p.a+=(Math.random()-.5)*dt*4;p.x+=Math.cos(p.a)*40*dt;p.y+=Math.sin(p.a)*40*dt}
+  bound(p);p.e-=dt*.75;
+  if(p.e>16){p.e=7;pred.push(mk(2,p.x+8,p.y))}
+  if(p.e<=0)p.dead=true}
+ herb=herb.filter(a=>!a.dead);pred=pred.filter(a=>!a.dead);
+ // soft caps so the sim stays smooth
+ if(herb.length>90)herb.length=90;
+ if(pred.length>30)pred.length=30;
+ peak=Math.max(peak,herb.length+pred.length);
+ if(herb.length===0&&pred.length===0){state='over';best=Math.max(best,Math.floor(years))}
+ else if(herb.length===0)say('the grazers are GONE — hunters are starving!');
+ else if(pred.length===0&&Math.floor(t)%5===0)say('no hunters — grazers will strip the vale');
+}
+function bound(a){if(a.x<8)a.x=8,a.a=Math.random()*7;if(a.x>W-8)a.x=W-8,a.a=Math.random()*7;
+ if(a.y<100)a.y=100,a.a=Math.random()*7;if(a.y>H-12)a.y=H-12,a.a=Math.random()*7}
+function draw(){
+ g.fillStyle='#0a0f0a';g.fillRect(0,0,W,H);
+ // grass field
+ for(let i=0;i<grass.length;i++){const c=i%GC,r=(i/GC)|0,v=grass[i];
+  g.fillStyle='rgb('+(18+v*20)+','+(34+v*90)+','+(20+v*26)+')';
+  g.fillRect(c*CS,92+r*CS,CS-1,CS-1)}
+ // creatures
+ for(const a of herb){g.fillStyle='#f5efdc';
+  g.beginPath();g.arc(a.x,a.y,5,0,7);g.fill()}
+ for(const p of pred){g.fillStyle='#ef6a5a';
+  g.save();g.translate(p.x,p.y);g.rotate(p.a);
+  g.beginPath();g.moveTo(8,0);g.lineTo(-6,5);g.lineTo(-6,-5);g.closePath();g.fill();g.restore()}
+ if(boltFx){g.globalAlpha=boltFx.a;g.strokeStyle='#fef08a';g.lineWidth=3;
+  g.beginPath();g.moveTo(boltFx.x,0);
+  g.lineTo(boltFx.x+14,boltFx.y*.4);g.lineTo(boltFx.x-8,boltFx.y*.7);g.lineTo(boltFx.x,boltFx.y);g.stroke();
+  g.beginPath();g.arc(boltFx.x,boltFx.y,46,0,7);g.stroke();g.globalAlpha=1}
+ if(ptr&&tool==='rain'&&state==='play'){g.strokeStyle='rgba(125,211,252,.6)';
+  g.beginPath();g.arc(ptr.x,ptr.y,70,0,7);g.stroke();
+  g.fillStyle='rgba(125,211,252,.7)';
+  for(let i=0;i<6;i++)g.fillRect(ptr.x-40+i*15,ptr.y-50+((t*160+i*20)%50),2,7)}
+ // toolbar
+ g.fillStyle='rgba(0,0,0,.5)';g.fillRect(0,0,W,86);
+ TOOLS.forEach((tl,i)=>{const x=i*W/4;
+  g.fillStyle=tool===tl[0]?'rgba(134,239,172,.22)':'rgba(255,255,255,.05)';
+  g.fillRect(x+3,26,W/4-6,42);
+  g.fillStyle=mana>=tl[2]?'#d1fae5':'rgba(209,250,229,.35)';
+  g.font='bold 11px ui-monospace';g.textAlign='center';
+  g.fillText(tl[1],x+W/8,46);g.font='9px ui-monospace';
+  g.fillText(tl[2]?tl[2]+' mana':'drains mana',x+W/8,60)});
+ // mana + stats
+ g.fillStyle='rgba(255,255,255,.15)';g.fillRect(10,10,W-20,8);
+ g.fillStyle='#7dd3fc';g.fillRect(10,10,(W-20)*mana/100,8);
+ g.textAlign='left';g.fillStyle='#d1fae5';g.font='11px ui-monospace';
+ g.fillText('year '+Math.floor(years)+' · grazers '+herb.length+' · hunters '+pred.length,10,80);
+ if(msgT>0){g.globalAlpha=Math.min(1,msgT);g.textAlign='center';g.fillStyle='#fef08a';
+  g.font='12px ui-monospace';g.fillText(msg,W/2,H-10);g.globalAlpha=1}
+ if(state==='menu')title('VALE','A food web that runs without you: grass → grazers → hunters.','You are only the weather. Keep it alive.');
+ if(state==='over')title('SILENT VALE','Sustained '+Math.floor(years)+' years · peak '+peak+' creatures · best '+best,'Tap to seed a new world');
+}
+function title(a,b,c){g.fillStyle='rgba(10,15,10,.85)';g.fillRect(0,0,W,H);
+ g.fillStyle='#86efac';g.font='bold '+Math.min(56,W/7)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#d1fae5';g.font='13px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(209,250,229,.6)';g.fillText(c,W/2,H*.4+62)}
+</script></body></html>
