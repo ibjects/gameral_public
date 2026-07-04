@@ -1,0 +1,113 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Inkline</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#101418;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// INKLINE — you get one stroke of ink per drop. Draw a ramp, lift your finger,
+// and the ball falls. Guide it to the star, around the thorns. Ink is rationed.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const INK='#93c5fd',BAD='#f87171',STAR='#fde047';
+let state='menu',level=1,lives=3,best=0,phase,ball,start,goal,hazards,stroke,budget,used,t=0,dropT=0;
+function budgetFor(){return Math.max(220,Math.min(W,520)*1.1-level*14)}
+function genLevel(){
+ start={x:40+Math.random()*(W-80),y:70};
+ goal={x:40+Math.random()*(W-80),y:H-90};
+ hazards=[];const n=Math.min(1+Math.floor(level/2),5);
+ for(let i=0;i<50&&hazards.length<n;i++){
+  const h={x:30+Math.random()*(W-60),y:H*.28+Math.random()*H*.5,r:20+Math.random()*22};
+  if(Math.hypot(h.x-start.x,h.y-start.y)>h.r+70&&Math.hypot(h.x-goal.x,h.y-goal.y)>h.r+60&&
+     hazards.every(o=>Math.hypot(h.x-o.x,h.y-o.y)>h.r+o.r+30))hazards.push(h)}
+ resetShot()}
+function resetShot(){phase='draw';stroke=[];used=0;budget=budgetFor();
+ ball={x:start.x,y:start.y,vx:0,vy:0}}
+function fullReset(){level=1;lives=3;genLevel();state='play'}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){fullReset();return}
+ if(phase==='draw'){stroke=[{x:e.clientX,y:e.clientY}];used=0}});
+addEventListener('pointermove',e=>{
+ if(state!=='play'||phase!=='draw'||!stroke.length)return;
+ const p=stroke[stroke.length-1],d=Math.hypot(e.clientX-p.x,e.clientY-p.y);
+ if(d>7&&used+d<=budget){stroke.push({x:e.clientX,y:e.clientY});used+=d}});
+addEventListener('pointerup',()=>{
+ if(state==='play'&&phase==='draw'&&stroke.length>1){phase='arm';dropT=.5}});
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function update(dt){if(state!=='play')return;
+ if(phase==='arm'){dropT-=dt;if(dropT<=0)phase='run';return}
+ if(phase!=='run')return;
+ const steps=3,h=dt/steps;
+ for(let s=0;s<steps;s++){
+  ball.vy+=950*h;ball.x+=ball.vx*h;ball.y+=ball.vy*h;
+  const r=10;
+  if(ball.x<r){ball.x=r;ball.vx*=-.6}
+  if(ball.x>W-r){ball.x=W-r;ball.vx*=-.6}
+  // stroke collision
+  for(let i=0;i<stroke.length-1;i++){
+   const a=stroke[i],b=stroke[i+1];
+   const abx=b.x-a.x,aby=b.y-a.y,l2=abx*abx+aby*aby||1;
+   let u=((ball.x-a.x)*abx+(ball.y-a.y)*aby)/l2;u=Math.max(0,Math.min(1,u));
+   const cx=a.x+abx*u,cy=a.y+aby*u,dx=ball.x-cx,dy=ball.y-cy,d=Math.hypot(dx,dy);
+   if(d<r&&d>0.001){
+    const nx=dx/d,ny=dy/d;
+    ball.x=cx+nx*r;ball.y=cy+ny*r;
+    const vn=ball.vx*nx+ball.vy*ny;
+    if(vn<0){ball.vx-=(1+.5)*vn*nx;ball.vy-=(1+.5)*vn*ny;
+     ball.vx*=.995;ball.vy*=.995}
+   }}
+  for(const hz of hazards)
+   if(Math.hypot(ball.x-hz.x,ball.y-hz.y)<hz.r+r)return lose();
+  if(Math.hypot(ball.x-goal.x,ball.y-goal.y)<24){level++;genLevel();return}
+  if(ball.y>H+40)return lose();
+ }
+}
+function lose(){lives--;
+ if(lives<=0){best=Math.max(best,level-1);state='over'}
+ else resetShot()}
+function draw(){
+ g.fillStyle='#101418';g.fillRect(0,0,W,H);
+ // grid paper
+ g.strokeStyle='rgba(255,255,255,.04)';g.lineWidth=1;
+ for(let x=0;x<W;x+=40){g.beginPath();g.moveTo(x,0);g.lineTo(x,H);g.stroke()}
+ for(let y=0;y<H;y+=40){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke()}
+ if(state==='play'||state==='over'){
+  // hazards
+  for(const h of hazards){g.fillStyle='rgba(248,113,113,.15)';
+   g.beginPath();g.arc(h.x,h.y,h.r,0,7);g.fill();
+   g.strokeStyle=BAD;g.lineWidth=2;g.stroke();
+   for(let i=0;i<8;i++){const an=i*Math.PI/4+t*.5;
+    g.beginPath();g.moveTo(h.x+Math.cos(an)*h.r,h.y+Math.sin(an)*h.r);
+    g.lineTo(h.x+Math.cos(an)*(h.r+7),h.y+Math.sin(an)*(h.r+7));g.stroke()}}
+  // goal star
+  g.save();g.translate(goal.x,goal.y);g.rotate(t);g.fillStyle=STAR;
+  g.beginPath();for(let i=0;i<10;i++){const rr=i%2?6:14,an=i*Math.PI/5;
+   g.lineTo(Math.cos(an)*rr,Math.sin(an)*rr)}g.closePath();g.fill();g.restore();
+  // stroke
+  if(stroke.length>1){g.strokeStyle=INK;g.lineWidth=5;g.lineCap='round';g.lineJoin='round';
+   g.beginPath();g.moveTo(stroke[0].x,stroke[0].y);
+   for(const p of stroke)g.lineTo(p.x,p.y);g.stroke()}
+  // ball + drop marker
+  if(phase==='draw'){g.strokeStyle='rgba(255,255,255,.4)';g.setLineDash([4,6]);
+   g.beginPath();g.arc(start.x,start.y,12,0,7);g.stroke();g.setLineDash([])}
+  g.fillStyle='#fff';g.beginPath();g.arc(ball.x,ball.y,10,0,7);g.fill();
+  // ink budget bar
+  const bw=Math.min(240,W-40);
+  g.fillStyle='rgba(255,255,255,.15)';g.fillRect(W/2-bw/2,H-30,bw,8);
+  g.fillStyle=INK;g.fillRect(W/2-bw/2,H-30,bw*Math.max(0,(budget-used))/budget,8);
+  // HUD
+  g.textAlign='center';g.fillStyle='#eef3f8';
+  g.font='bold 22px ui-monospace,Menlo,monospace';g.fillText('LV '+level,W/2,40);
+  g.font='13px ui-monospace,Menlo,monospace';g.fillStyle='rgba(238,243,248,.6)';
+  g.fillText('♥'.repeat(Math.max(0,lives)),W/2,62);
+  if(phase==='draw'){g.fillText('draw a ramp, then lift your finger',W/2,H-46)}
+ }
+ if(state==='menu')title('INKLINE','One stroke of ink per drop.','Draw a ramp · lift finger · ball falls. Reach the star.');
+ if(state==='over')title('INK DRY','Cleared '+(level-1)+' levels · Best '+best,'Tap for a fresh pen');
+}
+function title(a,b,c){g.fillStyle='rgba(16,20,24,.8)';g.fillRect(0,0,W,H);
+ g.fillStyle=INK;g.font='bold '+Math.min(52,W/8)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#eef3f8';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(238,243,248,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

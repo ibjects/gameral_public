@@ -1,0 +1,73 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Halve</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#140d12;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// HALVE — a blade sweeps back and forth. Tap to cut the bar EXACTLY in half.
+// Your error is trimmed off the bar. When it's too thin to cut, it's over.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const AC='#f9a8d4',GOLD='#fbbf24';
+let state='menu',score=0,best=0,cuts=0,bw,t=0,freq,scraps=[],flash=0,msg='',msgT=0,streak=0;
+function reset(){bw=Math.min(W*.8,420);freq=1.1;cuts=0;score=0;scraps=[];streak=0}
+const BY=()=>H*.52,BH=88;
+function knifeX(){return W/2+Math.sin(t*freq)*Math.min(W*.46,bwStart()*.75)}
+function bwStart(){return Math.min(W*.8,420)}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ const kx=knifeX(),bx=(W-bw)/2;
+ if(kx<bx||kx>bx+bw){miss();return}
+ const left=kx-bx,err=Math.abs(left-bw/2);
+ cuts++;freq+=.14;
+ // scraps fly
+ scraps.push({x:bx,w:left,vy:-140,vx:-120,y:BY(),a:1,rot:0,vr:-2});
+ scraps.push({x:kx,w:bw-left,vy:-140,vx:120,y:BY(),a:1,rot:0,vr:2});
+ const gain=Math.max(1,Math.round(100-err*2));
+ if(err<4){streak++;score+=gain*(1+streak);say('PERFECT ×'+(1+streak));flash=1}
+ else{streak=0;score+=gain;say(err<12?'clean':'-'+Math.round(err*2)+'px')}
+ bw=Math.max(0,bw-2*err)*0.92; // trim error + a natural shave so it always ends
+ if(bw<30){state='over';best=Math.max(best,score)}
+});
+function miss(){streak=0;bw*=.8;say('MISSED THE BAR');if(bw<30){state='over';best=Math.max(best,score)}}
+function say(s){msg=s;msgT=1}
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;
+ flash=Math.max(0,flash-dt*3);msgT=Math.max(0,msgT-dt);
+ for(const s of scraps){s.y+=s.vy*dt;s.vy+=500*dt;s.x+=s.vx*dt;s.a-=dt*1.4;s.rot+=s.vr*dt}
+ scraps=scraps.filter(s=>s.a>0);
+ draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function draw(){
+ g.fillStyle='#140d12';g.fillRect(0,0,W,H);
+ if(flash>0){g.fillStyle='rgba(251,191,36,'+flash*.25+')';g.fillRect(0,0,W,H)}
+ const bx=(W-bw)/2,by=BY();
+ // center guide
+ g.setLineDash([3,7]);g.strokeStyle='rgba(249,168,212,.35)';g.beginPath();g.moveTo(W/2,by-BH);g.lineTo(W/2,by+BH*.7);g.stroke();g.setLineDash([]);
+ // scraps
+ for(const s of scraps){g.save();g.globalAlpha=Math.max(0,s.a);g.translate(s.x+s.w/2,s.y);g.rotate(s.rot);
+  g.fillStyle='#3d2333';g.fillRect(-s.w/2,-BH/2,s.w,BH);g.restore()}
+ // bar
+ if(state!=='over'||bw>0){
+  const grd=g.createLinearGradient(bx,0,bx+bw,0);grd.addColorStop(0,'#5b2e49');grd.addColorStop(1,'#7c3f63');
+  g.fillStyle=grd;g.fillRect(bx,by-BH/2,bw,BH);
+  g.strokeStyle=AC;g.lineWidth=2;g.strokeRect(bx,by-BH/2,bw,BH);
+ }
+ // knife
+ if(state==='play'){const kx=knifeX();
+  g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();g.moveTo(kx,by-BH/2-46);g.lineTo(kx,by+BH/2+18);g.stroke();
+  g.fillStyle='#fff';g.beginPath();g.moveTo(kx-9,by-BH/2-58);g.lineTo(kx+9,by-BH/2-58);g.lineTo(kx,by-BH/2-40);g.closePath();g.fill()}
+ // HUD
+ g.textAlign='center';g.fillStyle='#f6e7ef';
+ g.font='bold 34px ui-monospace,Menlo,monospace';g.fillText(score,W/2,54);
+ g.font='13px ui-monospace,Menlo,monospace';g.fillStyle='rgba(246,231,239,.55)';g.fillText('cuts '+cuts,W/2,76);
+ if(msgT>0){g.globalAlpha=Math.min(1,msgT*2);g.fillStyle=msg.startsWith('PERFECT')?GOLD:AC;
+  g.font='bold 22px ui-monospace,Menlo,monospace';g.fillText(msg,W/2,by-BH/2-80);g.globalAlpha=1}
+ if(state==='menu')title('HALVE','A blade sweeps. Tap to cut the bar in half.','Your error gets trimmed away — stay above the crumbs.');
+ if(state==='over')title('CRUMBS','Score '+score+' in '+cuts+' cuts · Best '+best,'Tap for a fresh bar');
+}
+function title(a,b,c){g.fillStyle='rgba(20,13,18,.75)';g.fillRect(0,0,W,H);
+ g.fillStyle=AC;g.font='bold '+Math.min(52,W/8)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#f6e7ef';g.font='15px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(246,231,239,.6)';g.fillText(c,W/2,H*.4+66)}
+</script></body></html>

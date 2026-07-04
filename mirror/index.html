@@ -1,0 +1,97 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Mirror</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0e0c14;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// MIRROR — two runners, one tap. The top runner lives on the ceiling.
+// Both jump at once, so one timing must clear two worlds. And never jump into a bar.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const BOT='#f472b6',TOP='#22d3ee';
+const G=2400,J=760,RS=26;
+let state='menu',score=0,best=0,spd=290,obs=[],run=[{y:0,vy:0,ground:true},{y:0,vy:0,ground:true}],lastX=0,t=0;
+const gy1=()=>H*.84, gy2=()=>H*.16, RX=()=>W*.26;
+function reset(){spd=290;obs=[];score=0;
+ run=[{y:0,vy:0,ground:true},{y:0,vy:0,ground:true}]; // y = offset from surface (positive = away)
+ lastX=W+100;seed()}
+function seed(){for(let i=0;i<4;i++)addObs()}
+function addObs(){
+ const gap=Math.random()<.3?(.02+Math.random()*.1):(0.85+Math.random()*.9); // near-simultaneous or well apart
+ lastX+=spd*gap+120;
+ const track=Math.random()<.5?0:1;
+ const bar=score>10&&Math.random()<.22;
+ obs.push({x:lastX,track,bar,c:false})}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ for(const r of run)if(r.ground){r.vy=J;r.ground=false}});
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function update(dt){if(state!=='play')return;
+ spd+=dt*7;
+ for(const r of run){if(!r.ground){r.y+=r.vy*dt;r.vy-=G*dt;
+  if(r.y<=0){r.y=0;r.vy=0;r.ground=true}}}
+ for(const o of obs){o.x-=spd*dt;
+  if(!o.c&&o.x<RX()-30){o.c=true;score++}}
+ while(obs.length&&obs[0].x<-80)obs.shift();
+ lastX-=spd*dt;
+ if(obs.length<7)addObs();
+ // collisions
+ for(const o of obs){
+  if(Math.abs(o.x-RX())>RS+14)continue;
+  const r=run[o.track];
+  if(!o.bar){ // spike on the surface: must be airborne enough
+   if(r.y<34)return die();
+  }else{ // hover bar: must NOT be jumping into it (stay low)
+   if(r.y>26&&r.y<120)return die();
+  }
+ }
+}
+function die(){state='over';best=Math.max(best,score)}
+function drawRunner(i){
+ const r=run[i],x=RX();
+ const y=i===0?gy1()-RS/2-r.y:gy2()+RS/2+r.y;
+ g.fillStyle=i===0?BOT:TOP;
+ g.save();g.translate(x,y);
+ if(!r.ground)g.rotate((i===0?1:-1)*t*9%6.28);
+ g.fillRect(-RS/2,-RS/2,RS,RS);
+ g.fillStyle='#0e0c14';
+ const ey=i===0?-4:-4;
+ g.fillRect(2,ey,5,5);g.restore();
+}
+function draw(){
+ g.fillStyle='#0e0c14';g.fillRect(0,0,W,H);
+ // mirror seam
+ g.strokeStyle='rgba(255,255,255,.12)';g.setLineDash([2,8]);
+ g.beginPath();g.moveTo(0,H/2);g.lineTo(W,H/2);g.stroke();g.setLineDash([]);
+ // grounds
+ g.fillStyle='rgba(244,114,182,.9)';g.fillRect(0,gy1(),W,3);
+ g.fillStyle='rgba(34,211,238,.9)';g.fillRect(0,gy2()-3,W,3);
+ // parallax dots
+ g.fillStyle='rgba(255,255,255,.12)';
+ for(let i=0;i<14;i++){const x=(i*160-(t*120)%160+160)%(W+40)-20;
+  g.fillRect(x,gy1()+14,3,3);g.fillRect(x+60,gy2()-18,3,3)}
+ // obstacles
+ for(const o of obs){
+  const bottom=o.track===0,base=bottom?gy1():gy2(),s=bottom?-1:1,c=bottom?BOT:TOP;
+  g.fillStyle=c;
+  if(!o.bar){ // spike
+   g.beginPath();g.moveTo(o.x-16,base);g.lineTo(o.x+16,base);g.lineTo(o.x,base+s*34);g.closePath();g.fill();
+  }else{ // hover bar (don't jump!)
+   g.fillRect(o.x-20,base+s*58,40,10);
+   g.strokeStyle=c;g.setLineDash([3,4]);g.beginPath();
+   g.moveTo(o.x-20,base);g.lineTo(o.x-20,base+s*58);g.moveTo(o.x+20,base);g.lineTo(o.x+20,base+s*58);g.stroke();g.setLineDash([]);
+  }}
+ drawRunner(0);drawRunner(1);
+ // HUD
+ g.textAlign='center';g.fillStyle='#f1eefc';
+ g.font='bold 34px ui-monospace,Menlo,monospace';g.fillText(score,W/2,H/2+12);
+ if(state==='menu')title('MIRROR','One tap jumps both runners at once.','Hop the spikes · duck under (don\'t jump at) the bars');
+ if(state==='over')title('OUT OF SYNC','Score '+score+' · Best '+best,'Tap to re-run');
+}
+function title(a,b,c){g.fillStyle='rgba(14,12,20,.8)';g.fillRect(0,0,W,H);
+ g.fillStyle='#f1eefc';g.font='bold '+Math.min(52,W/8)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(241,238,252,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

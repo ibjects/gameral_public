@@ -1,0 +1,71 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Breathe</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#07131a;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// BREATHE — hold anywhere to inflate, release to deflate. Fit the bubble inside each gate's band.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const AC='#5eead4',BAD='#fb7185';
+let state='menu',score=0,best=0,hold=false,r=40,walls=[],speed=140,tPulse=0,shake=0;
+function reset(){r=40;walls=[];speed=140;score=0;spawn(W+80)}
+function spawn(x){const maxG=Math.min(H/2-60,170);const G=60+Math.random()*(maxG-60);walls.push({x,G,passed:false})}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state==='menu'||state==='over'){reset();state='play';hold=true;return}
+ hold=true});
+addEventListener('pointerup',()=>hold=false);
+addEventListener('pointercancel',()=>hold=false);
+let last=0;
+function loop(t){const dt=Math.min(.033,(t-last)/1000||0);last=t;update(dt);draw(dt);requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+const PX=()=>W*0.32, PY=()=>H/2, BAND=46;
+function update(dt){tPulse+=dt;shake=Math.max(0,shake-dt*6);
+ if(state!=='play')return;
+ r+=(hold?95:-115)*dt; r=Math.max(14,Math.min(H/2-30,r));
+ speed+=dt*3.5;
+ for(const w of walls)w.x-=speed*dt;
+ const lastW=walls[walls.length-1];
+ if(!lastW||lastW.x<W-Math.max(230,340-score*4))spawn(W+40);
+ for(const w of walls){
+  if(!w.passed&&w.x<PX()){w.passed=true;
+   if(r<=w.G&&r>=w.G-BAND){score++;}
+   else{state='over';best=Math.max(best,score);shake=1;}
+  }}
+ walls=walls.filter(w=>w.x>-40);
+}
+function draw(){
+ g.fillStyle='#07131a';g.fillRect(0,0,W,H);
+ // drifting bubbles background
+ g.globalAlpha=.06;g.fillStyle=AC;
+ for(let i=0;i<10;i++){const bx=(i*173+tPulse*20*(1+i%3))%(W+60)-30,by=(i*97)%H;g.beginPath();g.arc(bx,by,8+i%5*4,0,7);g.fill()}
+ g.globalAlpha=1;
+ const px=PX()+(shake?Math.sin(tPulse*80)*6*shake:0),py=PY();
+ for(const w of walls){
+  g.fillStyle='#10222d';
+  g.fillRect(w.x-9,0,18,py-w.G);g.fillRect(w.x-9,py+w.G,18,H);
+  g.strokeStyle=AC;g.lineWidth=2;
+  g.strokeRect(w.x-9,0,18,py-w.G);g.strokeRect(w.x-9,py+w.G,18,H-(py+w.G));
+  // minimum-size marks (bubble must be at least this big)
+  const m=w.G-BAND;g.setLineDash([4,5]);g.strokeStyle='rgba(94,234,212,.5)';
+  g.beginPath();g.moveTo(w.x-14,py-m);g.lineTo(w.x+14,py-m);g.moveTo(w.x-14,py+m);g.lineTo(w.x+14,py+m);g.stroke();g.setLineDash([]);
+ }
+ // bubble
+ const wob=Math.sin(tPulse*6)*(hold?2.5:1);
+ g.beginPath();g.arc(px,py,r+wob,0,7);
+ g.fillStyle='rgba(94,234,212,.12)';g.fill();
+ g.strokeStyle=state==='over'?BAD:AC;g.lineWidth=3;g.stroke();
+ g.beginPath();g.arc(px-r*.3,py-r*.35,r*.18,0,7);g.fillStyle='rgba(255,255,255,.5)';g.fill();
+ // HUD
+ g.fillStyle='#dbe9ee';g.textAlign='center';
+ g.font='bold 34px ui-monospace,Menlo,monospace';g.fillText(score,W/2,54);
+ if(state==='menu'){
+  title('BREATHE','Hold to inflate · release to shrink','Fit the bubble between each gate\'s dashed marks')}
+ if(state==='over'){
+  title('POPPED','Score '+score+' · Best '+best,'Tap to breathe again')}
+}
+function title(a,b,c){g.fillStyle='rgba(7,19,26,.72)';g.fillRect(0,0,W,H);
+ g.fillStyle=AC;g.font='bold '+Math.min(52,W/8)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.42);g.fillStyle='#dbe9ee';g.font='16px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.42+40);g.fillStyle='rgba(219,233,238,.6)';g.fillText(c,W/2,H*.42+68)}
+</script></body></html>

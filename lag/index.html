@@ -1,0 +1,73 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Lag</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0c1210;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// LAG — a dodger where your controls have latency, and the latency GROWS.
+// Tap left/right to queue a move. It lands ~0.6s later. The ghost shows where you'll end up.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const AC='#a3e635';
+let state='menu',score=0,best=0,lane=1,queue=[],blocks=[],spawnT=0,spd=230,delay=.6,now=0,drawX=0;
+function reset(){lane=1;queue=[];blocks=[];spawnT=.6;spd=230;delay=.6;score=0;drawX=laneX(1)}
+const laneCount=3;
+function fieldW(){return Math.min(W,480)}
+function laneX(l){return W/2+(l-1)*(fieldW()/3)}
+const PY=()=>H*.8;
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ const dir=e.clientX<W/2?-1:1;
+ if(queue.length<6)queue.push({dir,at:now+delay});
+});
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function ghostLane(){let l=lane;for(const q of queue)l=Math.max(0,Math.min(laneCount-1,l+q.dir));return l}
+function update(dt){if(state!=='play')return;
+ now+=dt;spd+=dt*6;
+ while(queue.length&&queue[0].at<=now){lane=Math.max(0,Math.min(laneCount-1,lane+queue.shift().dir))}
+ drawX+=(laneX(lane)-drawX)*Math.min(1,dt*18);
+ spawnT-=dt;
+ if(spawnT<=0){spawnT=Math.max(.5,1-score*.012);
+  blocks.push({l:Math.floor(Math.random()*laneCount),y:-40,c:false})}
+ for(const b of blocks){b.y+=spd*dt;
+  if(!b.c&&b.y>PY()+34){b.c=true;score++;if(score%5===0)delay=Math.min(1.5,delay+.05)}
+  if(b.l===lane&&Math.abs(b.y-PY())<40){state='over';best=Math.max(best,score)}
+ }
+ blocks=blocks.filter(b=>b.y<H+60);
+}
+function draw(){
+ g.fillStyle='#0c1210';g.fillRect(0,0,W,H);
+ const fw=fieldW(),x0=W/2-fw/2;
+ // lanes
+ g.strokeStyle='rgba(163,230,53,.15)';g.lineWidth=1;
+ for(let i=0;i<=laneCount;i++){const x=x0+i*fw/3;g.beginPath();g.moveTo(x,0);g.lineTo(x,H);g.stroke()}
+ // blocks
+ for(const b of blocks){g.fillStyle='#e2f5c8';
+  g.fillRect(laneX(b.l)-fw/6+8,b.y-26,fw/3-16,52);
+  g.fillStyle='#0c1210';g.fillRect(laneX(b.l)-fw/6+8,b.y-4,fw/3-16,8)}
+ const py=PY();
+ // ghost = where queued moves will land you
+ if(state==='play'){const gl=ghostLane();
+  if(gl!==lane||queue.length){g.strokeStyle='rgba(163,230,53,.7)';g.setLineDash([5,5]);g.lineWidth=2;
+   g.beginPath();g.arc(laneX(gl),py,20,0,7);g.stroke();g.setLineDash([])}}
+ // player
+ g.fillStyle=AC;g.beginPath();g.arc(drawX,py,18,0,7);g.fill();
+ g.fillStyle='#0c1210';g.beginPath();g.arc(drawX,py,7,0,7);g.fill();
+ // queued arrows above player
+ if(state==='play'){g.fillStyle='rgba(226,245,200,.9)';g.font='16px ui-monospace,Menlo,monospace';g.textAlign='center';
+  queue.forEach((q,i)=>{g.fillText(q.dir<0?'←':'→',drawX,py-36-i*20)})}
+ // HUD
+ g.textAlign='center';g.fillStyle='#eef7e0';
+ g.font='bold 34px ui-monospace,Menlo,monospace';g.fillText(score,W/2,54);
+ if(state==='play'){g.font='12px ui-monospace,Menlo,monospace';g.fillStyle='rgba(238,247,224,.5)';
+  g.fillText('input lag '+Math.round(delay*1000)+'ms',W/2,76)}
+ if(state==='menu')title('LAG','Tap left / right to dodge — but your input','arrives '+600+'ms late, and the lag keeps growing. Trust the ghost.');
+ if(state==='over')title('DESYNCED','Score '+score+' at '+Math.round(delay*1000)+'ms lag · Best '+best,'Tap to reconnect');
+}
+function title(a,b,c){g.fillStyle='rgba(12,18,16,.78)';g.fillRect(0,0,W,H);
+ g.fillStyle=AC;g.font='bold '+Math.min(56,W/7)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#eef7e0';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(238,247,224,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

@@ -1,0 +1,91 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Jarful</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0a1208;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// JARFUL — fireflies flee your finger. Herd them into the jar in 60 seconds.
+// Don't push them into the toad. He is always hungry.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const AC='#fde047';
+let state='menu',score=0,best=0,flies=[],timer=60,ptr=null,toad={x:-200,y:-200,a:0},t=0,burp=0,jarGlow=0;
+const JAR=()=>({x:W/2,y:96,r:Math.min(74,W*.18)});
+function newFly(edge){const m=20;let x,y;
+ if(edge){const s=Math.floor(Math.random()*3);
+  if(s===0){x=m;y=H*.4+Math.random()*H*.5}
+  else if(s===1){x=W-m;y=H*.4+Math.random()*H*.5}
+  else{x=Math.random()*W;y=H-m}}
+ else{x=Math.random()*W;y=H*.45+Math.random()*H*.45}
+ return{x,y,vx:(Math.random()-.5)*80,vy:(Math.random()-.5)*80,inJar:0,ph:Math.random()*7}}
+function reset(){flies=[];for(let i=0;i<9;i++)flies.push(newFly(false));
+ timer=60;score=0;toad={x:W*.25,y:H*.7,a:Math.random()*7};burp=0}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play'}
+ ptr={x:e.clientX,y:e.clientY}});
+addEventListener('pointermove',e=>{if(ptr)ptr={x:e.clientX,y:e.clientY}});
+addEventListener('pointerup',()=>ptr=null);
+addEventListener('pointercancel',()=>ptr=null);
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function update(dt){if(state!=='play')return;
+ timer-=dt;burp=Math.max(0,burp-dt);jarGlow=Math.max(0,jarGlow-dt*2);
+ if(timer<=0){timer=0;state='over';best=Math.max(best,score);return}
+ const jar=JAR();
+ // toad ambles
+ toad.a+=(Math.random()-.5)*dt*4;
+ toad.x+=Math.cos(toad.a)*28*dt;toad.y+=Math.sin(toad.a)*28*dt;
+ toad.x=Math.max(50,Math.min(W-50,toad.x));toad.y=Math.max(H*.4,Math.min(H-50,toad.y));
+ for(const f of flies){
+  f.vx+=(Math.random()-.5)*220*dt;f.vy+=(Math.random()-.5)*220*dt;
+  if(ptr){const dx=f.x-ptr.x,dy=f.y-ptr.y,d=Math.hypot(dx,dy);
+   if(d<150&&d>1){const p=(150-d)/150*950;f.vx+=dx/d*p*dt*8;f.vy+=dy/d*p*dt*8}}
+  const sp=Math.hypot(f.vx,f.vy);if(sp>260){f.vx*=260/sp;f.vy*=260/sp}
+  f.x+=f.vx*dt;f.y+=f.vy*dt;
+  if(f.x<10){f.x=10;f.vx*=-1}if(f.x>W-10){f.x=W-10;f.vx*=-1}
+  if(f.y<10){f.y=10;f.vy*=-1}if(f.y>H-10){f.y=H-10;f.vy*=-1}
+  // jar capture
+  if(Math.hypot(f.x-jar.x,f.y-jar.y)<jar.r-8){f.inJar+=dt;
+   if(f.inJar>.7){score++;jarGlow=1;Object.assign(f,newFly(true))}}
+  else f.inJar=Math.max(0,f.inJar-dt*2);
+  // toad eats
+  if(Math.hypot(f.x-toad.x,f.y-toad.y)<30){score=Math.max(0,score-1);burp=1;Object.assign(f,newFly(true))}
+ }
+}
+function draw(){
+ g.fillStyle='#0a1208';g.fillRect(0,0,W,H);
+ // grass texture
+ g.strokeStyle='rgba(120,200,90,.08)';
+ for(let i=0;i<24;i++){const x=(i*97)%W,y=H-((i*53)%80);
+  g.beginPath();g.moveTo(x,H);g.quadraticCurveTo(x+4,y+20,x+8*Math.sin(t+i),y);g.stroke()}
+ const jar=JAR();
+ // jar
+ g.beginPath();g.arc(jar.x,jar.y,jar.r,0,7);
+ g.fillStyle='rgba(253,224,71,'+(0.06+jarGlow*.18)+')';g.fill();
+ g.strokeStyle='rgba(200,230,255,.7)';g.lineWidth=3;g.stroke();
+ g.fillStyle='rgba(200,230,255,.5)';g.fillRect(jar.x-jar.r*.5,jar.y-jar.r-10,jar.r,8);
+ // toad
+ g.fillStyle='#3f6132';g.beginPath();g.ellipse(toad.x,toad.y,26,20,0,0,7);g.fill();
+ g.fillStyle='#fff';g.beginPath();g.arc(toad.x-9,toad.y-14,5,0,7);g.arc(toad.x+9,toad.y-14,5,0,7);g.fill();
+ g.fillStyle='#000';g.beginPath();g.arc(toad.x-9,toad.y-14,2,0,7);g.arc(toad.x+9,toad.y-14,2,0,7);g.fill();
+ if(burp>0){g.fillStyle='rgba(253,224,71,'+burp+')';g.font='14px ui-monospace';g.textAlign='center';g.fillText('burp',toad.x,toad.y-34)}
+ // fireflies
+ for(const f of flies){const glow=.5+.5*Math.sin(t*6+f.ph);
+  g.fillStyle='rgba(253,224,71,'+(0.25+glow*.35)+')';g.beginPath();g.arc(f.x,f.y,7+glow*3,0,7);g.fill();
+  g.fillStyle=AC;g.beginPath();g.arc(f.x,f.y,2.6,0,7);g.fill()}
+ // finger field
+ if(ptr&&state==='play'){g.strokeStyle='rgba(255,255,255,.18)';g.beginPath();g.arc(ptr.x,ptr.y,150,0,7);g.stroke()}
+ // HUD
+ g.textAlign='center';g.fillStyle='#f2f7e8';
+ g.font='bold 34px ui-monospace,Menlo,monospace';g.fillText(score,W/2,54);
+ if(state==='play'){g.font='13px ui-monospace,Menlo,monospace';g.fillStyle='rgba(242,247,232,.6)';
+  g.fillText(Math.ceil(timer)+'s',W/2,76)}
+ if(state==='menu')title('JARFUL','Fireflies flee your finger — herd them','into the jar. Mind the toad. 60 seconds.');
+ if(state==='over')title('LIGHTS OUT','Jarred '+score+' · Best '+best,'Tap for another dusk');
+}
+function title(a,b,c){g.fillStyle='rgba(10,18,8,.78)';g.fillRect(0,0,W,H);
+ g.fillStyle=AC;g.font='bold '+Math.min(52,W/8)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#f2f7e8';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(242,247,232,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

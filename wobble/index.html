@@ -1,0 +1,79 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Wobble</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#131019;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// WOBBLE — drag the tray to catch blocks. Each block sticks where it lands.
+// Keep the tower's centre of gravity over your tray... while still catching the next one.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const AC='#c4b5fd';
+const BW=46,BH=34,TRAY=120;
+let state='menu',score=0,best=0,tx=0,tower=[],fb=null,misses=0,wind=0,t=0,tilt=0;
+function reset(){tx=W/2;tower=[];misses=0;score=0;wind=0;tilt=0;spawn()}
+function spawn(){fb={x:60+Math.random()*(W-120),y:-40,vx:0}}
+function ptr(e){if(state==='play')tx=Math.max(TRAY/2,Math.min(W-TRAY/2,e.clientX))}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}ptr(e)});
+addEventListener('pointermove',ptr);
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+const TY=()=>H-80;
+function com(){if(!tower.length)return tx;let s=0;for(const b of tower)s+=b.x;return s/tower.length}
+function update(dt){if(state!=='play')return;
+ if(score>=8)wind=Math.sin(t*.7)*60*Math.min(1,(score-7)/10);
+ if(fb){fb.vx+=wind*dt;fb.x+=fb.vx*dt;fb.y+=(190+score*7)*dt;
+  const topY=TY()-tower.length*BH;
+  if(fb.y+BH/2>=topY){
+   const support=tower.length?tower[tower.length-1].x:tx;
+   if(Math.abs(fb.x-support)<BW*0.78){
+    tower.push({x:fb.x});score++;fb=null;setTimeout(spawn,420);
+    if(tower.length>9){tower.shift()} // bottom compresses into the tray, tower stays visible
+   }else if(fb.y>H+40){misses++;fb=null;setTimeout(spawn,420);
+    if(misses>=3){over()}}
+  }
+ }
+ // balance: centre of mass must stay over the tray
+ const off=com()-tx;
+ tilt+=(off/60-tilt)*Math.min(1,dt*6);
+ if(tower.length&&Math.abs(off)>TRAY/2){over()}
+}
+function over(){state='over';best=Math.max(best,score)}
+function draw(){
+ g.fillStyle='#131019';g.fillRect(0,0,W,H);
+ // wind streaks
+ if(Math.abs(wind)>5){g.strokeStyle='rgba(196,181,253,.25)';g.lineWidth=1;
+  for(let i=0;i<6;i++){const y=60+i*70,x=(t*wind*2+i*140)%(W+80)-40;
+   g.beginPath();g.moveTo(x,y);g.lineTo(x+wind*.5,y);g.stroke()}}
+ const ty=TY();
+ // tower (drawn with slight tilt around tray)
+ g.save();g.translate(tx,ty);g.rotate(tilt*.10);g.translate(-tx,-ty);
+ tower.forEach((b,i)=>{const y=ty-(i+1)*BH;
+  g.fillStyle=i%2?'#7c6cf0':'#9182f5';g.fillRect(b.x-BW/2,y,BW,BH-2);
+  g.strokeStyle='rgba(255,255,255,.25)';g.strokeRect(b.x-BW/2,y,BW,BH-2)});
+ g.restore();
+ // falling block
+ if(fb){g.fillStyle='#e9e3ff';g.fillRect(fb.x-BW/2,fb.y-BH/2,BW,BH);
+  g.strokeStyle=AC;g.strokeRect(fb.x-BW/2,fb.y-BH/2,BW,BH)}
+ // tray + balance meter
+ g.fillStyle=AC;g.fillRect(tx-TRAY/2,ty,TRAY,12);
+ g.fillStyle='#131019';g.fillRect(tx-3,ty+3,6,6);
+ if(tower.length){const off=com()-tx,danger=Math.min(1,Math.abs(off)/(TRAY/2));
+  g.fillStyle=danger>.75?'#fb7185':'#e9e3ff';
+  g.beginPath();g.arc(tx+off,ty-4,5,0,7);g.fill();
+  g.strokeStyle='rgba(255,255,255,.3)';g.beginPath();g.moveTo(tx-TRAY/2,ty-4);g.lineTo(tx+TRAY/2,ty-4);g.stroke()}
+ // HUD
+ g.textAlign='center';g.fillStyle='#efeaff';
+ g.font='bold 34px ui-monospace,Menlo,monospace';g.fillText(score,W/2,54);
+ g.font='13px ui-monospace,Menlo,monospace';g.fillStyle='rgba(239,234,255,.55)';
+ if(state==='play')g.fillText('drops left '+(3-misses),W/2,76);
+ if(state==='menu')title('WOBBLE','Drag to catch blocks on your tray.','The dot shows the tower\'s balance — keep it on the bar.');
+ if(state==='over')title('TIMBER!','Score '+score+' · Best '+best,'Tap to stack again');
+}
+function title(a,b,c){g.fillStyle='rgba(19,16,25,.78)';g.fillRect(0,0,W,H);
+ g.fillStyle=AC;g.font='bold '+Math.min(52,W/8)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#efeaff';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(239,234,255,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

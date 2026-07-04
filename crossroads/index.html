@@ -1,0 +1,98 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Crossroads</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#101014;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// CROSSROADS — you are the traffic light. One tap switches it.
+// Keep all four streams flowing. One crash and your shift is over.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+let state='menu',score=0,best=0,cars=[],light='NS',timers={N:1,S:2,E:1.5,W:2.5},t=0,crash=null;
+const VMAX=130,LEN=42,WID=22,LANE=28,BOX=62,STOP=74;
+function reset(){cars=[];light='NS';timers={N:1,S:2,E:1.5,W:2.5};score=0;crash=null}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ light=light==='NS'?'EW':'NS'});
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+// dir vectors + lane offsets (right-hand traffic)
+const D={N:{vx:0,vy:-1,ox:LANE,oy:0},S:{vx:0,vy:1,ox:-LANE,oy:0},E:{vx:1,vy:0,ox:0,oy:LANE},W:{vx:-1,vy:0,ox:0,oy:-LANE}};
+function pos(c){const cx=W/2,cy=H/2,d=D[c.dir];
+ return{x:cx+d.ox+d.vx*c.p,y:cy+d.oy+d.vy*c.p}}
+function rect(c){const p=pos(c),horiz=(c.dir==='E'||c.dir==='W');
+ return{x:p.x-(horiz?LEN:WID)/2,y:p.y-(horiz?WID:LEN)/2,w:horiz?LEN:WID,h:horiz?WID:LEN}}
+function halfSpan(){return Math.max(W,H)/2+80}
+function update(dt){if(state!=='play')return;
+ // spawn
+ for(const k of['N','S','E','W']){timers[k]-=dt;
+  if(timers[k]<=0){timers[k]=Math.max(1.1,2.6-score*.03)+Math.random()*1.6;
+   const entry=-halfSpan();
+   const blocked=cars.some(c=>c.dir===k&&c.p<entry+LEN+20);
+   if(!blocked)cars.push({dir:k,p:entry,v:VMAX,done:false})}}
+ // move
+ for(const c of cars){
+  const axis=(c.dir==='N'||c.dir==='S')?'NS':'EW';
+  let target=VMAX;
+  // stop at line on red (front of car at -STOP before centre)
+  const front=c.p+LEN/2;
+  if(light!==axis&&front<-STOP+6&&front>-STOP-150)target=front>-STOP-14?0:VMAX*.5;
+  if(light!==axis&&front>=-STOP+6&&front<-STOP+18&&c.v<20)target=0; // hold if barely over
+  // follow car ahead in same stream
+  let ahead=null;
+  for(const o of cars)if(o!==c&&o.dir===c.dir&&o.p>c.p&&(!ahead||o.p<ahead.p))ahead=o;
+  if(ahead&&ahead.p-c.p<LEN+14&&ahead.v<c.v+10)target=Math.min(target,Math.max(0,ahead.v-20));
+  c.v+=(target-c.v)*Math.min(1,dt*(target<c.v?7:2.2));
+  c.p+=c.v*dt;
+  if(!c.done&&c.p>halfSpan()){c.done=true;score++}
+ }
+ cars=cars.filter(c=>c.p<halfSpan()+60);
+ // collisions (cross traffic in the box)
+ for(let i=0;i<cars.length;i++)for(let j=i+1;j<cars.length;j++){
+  const a=rect(cars[i]),b=rect(cars[j]);
+  if(a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y){
+   const A=cars[i].dir,B=cars[j].dir;
+   const cross=((A==='N'||A==='S')!==(B==='N'||B==='S'));
+   if(cross){crash={x:(a.x+b.x)/2+a.w/2,y:(a.y+b.y)/2+a.h/2};state='over';best=Math.max(best,score);return}
+  }}
+}
+function draw(){
+ g.fillStyle='#101014';g.fillRect(0,0,W,H);
+ const cx=W/2,cy=H/2,RW=BOX*2;
+ // roads
+ g.fillStyle='#1c1c22';g.fillRect(cx-BOX,0,RW,H);g.fillRect(0,cy-BOX,W,RW);
+ g.strokeStyle='rgba(255,255,255,.25)';g.setLineDash([12,14]);g.lineWidth=2;
+ g.beginPath();g.moveTo(cx,0);g.lineTo(cx,cy-BOX);g.moveTo(cx,cy+BOX);g.lineTo(cx,H);
+ g.moveTo(0,cy);g.lineTo(cx-BOX,cy);g.moveTo(cx+BOX,cy);g.lineTo(W,cy);g.stroke();g.setLineDash([]);
+ // stop lines lit by light state
+ const nsC=light==='NS'?'#4ade80':'#f87171',ewC=light==='EW'?'#4ade80':'#f87171';
+ g.lineWidth=5;
+ g.strokeStyle=nsC;
+ g.beginPath();g.moveTo(cx,cy+STOP);g.lineTo(cx+BOX,cy+STOP);g.stroke();      // northbound stop (bottom, right half)
+ g.beginPath();g.moveTo(cx-BOX,cy-STOP);g.lineTo(cx,cy-STOP);g.stroke();      // southbound stop (top, left half)
+ g.strokeStyle=ewC;
+ g.beginPath();g.moveTo(cx-STOP,cy+BOX);g.lineTo(cx-STOP,cy);g.stroke();      // eastbound stop (left, bottom half)
+ g.beginPath();g.moveTo(cx+STOP,cy);g.lineTo(cx+STOP,cy-BOX);g.stroke();      // westbound stop (right, top half)
+ // cars
+ for(const c of cars){const r=rect(c);
+  g.fillStyle=(c.dir==='N'||c.dir==='S')?'#fbbf24':'#38bdf8';
+  g.fillRect(r.x,r.y,r.w,r.h);
+  g.fillStyle='rgba(0,0,0,.35)';
+  if(c.dir==='N')g.fillRect(r.x+3,r.y+4,r.w-6,8);
+  if(c.dir==='S')g.fillRect(r.x+3,r.y+r.h-12,r.w-6,8);
+  if(c.dir==='E')g.fillRect(r.x+r.w-12,r.y+3,8,r.h-6);
+  if(c.dir==='W')g.fillRect(r.x+4,r.y+3,8,r.h-6)}
+ if(crash){g.fillStyle='#f87171';g.font='bold 30px ui-monospace';g.textAlign='center';
+  g.save();g.translate(crash.x,crash.y);g.rotate(-.15);g.fillText('CRASH',0,0);g.restore()}
+ // HUD
+ g.textAlign='center';g.fillStyle='#f0f0f4';
+ g.font='bold 34px ui-monospace,Menlo,monospace';g.fillText(score,W/2,54);
+ if(state==='menu')title('CROSSROADS','You are the traffic light.','Tap anywhere to switch it. Zero crashes allowed.');
+ if(state==='over')title('PILE-UP','Cars through: '+score+' · Best '+best,'Tap to start a new shift');
+}
+function title(a,b,c){g.fillStyle='rgba(16,16,20,.8)';g.fillRect(0,0,W,H);
+ g.fillStyle='#4ade80';g.font='bold '+Math.min(46,W/9)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#f0f0f4';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(240,240,244,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

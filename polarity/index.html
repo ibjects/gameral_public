@@ -1,0 +1,79 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Polarity</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0a0e1c;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// POLARITY — you can't steer. You can only flip your charge.
+// Opposite charges attract, like charges repel. Ride the fields, don't touch anything.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const POS='#fb7185',NEG='#60a5fa';
+let state='menu',score=0,best=0,px=0,vx=0,pq=1,mags=[],spawnT=0,spd=150,t=0,trail=[];
+function reset(){px=W/2;vx=0;pq=1;mags=[];spawnT=0;spd=150;score=0;trail=[]}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ pq*=-1});
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+const PY=()=>H*.72;
+function update(dt){if(state!=='play')return;
+ spd+=dt*4;spawnT-=dt;
+ if(spawnT<=0){spawnT=Math.max(.45,.95-score*.01);
+  mags.push({x:40+Math.random()*(W-80),y:H+50,q:Math.random()<.5?1:-1,c:false})}
+ let ax=0;const py=PY();
+ for(const m of mags){m.y-=spd*dt;
+  const dx=m.x-px,dy=m.y-py,d2=dx*dx+dy*dy,d=Math.sqrt(d2)||1;
+  const sign=-(m.q*pq); // opposite => +1 attract toward magnet
+  const f=sign*300000/(d2+3500);
+  ax+=f*dx/d;
+  if(!m.c&&m.y<py-30){m.c=true;score++}
+  if(d<38){die()}
+ }
+ mags=mags.filter(m=>m.y>-60);
+ vx+=ax*dt;vx*=Math.pow(.35,dt);vx=Math.max(-560,Math.min(560,vx));
+ px+=vx*dt;
+ if(px<16||px>W-16)die();
+ trail.push({x:px,y:py,q:pq,a:1});
+ for(const p of trail){p.y+=spd*dt;p.a-=dt*1.6}
+ trail=trail.filter(p=>p.a>0);
+}
+function die(){state='over';best=Math.max(best,score)}
+function draw(){
+ g.fillStyle='#0a0e1c';g.fillRect(0,0,W,H);
+ // walls
+ g.fillStyle='rgba(255,255,255,.08)';g.fillRect(0,0,10,H);g.fillRect(W-10,0,10,H);
+ // trail
+ for(const p of trail){g.globalAlpha=p.a*.5;g.fillStyle=p.q>0?POS:NEG;
+  g.beginPath();g.arc(p.x,p.y,5*p.a,0,7);g.fill()}
+ g.globalAlpha=1;
+ // magnets
+ for(const m of mags){const c=m.q>0?POS:NEG;
+  g.beginPath();g.arc(m.x,m.y,22,0,7);g.fillStyle=c+'22';g.fill();
+  g.strokeStyle=c;g.lineWidth=2.5;g.stroke();
+  g.strokeStyle=c;g.lineWidth=3;g.beginPath();
+  g.moveTo(m.x-8,m.y);g.lineTo(m.x+8,m.y);
+  if(m.q>0){g.moveTo(m.x,m.y-8);g.lineTo(m.x,m.y+8)}
+  g.stroke();
+  // faint field ring
+  g.globalAlpha=.12+.08*Math.sin(t*4+m.x);g.beginPath();g.arc(m.x,m.y,44,0,7);g.stroke();g.globalAlpha=1;
+ }
+ // player
+ if(state!=='menu'){const c=pq>0?POS:NEG,py=PY();
+  g.beginPath();g.arc(px,py,14,0,7);g.fillStyle=c;g.fill();
+  g.strokeStyle='#fff';g.lineWidth=2;g.beginPath();
+  g.moveTo(px-6,py);g.lineTo(px+6,py);
+  if(pq>0){g.moveTo(px,py-6);g.lineTo(px,py+6)}
+  g.stroke()}
+ g.textAlign='center';g.fillStyle='#e5eaf6';
+ g.font='bold 34px ui-monospace,Menlo,monospace';g.fillText(score,W/2,54);
+ if(state==='menu')title('POLARITY','No steering. Tap to flip your charge.','Opposites attract · likes repel · touch nothing');
+ if(state==='over')title('DISCHARGED','Score '+score+' · Best '+best,'Tap to re-magnetize');
+}
+function title(a,b,c){g.fillStyle='rgba(10,14,28,.75)';g.fillRect(0,0,W,H);
+ g.fillStyle='#e5eaf6';g.font='bold '+Math.min(50,W/8.5)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.font='15px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(229,234,246,.6)';g.fillText(c,W/2,H*.4+66);
+ g.fillStyle=POS;g.fillText('+',W/2-30,H*.4+110);g.fillStyle=NEG;g.fillText('−',W/2+30,H*.4+110)}
+</script></body></html>
