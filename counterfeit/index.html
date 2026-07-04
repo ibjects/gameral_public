@@ -1,0 +1,135 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Counterfeit</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#101410;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// COUNTERFEIT — you're the bank teller of Blocktown. Compare each note to the genuine
+// article above. Every fake differs in exactly ONE detail. Strikes for mistakes.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+let state='menu',score=0,best=0,strikes=0,ref=null,bill=null,isFake=false,timer=7,tmax=7,slide=0,t=0,verdict='',verdT=0,series=1;
+function rnd(a){return a[Math.random()*a.length|0]}
+function genRef(){return{
+ hue:rnd([120,200,280,20,330]),
+ sealSides:rnd([3,5,6,8]),
+ stars:rnd([3,4,5,6]),
+ stache:Math.random()<.5,
+ val:rnd(['5','10','20','50'])}}
+function mutate(r){const b={...r};
+ const which=rnd(['hue','sealSides','stars','stache','val','corner']);
+ if(which==='hue')b.hue=(r.hue+rnd([50,-50,90]))%360;
+ if(which==='sealSides'){let s=r.sealSides;while(s===r.sealSides)s=rnd([3,5,6,8]);b.sealSides=s}
+ if(which==='stars')b.stars=r.stars+rnd([-1,1]);
+ if(which==='stache')b.stache=!r.stache;
+ if(which==='val'){let v=r.val;while(v===r.val)v=rnd(['5','10','20','50']);b.val=v}
+ if(which==='corner'){b.badCorner=Math.random()*4|0;
+  let v=r.val;while(v===r.val)v=rnd(['5','10','20','50']);b.cornerVal=v}
+ return b}
+function nextBill(){isFake=Math.random()<.45;
+ bill=isFake?mutate(ref):{...ref};
+ tmax=Math.max(2.6,7-score*.12);timer=tmax;slide=1}
+function reset(){score=0;strikes=0;series=1;ref=genRef();nextBill()}
+function judge(sayFake){
+ if(state!=='play'||slide>0)return;
+ const right=sayFake===isFake;
+ verdict=right?(isFake?'FAKE — good eye':'GENUINE — correct'):(isFake?'that was FAKE!':'that was REAL!');
+ verdT=1;
+ if(right){score++;
+  if(score%10===0){series++;ref=genRef();verdict='NEW SERIES ISSUED — study the reference!';verdT=2}}
+ else{strikes++;if(strikes>=3){state='over';best=Math.max(best,score);return}}
+ nextBill()}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ if(e.clientY>H-120){judge(e.clientX<W/2)}});
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;
+ if(state==='play'){slide=Math.max(0,slide-dt*3);verdT=Math.max(0,verdT-dt);
+  if(slide<=0){timer-=dt;
+   if(timer<=0){strikes++;verdict='too slow!';verdT=1;
+    if(strikes>=3){state='over';best=Math.max(best,score)}else nextBill()}}}
+ draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function drawBill(cx,cy,bw,b,label){
+ const bh=bw*.46;
+ g.save();g.translate(cx,cy);
+ g.fillStyle='hsl('+b.hue+' 30% 82%)';
+ g.strokeStyle='hsl('+b.hue+' 45% 35%)';g.lineWidth=2;
+ rr(-bw/2,-bh/2,bw,bh,8);g.fill();g.stroke();
+ // corner values
+ g.font='bold '+bw*.09+'px ui-monospace';g.fillStyle='hsl('+b.hue+' 55% 25%)';
+ const corners=[[-bw/2+16,-bh/2+18],[bw/2-16,-bh/2+18],[-bw/2+16,bh/2-8],[bw/2-16,bh/2-8]];
+ corners.forEach((c,i)=>{g.textAlign='center';
+  g.fillText(b.badCorner===i?b.cornerVal:b.val,c[0],c[1])});
+ // stars row
+ g.fillStyle='hsl('+b.hue+' 55% 30%)';
+ for(let i=0;i<b.stars;i++){const sx=-bw*.18+i*bw*.09;
+  star(sx,-bh/2+14,4)}
+ // portrait
+ g.beginPath();g.arc(-bw*.18,4,bh*.28,0,7);
+ g.fillStyle='hsl('+b.hue+' 25% 70%)';g.fill();g.stroke();
+ g.fillStyle='hsl('+b.hue+' 55% 25%)';
+ g.beginPath();g.arc(-bw*.18-6,0,2.5,0,7);g.arc(-bw*.18+6,0,2.5,0,7);g.fill();
+ if(b.stache){g.fillRect(-bw*.18-8,8,16,4)}
+ else{g.beginPath();g.arc(-bw*.18,10,5,.2,2.94);g.stroke()}
+ // seal polygon
+ g.beginPath();const R=bh*.22;
+ for(let i=0;i<b.sealSides;i++){const an=-1.5708+i*6.283/b.sealSides;
+  const px2=bw*.24+Math.cos(an)*R,py2=4+Math.sin(an)*R;
+  i?g.lineTo(px2,py2):g.moveTo(px2,py2)}
+ g.closePath();g.stroke();
+ g.font=bw*.07+'px ui-monospace';g.textAlign='center';
+ g.fillText(b.val,bw*.24,8);
+ if(label){g.fillStyle='hsl('+b.hue+' 55% 25%)';g.font='bold '+bw*.05+'px ui-monospace';
+  g.fillText(label,0,-bh/2-8)}
+ g.restore()}
+function star(x,y,r){g.save();g.translate(x,y);g.beginPath();
+ for(let i=0;i<10;i++){const rr2=i%2?r*.45:r,an=-1.5708+i*.628;
+  g.lineTo(Math.cos(an)*rr2,Math.sin(an)*rr2)}
+ g.closePath();g.fill();g.restore()}
+function rr(x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);
+ g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+function draw(){
+ g.fillStyle='#101410';g.fillRect(0,0,W,H);
+ const bw=Math.min(W-40,360);
+ if(ref){
+  g.fillStyle='rgba(255,255,255,.4)';g.font='11px ui-monospace';g.textAlign='center';
+  g.fillText('— GENUINE REFERENCE · SERIES '+series+' —',W/2,H*.13-bw*.28);
+  drawBill(W/2,H*.13+20,bw*.82,ref);
+  // divider
+  g.strokeStyle='rgba(255,255,255,.15)';g.setLineDash([4,6]);
+  g.beginPath();g.moveTo(20,H*.34);g.lineTo(W-20,H*.34);g.stroke();g.setLineDash([]);
+ }
+ if(bill&&state==='play'){
+  const y=H*.55+slide*H*.5;
+  drawBill(W/2,y,bw,bill);
+  // timer bar
+  g.fillStyle='rgba(255,255,255,.15)';g.fillRect(W/2-bw/2,H*.55+bw*.26,bw,8);
+  g.fillStyle=timer/tmax>.3?'#a3e635':'#f87171';
+  g.fillRect(W/2-bw/2,H*.55+bw*.26,bw*Math.max(0,timer/tmax),8);
+ }
+ // buttons
+ if(state==='play'){
+  g.fillStyle='rgba(248,113,113,.15)';g.fillRect(10,H-110,W/2-15,96);
+  g.strokeStyle='#f87171';g.strokeRect(10,H-110,W/2-15,96);
+  g.fillStyle='#f87171';g.font='bold 20px ui-monospace';g.textAlign='center';
+  g.fillText('FAKE ✗',W/4,H-56);
+  g.fillStyle='rgba(163,230,53,.15)';g.fillRect(W/2+5,H-110,W/2-15,96);
+  g.strokeStyle='#a3e635';g.strokeRect(W/2+5,H-110,W/2-15,96);
+  g.fillStyle='#a3e635';g.fillText('REAL ✓',W*3/4,H-56);
+ }
+ // HUD + verdict
+ g.textAlign='left';g.fillStyle='#eef2e6';g.font='bold 20px ui-monospace';
+ g.fillText(score,16,32);
+ g.textAlign='right';g.fillStyle='#f87171';g.fillText('✗'.repeat(strikes)+'·'.repeat(3-strikes),W-16,32);
+ if(verdT>0){g.globalAlpha=Math.min(1,verdT*2);g.textAlign='center';
+  g.fillStyle=verdict.includes('good')||verdict.includes('correct')||verdict.includes('SERIES')?'#a3e635':'#f87171';
+  g.font='bold 15px ui-monospace';g.fillText(verdict,W/2,H*.38);g.globalAlpha=1}
+ if(state==='menu')title('COUNTERFEIT','Every fake differs from the reference note','in exactly ONE detail. Three strikes. Clock\'s ticking.');
+ if(state==='over')title('AUDITED','Cleared '+score+' notes · Best '+best,'Tap to open a new till');
+}
+function title(a,b,c){g.fillStyle='rgba(16,20,16,.86)';g.fillRect(0,0,W,H);
+ g.fillStyle='#a3e635';g.font='bold '+Math.min(44,W/10)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#eef2e6';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(238,242,230,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

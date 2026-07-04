@@ -1,0 +1,260 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Blocktown</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#101216;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// BLOCKTOWN — an infinite, deterministic, procedurally generated open city in one file.
+// Walk. Jack cars. Run courier gigs for cash. Earn heat, outrun the cops, never see the edge.
+// Touch: hold to move/steer toward finger · round button = enter/exit car. Keys: WASD + E.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+// ---------- deterministic world ----------
+const T=260,RW=90,BS=T-RW; // tile, road width, block size
+function hsh(i,j,k){let n=Math.sin(i*127.1+j*311.7+(k||0)*74.7)*43758.5453;return n-Math.floor(n)}
+function blockType(i,j){const h=hsh(i,j,1);return h<.14?'park':h<.30?'lot':'bldg'}
+function solidAt(x,y){const i=Math.floor(x/T),j=Math.floor(y/T),lx=x-i*T,ly=y-j*T;
+ if(lx<RW||ly<RW)return false;return blockType(i,j)==='bldg'}
+const BPAL=['#2b3242','#343049','#3a2f3b','#2e3a3a','#373430','#303648'];
+// ---------- state ----------
+let state='menu',cash=0,best=0,heat=0,coolT=0,onFoot=true,over='',t=0;
+let px=T*.5+45,py=T*.5+45,pvx=0,pvy=0;                    // player on foot
+let car=null;                                              // {x,y,ang,v,hp,col}
+let peds=[],traffic=[],cops=[],parts=[],takenLots={};
+let gig={stage:'pickup',x:0,y:0,pay:0};
+let ptr=null,keys={};
+function reset(){cash=0;heat=0;coolT=0;onFoot=true;car=null;over='';
+ px=T*1.5+RW+BS/2;py=T*1.5+RW+BS/2; // start in a park-ish spot; nudge off buildings
+ let guard=0;while(solidAt(px,py)&&guard++<99){px+=40}
+ peds=[];traffic=[];cops=[];parts=[];takenLots={};newGig(true)}
+function newGig(pick){const ang=Math.random()*6.283,d=500+Math.random()*600;
+ let gx=px+Math.cos(ang)*d,gy=py+Math.sin(ang)*d;
+ // snap to nearest road center
+ gx=Math.round(gx/T)*T+RW/2;gy=Math.round(gy/T)*T+RW/2;
+ gig={stage:pick?'pickup':'drop',x:gx,y:gy,pay:Math.round(40+d/8)}}
+// ---------- input ----------
+const BTN=()=>({x:W-64,y:H-72,r:38});
+addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=1;if(e.key.toLowerCase()==='e')action();
+ if(state!=='play'&&(e.key===' '||e.key==='Enter')){reset();state='play'}});
+addEventListener('keyup',e=>keys[e.key.toLowerCase()]=0);
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ const b=BTN();
+ if(Math.hypot(e.clientX-b.x,e.clientY-b.y)<b.r){action();return}
+ ptr={x:e.clientX,y:e.clientY}});
+addEventListener('pointermove',e=>{if(ptr)ptr={x:e.clientX,y:e.clientY}});
+addEventListener('pointerup',()=>ptr=null);addEventListener('pointercancel',()=>ptr=null);
+function action(){ // enter / exit car
+ if(state!=='play')return;
+ if(!onFoot){ // exit
+  onFoot=true;car.parked=true;px=car.x+Math.cos(car.ang+1.57)*30;py=car.y+Math.sin(car.ang+1.57)*30;
+  if(solidAt(px,py)){px=car.x;py=car.y-30}
+  traffic.push(car);car=null;return}
+ // nearest car within 55
+ let bestC=null,bd=55;
+ for(const c of traffic){const d=Math.hypot(c.x-px,c.y-py);if(d<bd){bd=d;bestC=c}}
+ if(bestC){traffic.splice(traffic.indexOf(bestC),1);
+  if(!bestC.parked)bump(1); // carjacking!
+  car=bestC;car.v=0;car.hp=car.hp||100;onFoot=false}}
+function bump(n){heat=Math.min(5,heat+n);coolT=0}
+// ---------- spawning around player ----------
+function ring(min,max){const a=Math.random()*6.283,d=min+Math.random()*(max-min);
+ return{x:px+Math.cos(a)*d,y:py+Math.sin(a)*d}}
+function roadPoint(min,max){let p=ring(min,max);
+ const i=Math.round(p.x/T),j=Math.round(p.y/T);
+ return Math.random()<.5?{x:i*T+(Math.random()<.5?25:65),y:p.y,axis:'v'}:{x:p.x,y:j*T+(Math.random()<.5?25:65),axis:'h'}}
+function spawnTraffic(){const p=roadPoint(420,780);
+ const lane=p.axis==='v'?(p.x%T):(p.y%T);
+ const dir=lane<RW/2?1:-1;
+ traffic.push({x:p.x,y:p.y,ang:p.axis==='v'?(dir>0?1.5708:-1.5708):(dir>0?0:3.1416),
+  v:118,hp:100,col:['#c8553d','#588b8b','#f2d492','#7d80da','#94a89a'][Math.random()*5|0],axis:p.axis,dir,parked:false})}
+function spawnPed(){const p=roadPoint(300,650);
+ peds.push({x:p.x+(Math.random()*20-10),y:p.y+(Math.random()*20-10),vx:0,vy:0,a:Math.random()*6.283,
+  col:['#e0c9a6','#b6c9d6','#d6b6c9','#c9d6b6'][Math.random()*4|0]})}
+// parked cars live in lots deterministically until taken
+function lotCarAt(i,j){if(blockType(i,j)!=='lot'||hsh(i,j,2)<.45||takenLots[i+','+j])return null;
+ return{x:i*T+RW+BS/2,y:j*T+RW+BS/2,key:i+','+j,col:BPAL[(hsh(i,j,3)*6)|0],vert:hsh(i,j,4)<.5}}
+// ---------- update ----------
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;
+ if(state==='play')update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function moveDir(){ // desired dir from touch or keys
+ let dx=0,dy=0;
+ if(ptr){dx=ptr.x-W/2;dy=ptr.y-H/2}
+ if(keys.w||keys.arrowup)dy-=100;if(keys.s||keys.arrowdown)dy+=100;
+ if(keys.a||keys.arrowleft)dx-=100;if(keys.d||keys.arrowright)dx+=100;
+ const m=Math.hypot(dx,dy);return m>12?{x:dx/m,y:dy/m,m:Math.min(1,m/120)}:null}
+function tryMove(nx,ny,r){ // circle vs city, axis-separated
+ if(!solidAt(nx,py-r)&&!solidAt(nx,py+r)&&!solidAt(nx-r,py)&&!solidAt(nx+r,py))px=nx;
+ if(!solidAt(px,ny-r)&&!solidAt(px,ny+r)&&!solidAt(px-r,ny)&&!solidAt(px+r,ny))py=ny}
+function update(dt){
+ const d=moveDir();
+ if(onFoot){
+  const sp=125;
+  if(d){tryMove(px+d.x*sp*d.m*dt,py+d.y*sp*d.m*dt,9)}
+ }else{
+  // drive
+  if(d){const want=Math.atan2(d.y,d.x);let diff=want-car.ang;
+   while(diff>3.1416)diff-=6.283;while(diff<-3.1416)diff+=6.283;
+   const rev=Math.abs(diff)>2.3&&car.v<60;
+   car.ang+=Math.max(-1,Math.min(1,diff))*Math.min(2.6,.9+car.v/90)*dt*(car.v<0?-1:1);
+   car.v+=(rev?-160:300)*d.m*dt}
+  else car.v*=Math.pow(.25,dt);
+  car.v=Math.max(-120,Math.min(330,car.v));
+  const nx=car.x+Math.cos(car.ang)*car.v*dt,ny=car.y+Math.sin(car.ang)*car.v*dt;
+  // corners
+  let hitB=false;
+  for(const s of[[18,0],[-18,0],[0,10],[0,-10]]){
+   const cx=nx+Math.cos(car.ang)*s[0]-Math.sin(car.ang)*s[1],cy=ny+Math.sin(car.ang)*s[0]+Math.cos(car.ang)*s[1];
+   if(solidAt(cx,cy))hitB=true}
+  if(hitB){if(Math.abs(car.v)>150){car.hp-=(Math.abs(car.v)-140)/10;boom(car.x,car.y,3)}car.v*=-.3}
+  else{car.x=nx;car.y=ny}
+  px=car.x;py=car.y;
+  if(car.hp<=0){boom(car.x,car.y,26);onFoot=true;car=null}
+ }
+ // gig
+ if(Math.hypot(gig.x-px,gig.y-py)<44){
+  if(gig.stage==='pickup')newGig(false);
+  else{cash+=gig.pay;newGig(true)}}
+ // peds
+ while(peds.length<13)spawnPed();
+ for(const p of peds){
+  p.a+=(Math.random()-.5)*dt*3;
+  let vx=Math.cos(p.a)*26,vy=Math.sin(p.a)*26;
+  if(!onFoot&&Math.abs(car.v)>90){const dx=p.x-px,dy=p.y-py,dd=Math.hypot(dx,dy);
+   if(dd<90){vx+=dx/dd*150;vy+=dy/dd*150}}
+  const nx2=p.x+vx*dt,ny2=p.y+vy*dt;
+  if(!solidAt(nx2,ny2)){p.x=nx2;p.y=ny2}else p.a+=2;
+  if(!onFoot&&Math.abs(car.v)>70&&Math.hypot(p.x-px,p.y-py)<20){
+   boom(p.x,p.y,8);p.dead=true;bump(1)}
+ }
+ peds=peds.filter(p=>!p.dead&&Math.hypot(p.x-px,p.y-py)<900);
+ // traffic
+ while(traffic.filter(c=>!c.parked).length<6)spawnTraffic();
+ for(const c of traffic){if(c.parked)continue;
+  c.x+=Math.cos(c.ang)*c.v*dt;c.y+=Math.sin(c.ang)*c.v*dt;
+  if(!onFoot){const dd=Math.hypot(c.x-car.x,c.y-car.y);
+   if(dd<34){const nx3=(c.x-car.x)/dd,ny3=(c.y-car.y)/dd;
+    c.x+=nx3*(34-dd);c.y+=ny3*(34-dd);car.v*=.6;boom((c.x+car.x)/2,(c.y+car.y)/2,2)}}
+  else if(Math.hypot(c.x-px,c.y-py)<20&&c.v>80){return die('WASTED')}
+ }
+ traffic=traffic.filter(c=>c.parked?Math.hypot(c.x-px,c.y-py)<1200:Math.hypot(c.x-px,c.y-py)<950);
+ // materialize parked cars in nearby lots
+ const ci=Math.floor(px/T),cj=Math.floor(py/T);
+ for(let i=ci-2;i<=ci+2;i++)for(let j=cj-2;j<=cj+2;j++){
+  const lc=lotCarAt(i,j);
+  if(lc&&!traffic.some(c=>c.key===lc.key)){
+   traffic.push({x:lc.x,y:lc.y,ang:lc.vert?1.5708:0,v:0,hp:100,col:lc.col,parked:true,key:lc.key});
+   takenLots[lc.key]=false}}
+ for(const c of traffic)if(c.key&&!c.parked)takenLots[c.key]=true;
+ // cops
+ const wantCops=heat>0?Math.min(4,heat):0;
+ while(cops.length<wantCops){const p=ring(520,700);cops.push({x:p.x,y:p.y,v:0,ang:0})}
+ if(cops.length>wantCops)cops.length=wantCops;
+ let copNear=false;
+ for(const c of cops){
+  const dx=px-c.x,dy=py-c.y,dd=Math.hypot(dx,dy)||1;
+  if(dd<380)copNear=true;
+  const want=Math.atan2(dy,dx);let diff=want-c.ang;
+  while(diff>3.1416)diff-=6.283;while(diff<-3.1416)diff+=6.283;
+  c.ang+=Math.max(-1,Math.min(1,diff))*2.4*dt;
+  c.v+=(285+heat*12-c.v)*dt*1.5;
+  const nx4=c.x+Math.cos(c.ang)*c.v*dt,ny4=c.y+Math.sin(c.ang)*c.v*dt;
+  if(!solidAt(nx4,c.y))c.x=nx4;else c.v*=.4;
+  if(!solidAt(c.x,ny4))c.y=ny4;else c.v*=.4;
+  if(onFoot&&dd<34)return die('BUSTED');
+  if(!onFoot&&dd<36){car.hp-=26*dt*heat;car.v*=.98;if(Math.random()<dt*8)boom(px,py,1)}
+ }
+ // heat cooldown
+ if(heat>0&&!copNear){coolT+=dt;if(coolT>7){heat--;coolT=0}}else if(copNear)coolT=0;
+ // particles
+ for(const p of parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.a-=dt*1.8}
+ parts=parts.filter(p=>p.a>0);
+}
+function boom(x,y,n){for(let i=0;i<n;i++)parts.push({x,y,vx:(Math.random()-.5)*220,vy:(Math.random()-.5)*220,a:1,c:Math.random()<.5?'#fbbf24':'#f87171'})}
+function die(msg){over=msg;best=Math.max(best,cash);state='over'}
+// ---------- draw ----------
+function draw(){
+ g.fillStyle='#15171c';g.fillRect(0,0,W,H);
+ const camx=px-W/2,camy=py-H/2;
+ const i0=Math.floor(camx/T)-1,i1=Math.floor((camx+W)/T)+1,j0=Math.floor(camy/T)-1,j1=Math.floor((camy+H)/T)+1;
+ // roads
+ g.fillStyle='#22252c';
+ for(let i=i0;i<=i1;i++)g.fillRect(i*T-camx,0,RW,H);
+ for(let j=j0;j<=j1;j++)g.fillRect(0,j*T-camy,W,RW);
+ // lane dashes
+ g.strokeStyle='rgba(255,220,120,.28)';g.lineWidth=2;g.setLineDash([14,18]);
+ for(let i=i0;i<=i1;i++){g.beginPath();g.moveTo(i*T+RW/2-camx,0);g.lineTo(i*T+RW/2-camx,H);g.stroke()}
+ for(let j=j0;j<=j1;j++){g.beginPath();g.moveTo(0,j*T+RW/2-camy);g.lineTo(W,j*T+RW/2-camy);g.stroke()}
+ g.setLineDash([]);
+ // blocks
+ for(let i=i0;i<=i1;i++)for(let j=j0;j<=j1;j++){
+  const x=i*T+RW-camx,y=j*T+RW-camy,tp=blockType(i,j);
+  if(tp==='bldg'){g.fillStyle=BPAL[(hsh(i,j,5)*6)|0];g.fillRect(x,y,BS,BS);
+   g.fillStyle='rgba(255,240,170,'+(0.05+hsh(i,j,6)*.09)+')';
+   const wn=3+(hsh(i,j,7)*3|0);
+   for(let a=0;a<wn;a++)for(let b=0;b<wn;b++)
+    if(hsh(i*9+a,j*9+b,8)<.4)g.fillRect(x+14+a*(BS-28)/wn,y+14+b*(BS-28)/wn,8,10);
+   g.strokeStyle='rgba(0,0,0,.4)';g.strokeRect(x,y,BS,BS)}
+  else if(tp==='park'){g.fillStyle='#233327';g.fillRect(x,y,BS,BS);
+   g.fillStyle='#2f4a33';
+   for(let k=0;k<5;k++){const tx=x+20+hsh(i,j,10+k)*(BS-40),ty=y+20+hsh(i,j,20+k)*(BS-40);
+    g.beginPath();g.arc(tx,ty,10+hsh(i,j,30+k)*8,0,7);g.fill()}}
+  else{g.fillStyle='#1d2026';g.fillRect(x,y,BS,BS);
+   g.strokeStyle='rgba(255,255,255,.1)';
+   for(let k=1;k<4;k++){g.beginPath();g.moveTo(x+k*BS/4,y+20);g.lineTo(x+k*BS/4,y+BS-20);g.stroke()}}
+ }
+ // gig marker
+ const gx=gig.x-camx,gy=gig.y-camy,pu=gig.stage==='pickup';
+ g.fillStyle=pu?'#4ade80':'#fbbf24';
+ g.save();g.translate(gx,gy);g.rotate(t*2);g.fillRect(-10,-10,20,20);g.restore();
+ g.font='11px ui-monospace';g.textAlign='center';g.fillText(pu?'PICKUP':'DROP $'+gig.pay,gx,gy-18);
+ // edge arrow to gig
+ if(gx<0||gx>W||gy<0||gy>H){const an=Math.atan2(gig.y-py,gig.x-px);
+  const ax=W/2+Math.cos(an)*(Math.min(W,H)/2-46),ay=H/2+Math.sin(an)*(Math.min(W,H)/2-46);
+  g.save();g.translate(ax,ay);g.rotate(an);g.fillStyle=pu?'#4ade80':'#fbbf24';
+  g.beginPath();g.moveTo(14,0);g.lineTo(-8,8);g.lineTo(-8,-8);g.closePath();g.fill();g.restore();
+  g.fillText(Math.round(Math.hypot(gig.x-px,gig.y-py)/10)+'m',ax,ay+22)}
+ // parked/traffic cars
+ for(const c of traffic)drawCar(c.x-camx,c.y-camy,c.ang,c.col,false);
+ // peds
+ for(const p of peds){g.fillStyle=p.col;g.beginPath();g.arc(p.x-camx,p.y-camy,6,0,7);g.fill();
+  g.fillStyle='rgba(0,0,0,.5)';g.beginPath();g.arc(p.x-camx,p.y-camy,2.5,0,7);g.fill()}
+ // cops
+ for(const c of cops){drawCar(c.x-camx,c.y-camy,c.ang,'#e8e8ee',true)}
+ // player
+ if(onFoot){g.fillStyle='#ffd166';g.beginPath();g.arc(W/2,H/2,9,0,7);g.fill();
+  g.fillStyle='#101216';g.beginPath();g.arc(W/2,H/2,3.5,0,7);g.fill()}
+ else drawCar(W/2,H/2,car.ang,'#ffd166',false,car.hp);
+ // particles
+ for(const p of parts){g.globalAlpha=Math.max(0,p.a);g.fillStyle=p.c;g.fillRect(p.x-camx-3,p.y-camy-3,6,6)}
+ g.globalAlpha=1;
+ // HUD
+ g.textAlign='left';g.fillStyle='#4ade80';g.font='bold 22px ui-monospace,Menlo,monospace';
+ g.fillText('$'+cash,14,34);
+ g.textAlign='center';g.fillStyle='#f87171';g.font='18px ui-monospace';
+ g.fillText('★'.repeat(heat)+'☆'.repeat(5-heat),W/2,32);
+ if(!onFoot){g.textAlign='right';g.fillStyle=car.hp>30?'#9ca3af':'#f87171';g.font='12px ui-monospace';
+  g.fillText('CAR '+Math.max(0,car.hp|0)+'%',W-14,30)}
+ // action button
+ const b=BTN();g.beginPath();g.arc(b.x,b.y,b.r,0,7);
+ g.fillStyle='rgba(255,209,102,.14)';g.fill();g.strokeStyle='#ffd166';g.lineWidth=2;g.stroke();
+ g.fillStyle='#ffd166';g.font='bold 12px ui-monospace';g.textAlign='center';
+ g.fillText(onFoot?'JACK':'EXIT',b.x,b.y+4);
+ if(state==='menu')title('BLOCKTOWN','An endless procedural city. Hold to move, steer toward','your finger. Grab cars with the button. Run gigs. Dodge heat.');
+ if(state==='over')title(over,'$'+cash+' earned · Best $'+best,'Tap to respawn in a new part of town');
+}
+function drawCar(x,y,ang,col,cop,hp){
+ g.save();g.translate(x,y);g.rotate(ang);
+ g.fillStyle=col;g.fillRect(-20,-11,40,22);
+ g.fillStyle='rgba(0,0,0,.35)';g.fillRect(2,-8,10,16);
+ if(cop){g.fillStyle=Math.sin(t*14)>0?'#ef4444':'#3b82f6';g.fillRect(-6,-9,8,18)}
+ g.strokeStyle='rgba(0,0,0,.5)';g.strokeRect(-20,-11,40,22);
+ g.restore()}
+function title(a,b,c){g.fillStyle='rgba(16,18,22,.82)';g.fillRect(0,0,W,H);
+ g.fillStyle='#ffd166';g.font='bold '+Math.min(48,W/9)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#e7e9ee';g.font='13px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+38);g.fillText(c,W/2,H*.4+58);
+ g.fillStyle='rgba(231,233,238,.55)';g.fillText('desktop: WASD + E',W/2,H*.4+92)}
+</script></body></html>

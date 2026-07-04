@@ -1,0 +1,93 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Everdeep</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#020409;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// EVERDEEP — you sink forever into the trench. Your light is your life:
+// it shrinks as you fall, and everything you can't see can kill you. Chase the glow.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+let state='menu',depth=0,best=0,L=100,pxx=0,tx=0,ents=[],spawnT=0,t=0,hurt=0;
+function reset(){depth=0;L=100;pxx=W/2;tx=W/2;ents=[];spawnT=0;hurt=0}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play'}
+ tx=e.clientX});
+addEventListener('pointermove',e=>{tx=e.clientX});
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+const PY=()=>H*.32;
+function update(dt){if(state!=='play')return;
+ const spd=130+depth*.06;
+ depth+=spd*dt*.1;
+ hurt=Math.max(0,hurt-dt*2);
+ pxx+=(tx-pxx)*Math.min(1,dt*7);pxx=Math.max(16,Math.min(W-16,pxx));
+ L-=dt*(6.5+depth*.004);
+ if(L<=0){L=0;state='over';best=Math.max(best,Math.floor(depth));return}
+ spawnT-=dt;
+ if(spawnT<=0){spawnT=Math.max(.28,.62-depth*.0004);
+  const r=Math.random();
+  if(r<.42)ents.push({k:'orb',x:20+Math.random()*(W-40),y:H+30,ph:Math.random()*7});
+  else if(r<.75)ents.push({k:'jelly',x:20+Math.random()*(W-40),y:H+40,ph:Math.random()*7});
+  else{const side=Math.random()<.5,w=60+Math.random()*Math.min(200,W*.4);
+   ents.push({k:'rock',x:side?0:W-w,y:H+40,w,h:26+Math.random()*30})}}
+ for(const e of ents){e.y-=spd*dt;
+  if(e.k==='jelly')e.x+=Math.sin(t*2+e.ph)*40*dt;
+  const py=PY();
+  if(e.k==='orb'&&Math.hypot(e.x-pxx,e.y-py)<20){L=Math.min(100,L+20);depth+=2;e.gone=true}
+  if(e.k==='jelly'&&Math.hypot(e.x-pxx,e.y-py)<22){L-=26;hurt=1;e.gone=true}
+  if(e.k==='rock'&&py>e.y-e.h/2&&py<e.y+e.h/2&&pxx>e.x-12&&pxx<e.x+e.w+12){L-=34;hurt=1;e.gone=true}
+ }
+ ents=ents.filter(e=>!e.gone&&e.y>-80);
+ if(L<=0){L=0;state='over';best=Math.max(best,Math.floor(depth))}
+}
+function draw(){
+ g.fillStyle='#04121e';g.fillRect(0,0,W,H);
+ // faint water motes
+ g.fillStyle='rgba(120,180,220,.15)';
+ for(let i=0;i<24;i++){const y=(i*163+t*(60+i%4*20))%(H+40)-20;
+  g.fillRect((i*97)%W,H-y,2,7)}
+ const py=PY();
+ // entities
+ for(const e of ents){
+  if(e.k==='orb'){const gl=.5+.5*Math.sin(t*5+e.ph);
+   g.fillStyle='rgba(163,230,53,'+(.25+gl*.4)+')';g.beginPath();g.arc(e.x,e.y,9+gl*4,0,7);g.fill();
+   g.fillStyle='#d9f99d';g.beginPath();g.arc(e.x,e.y,3.5,0,7);g.fill()}
+  if(e.k==='jelly'){g.fillStyle='rgba(232,121,249,.7)';
+   g.beginPath();g.arc(e.x,e.y,13,3.1416,0);g.fill();
+   g.strokeStyle='rgba(232,121,249,.6)';g.lineWidth=2;
+   for(let k=-1;k<=1;k++){g.beginPath();g.moveTo(e.x+k*7,e.y);
+    g.quadraticCurveTo(e.x+k*7+Math.sin(t*6+k)*4,e.y+12,e.x+k*7,e.y+20);g.stroke()}}
+  if(e.k==='rock'){g.fillStyle='#233240';g.beginPath();
+   g.moveTo(e.x,e.y-e.h/2);g.lineTo(e.x+e.w,e.y-e.h/2);
+   g.lineTo(e.x+e.w*(e.x===0?1:0),e.y+e.h/2);g.closePath();
+   g.fillRect(e.x,e.y-e.h/2,e.w,e.h);
+   g.strokeStyle='#3a4f63';g.strokeRect(e.x,e.y-e.h/2,e.w,e.h)}
+ }
+ // diver
+ g.fillStyle=hurt>0?'#fca5a5':'#fef3c7';
+ g.beginPath();g.arc(pxx,py,10,0,7);g.fill();
+ g.fillStyle='#0c4a6e';g.beginPath();g.arc(pxx+3,py-2,4,0,7);g.fill();
+ // bubbles
+ g.fillStyle='rgba(255,255,255,.4)';
+ for(let i=0;i<3;i++){const by=py-14-((t*40+i*22)%50);g.beginPath();g.arc(pxx+4+Math.sin(t*3+i)*4,by,2,0,7);g.fill()}
+ // darkness mask sized by light
+ const R=55+L*2.4;
+ const grd=g.createRadialGradient(pxx,py,R*.35,pxx,py,R);
+ grd.addColorStop(0,'rgba(2,4,9,0)');grd.addColorStop(1,'rgba(2,4,9,.97)');
+ g.fillStyle=grd;g.fillRect(0,0,W,H);
+ // HUD
+ g.textAlign='center';g.fillStyle='#cfe8f7';
+ g.font='bold 30px ui-monospace,Menlo,monospace';g.fillText(Math.floor(depth)+'m',W/2,46);
+ const bw=Math.min(200,W-60);
+ g.fillStyle='rgba(255,255,255,.15)';g.fillRect(W/2-bw/2,60,bw,7);
+ g.fillStyle=L>30?'#a3e635':'#f87171';g.fillRect(W/2-bw/2,60,bw*L/100,7);
+ if(state==='menu')title('EVERDEEP','Drag to swim. You sink forever.','Your light IS your life — eat the glow, dodge the dark.');
+ if(state==='over')title('LIGHTS OUT','Depth '+Math.floor(depth)+'m · Best '+best+'m','Tap to dive again');
+}
+function title(a,b,c){g.fillStyle='rgba(2,4,9,.8)';g.fillRect(0,0,W,H);
+ g.fillStyle='#a3e635';g.font='bold '+Math.min(50,W/8.5)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#cfe8f7';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(207,232,247,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

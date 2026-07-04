@@ -1,0 +1,85 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Echo</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#01050a;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// ECHO — the cave is pitch black. HOLD to rise, release to sink,
+// QUICK-TAP to ping: the sonar ripple paints the walls for a moment. Fly by memory.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const AC='#67e8f9';
+let state='menu',dist=0,best=0,camX=0,sy=0,svy=0,hold=false,downT=0,pings=[],t=0,autoP=0,cool=0;
+function reset(){camX=0;dist=0;sy=H/2;svy=0;pings=[];autoP=1;cool=0;ping()}
+function ceilY(wx){return H*.5-gp(wx)+Math.sin(wx*.0024)*H*.22+Math.sin(wx*.006+1.7)*H*.1}
+function florY(wx){return H*.5+gp(wx)+Math.sin(wx*.0024)*H*.22+Math.sin(wx*.006+1.7)*H*.1}
+function gp(wx){return Math.max(105,H*.3-wx*.005)}
+function ping(){pings.push({x:camX+W*.3,y:sy,t:0});if(pings.length>4)pings.shift()}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ hold=true;downT=t});
+addEventListener('pointerup',()=>{
+ if(state==='play'&&hold&&t-downT<.18&&cool<=0){ping();cool=.5}
+ hold=false});
+addEventListener('pointercancel',()=>hold=false);
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+const SX=()=>W*.3;
+function update(dt){if(state!=='play')return;
+ const spd=140+dist*.6;
+ camX+=spd*dt;dist=camX/40;cool-=dt;
+ svy+=(hold?-680:680)*dt;svy=Math.max(-300,Math.min(300,svy));
+ sy+=svy*dt;
+ autoP-=dt;if(autoP<=0){ping();autoP=3}
+ for(const p of pings)p.t+=dt;
+ const wx=camX+SX();
+ if(sy<ceilY(wx)+9||sy>florY(wx)-9){state='over';best=Math.max(best,Math.floor(dist))}
+}
+function wallGlow(wx,wy){ // brightness of a wall point from all pings
+ let a=0;
+ for(const p of pings){const R=p.t*430;if(R>1100)continue;
+  const d=Math.hypot(wx-p.x,wy-p.y);
+  a=Math.max(a,Math.exp(-Math.abs(d-R)/34)*Math.max(0,1-p.t*.28));
+  if(d<R)a=Math.max(a,.13*Math.max(0,1-p.t*.4)); // lingering memory inside the ripple
+ }
+ return Math.min(1,a)}
+function draw(){
+ g.fillStyle='#01050a';g.fillRect(0,0,W,H);
+ // walls revealed by sonar
+ for(let x=0;x<=W;x+=7){const wx=camX+x;
+  const cy=ceilY(wx),fy=florY(wx);
+  let a=wallGlow(wx,cy);
+  if(a>.01){g.strokeStyle='rgba(103,232,249,'+a+')';g.lineWidth=3;
+   g.beginPath();g.moveTo(x,cy);g.lineTo(x,Math.max(0,cy-14*a));g.stroke()}
+  a=wallGlow(wx,fy);
+  if(a>.01){g.strokeStyle='rgba(103,232,249,'+a+')';g.lineWidth=3;
+   g.beginPath();g.moveTo(x,fy);g.lineTo(x,Math.min(H,fy+14*a));g.stroke()}
+ }
+ // expanding ping rings
+ for(const p of pings){const R=p.t*430;if(R>1100)continue;
+  g.strokeStyle='rgba(103,232,249,'+Math.max(0,.4-p.t*.15)+')';g.lineWidth=1.5;
+  g.beginPath();g.arc(p.x-camX,p.y,R,0,7);g.stroke()}
+ // sub with a small self-glow
+ const sx=SX();
+ const grd=g.createRadialGradient(sx,sy,2,sx,sy,55);
+ grd.addColorStop(0,'rgba(103,232,249,.25)');grd.addColorStop(1,'rgba(103,232,249,0)');
+ g.fillStyle=grd;g.fillRect(sx-55,sy-55,110,110);
+ g.save();g.translate(sx,sy);g.rotate(Math.max(-.4,Math.min(.4,svy/500)));
+ g.fillStyle='#a5f3fc';g.beginPath();g.ellipse(0,0,14,7,0,0,7);g.fill();
+ g.fillStyle='#01050a';g.beginPath();g.arc(4,-1,2.5,0,7);g.fill();
+ g.fillStyle='#a5f3fc';g.fillRect(-16,-2,5,4);
+ g.restore();
+ // HUD
+ g.textAlign='center';g.fillStyle='#d8fbff';
+ g.font='bold 30px ui-monospace,Menlo,monospace';g.fillText(Math.floor(dist)+'m',W/2,44);
+ g.font='11px ui-monospace';g.fillStyle='rgba(216,251,255,.5)';
+ if(state==='play')g.fillText(cool>0?'· · ·':'PING READY (quick tap)',W/2,64);
+ if(state==='menu')title('ECHO','Pitch black. Hold = rise, release = sink.','Quick-tap = sonar ping. Fly the cave by memory.');
+ if(state==='over')title('HULL BREACH','Reached '+Math.floor(dist)+'m · Best '+best+'m','Tap to launch a new sub');
+}
+function title(a,b,c){g.fillStyle='rgba(1,5,10,.8)';g.fillRect(0,0,W,H);
+ g.fillStyle=AC;g.font='bold '+Math.min(56,W/7)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#d8fbff';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(216,251,255,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

@@ -1,0 +1,84 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Moth</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0d0a14;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// MOTH — you don't control the moth. You control the lantern it loves.
+// It can never stop flying, it overshoots, it circles. Lead it through the cave.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+let state='menu',dist=0,best=0,camX=0,m={x:0,y:0,vx:0,vy:0},lan={x:0,y:0},ptr=null,t=0,trail=[];
+function reset(){camX=0;dist=0;m={x:W*.3,y:H/2,vx:120,vy:0};lan={x:W*.5,y:H/2};ptr=null;trail=[]}
+function ceilY(wx){return H*.5-gap(wx)+wob(wx)}
+function florY(wx){return H*.5+gap(wx)+wob(wx)}
+function wob(wx){return Math.sin(wx*.0021)*H*.2+Math.sin(wx*.0057+2)*H*.09}
+function gap(wx){return Math.max(120,H*.32-wx*.006)}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play'}
+ ptr={x:e.clientX,y:e.clientY}});
+addEventListener('pointermove',e=>{if(ptr)ptr={x:e.clientX,y:e.clientY}});
+addEventListener('pointerup',()=>ptr=null);addEventListener('pointercancel',()=>ptr=null);
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function update(dt){if(state!=='play')return;
+ const spd=120+dist*.5;
+ camX+=spd*dt;dist=camX/40;
+ // lantern follows finger with capped speed
+ if(ptr){const dx=ptr.x-lan.x,dy=ptr.y-lan.y,d=Math.hypot(dx,dy);
+  const mv=Math.min(d,300*dt);if(d>1){lan.x+=dx/d*mv;lan.y+=dy/d*mv}}
+ // moth: obsessed with lantern, can't slow down
+ const dx=lan.x-m.x,dy=lan.y-m.y,d=Math.hypot(dx,dy)||1;
+ m.vx+=dx/d*680*dt+Math.sin(t*9)*40*dt;
+ m.vy+=dy/d*680*dt+Math.cos(t*7.3)*40*dt;
+ const sp=Math.hypot(m.vx,m.vy),want=Math.max(170,Math.min(300,sp));
+ m.vx*=want/sp;m.vy*=want/sp;
+ m.x+=(m.vx-spd*0)*dt;m.y+=m.vy*dt;
+ m.x-=spd*dt*.35; // cave pushes back — keep up!
+ m.x=Math.max(-30,m.x);
+ trail.push({x:m.x,y:m.y,a:.8});for(const p of trail)p.a-=dt*1.5;trail=trail.filter(p=>p.a>0);
+ const wx=camX+m.x;
+ if(m.y<ceilY(wx)+8||m.y>florY(wx)-8||m.x<-20){state='over';best=Math.max(best,Math.floor(dist))}
+}
+function draw(){
+ g.fillStyle='#0d0a14';g.fillRect(0,0,W,H);
+ // cave
+ g.fillStyle='#1f1830';
+ g.beginPath();g.moveTo(0,0);
+ for(let x=0;x<=W;x+=10)g.lineTo(x,ceilY(camX+x));
+ g.lineTo(W,0);g.closePath();g.fill();
+ g.beginPath();g.moveTo(0,H);
+ for(let x=0;x<=W;x+=10)g.lineTo(x,florY(camX+x));
+ g.lineTo(W,H);g.closePath();g.fill();
+ g.strokeStyle='#4c3a75';g.lineWidth=2;
+ g.beginPath();for(let x=0;x<=W;x+=10){const y=ceilY(camX+x);x?g.lineTo(x,y):g.moveTo(x,y)}g.stroke();
+ g.beginPath();for(let x=0;x<=W;x+=10){const y=florY(camX+x);x?g.lineTo(x,y):g.moveTo(x,y)}g.stroke();
+ // lantern glow
+ const grd=g.createRadialGradient(lan.x,lan.y,4,lan.x,lan.y,130);
+ grd.addColorStop(0,'rgba(255,200,90,.5)');grd.addColorStop(1,'rgba(255,200,90,0)');
+ g.fillStyle=grd;g.fillRect(lan.x-130,lan.y-130,260,260);
+ g.fillStyle='#ffc85a';g.beginPath();g.arc(lan.x,lan.y,7,0,7);g.fill();
+ g.strokeStyle='rgba(255,200,90,.8)';g.beginPath();g.moveTo(lan.x,lan.y-7);g.lineTo(lan.x,lan.y-18);g.stroke();
+ // moth trail + moth
+ for(const p of trail){g.globalAlpha=p.a*.4;g.fillStyle='#d8cdf0';
+  g.beginPath();g.arc(p.x,p.y,3*p.a,0,7);g.fill()}
+ g.globalAlpha=1;
+ const fl=Math.sin(t*26)*.6;
+ g.save();g.translate(m.x,m.y);g.rotate(Math.atan2(m.vy,m.vx));
+ g.fillStyle='#e6ddf7';
+ g.beginPath();g.ellipse(-2,-5,8,4+fl*2,-.5,0,7);g.fill();
+ g.beginPath();g.ellipse(-2,5,8,4-fl*2,.5,0,7);g.fill();
+ g.fillStyle='#b7a8dd';g.fillRect(-6,-2,12,4);
+ g.restore();
+ // HUD
+ g.textAlign='center';g.fillStyle='#efe9fb';
+ g.font='bold 30px ui-monospace,Menlo,monospace';g.fillText(Math.floor(dist)+'m',W/2,44);
+ if(state==='menu')title('MOTH','You are only the lantern. The moth chases it,','overshoots it, circles it. Lead — never push.');
+ if(state==='over')title('DUST','Flew '+Math.floor(dist)+'m · Best '+best+'m','Tap to relight the lantern');
+}
+function title(a,b,c){g.fillStyle='rgba(13,10,20,.8)';g.fillRect(0,0,W,H);
+ g.fillStyle='#ffc85a';g.font='bold '+Math.min(56,W/7)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#efe9fb';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(239,233,251,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

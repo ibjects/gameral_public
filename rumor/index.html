@@ -1,0 +1,92 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Rumor</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0f0d12;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// RUMOR — a party simulator. Tap guests to whisper the rumor; it spreads on its own
+// between people who drift close. Blue debunkers cure whoever they reach — forever.
+// Get 70% of the room gossiping before the clock runs out.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const PINK='#f472b6',BLUE='#60a5fa',GRAY='#6b7280',IMM='#374151';
+let state='menu',lvl=1,best=0,ppl=[],deb=[],seeds=2,timer=25,t=0,result='';
+function gen(){ppl=[];deb=[];seeds=2;timer=25;
+ const n=22+lvl*4;
+ for(let i=0;i<n;i++)ppl.push({x:20+Math.random()*(W-40),y:90+Math.random()*(H-160),
+  a:Math.random()*7,s:'clean',pr:0,ph:Math.random()*7});
+ const dn=1+Math.floor(lvl/2);
+ for(let i=0;i<dn;i++)deb.push({x:20+Math.random()*(W-40),y:90+Math.random()*(H-160),a:Math.random()*7})}
+function fullReset(){lvl=1;gen();state='play'}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state==='menu'||state==='over'){fullReset();return}
+ if(state==='win'){lvl++;gen();state='play';return}
+ if(seeds<=0)return;
+ let bestP=null,bd=34;
+ for(const p of ppl)if(p.s==='clean'){const d=Math.hypot(p.x-e.clientX,p.y-e.clientY);
+  if(d<bd){bd=d;bestP=p}}
+ if(bestP){bestP.s='pink';seeds--}});
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function wander(p,sp,dt){p.a+=(Math.random()-.5)*dt*4;
+ p.x+=Math.cos(p.a)*sp*dt;p.y+=Math.sin(p.a)*sp*dt;
+ if(p.x<16){p.x=16;p.a=Math.random()*7}if(p.x>W-16){p.x=W-16;p.a=Math.random()*7}
+ if(p.y<86){p.y=86;p.a=Math.random()*7}if(p.y>H-26){p.y=H-26;p.a=Math.random()*7}}
+function update(dt){if(state!=='play')return;
+ timer-=dt;
+ for(const p of ppl)wander(p,26,dt);
+ for(const d of deb)wander(d,44,dt);
+ // spread
+ for(const p of ppl)if(p.s==='clean'){let near=false;
+  for(const q of ppl)if(q.s==='pink'&&Math.hypot(p.x-q.x,p.y-q.y)<42){near=true;break}
+  p.pr=near?p.pr+dt:Math.max(0,p.pr-dt);
+  if(p.pr>.55)p.s='pink'}
+ // debunk
+ for(const d of deb)for(const p of ppl)
+  if(p.s==='pink'&&Math.hypot(p.x-d.x,p.y-d.y)<26)p.s='immune';
+ const pink=ppl.filter(p=>p.s==='pink').length;
+ if(timer<=0){
+  if(pink/ppl.length>=.7){state='win'}
+  else{result='the room went quiet';state='over';best=Math.max(best,lvl-1)}
+  return}
+ if(pink===0&&seeds===0&&ppl.some(p=>p.s==='immune')){
+  result='the rumor died out';state='over';best=Math.max(best,lvl-1)}
+}
+function draw(){
+ g.fillStyle='#0f0d12';g.fillRect(0,0,W,H);
+ // floor pattern
+ g.strokeStyle='rgba(255,255,255,.03)';
+ for(let x=0;x<W;x+=46){g.beginPath();g.moveTo(x,80);g.lineTo(x,H);g.stroke()}
+ // people
+ for(const p of ppl){
+  const c=p.s==='pink'?PINK:p.s==='immune'?IMM:GRAY;
+  if(p.s==='pink'){g.fillStyle='rgba(244,114,182,.12)';
+   g.beginPath();g.arc(p.x,p.y,42,0,7);g.fill()}
+  g.fillStyle=c;g.beginPath();g.arc(p.x,p.y,8,0,7);g.fill();
+  if(p.s==='pink'&&Math.sin(t*6+p.ph)>0){g.fillStyle='rgba(244,114,182,.9)';
+   g.font='9px ui-monospace';g.textAlign='center';g.fillText('psst',p.x,p.y-13)}
+  if(p.s==='clean'&&p.pr>0){g.strokeStyle=PINK;g.lineWidth=2;
+   g.beginPath();g.arc(p.x,p.y,11,-1.57,-1.57+p.pr/.55*6.28);g.stroke()}
+ }
+ // debunkers
+ for(const d of deb){g.fillStyle=BLUE;
+  g.beginPath();g.arc(d.x,d.y,9,0,7);g.fill();
+  g.fillStyle='#0f0d12';g.font='bold 10px ui-monospace';g.textAlign='center';g.fillText('!',d.x,d.y+3.5)}
+ // HUD
+ const pink=ppl.filter(p=>p.s==='pink').length,frac=ppl.length?pink/ppl.length:0;
+ g.fillStyle='rgba(255,255,255,.12)';g.fillRect(20,46,W-40,10);
+ g.fillStyle=PINK;g.fillRect(20,46,(W-40)*frac,10);
+ g.strokeStyle='#fff';g.beginPath();g.moveTo(20+(W-40)*.7,42);g.lineTo(20+(W-40)*.7,60);g.stroke();
+ g.textAlign='left';g.fillStyle='#ece8f0';g.font='bold 16px ui-monospace';
+ g.fillText('LV '+lvl,20,32);
+ g.textAlign='right';g.fillText(Math.max(0,Math.ceil(timer))+'s · whispers '+seeds,W-20,32);
+ if(state==='menu')title('RUMOR','Tap guests to start a rumor. It spreads by itself.','Blue fact-checkers silence people for good. Hit 70%.');
+ if(state==='win')title('IT SPREAD','Level '+lvl+' cleared — '+Math.round(frac*100)+'% of the room','Tap for a bigger party');
+ if(state==='over')title('HUSHED',result+' · reached level '+lvl+' · best '+best,'Tap to try a fresh party');
+}
+function title(a,b,c){g.fillStyle='rgba(15,13,18,.82)';g.fillRect(0,0,W,H);
+ g.fillStyle=PINK;g.font='bold '+Math.min(50,W/8.5)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#ece8f0';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(236,232,240,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

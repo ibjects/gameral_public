@@ -1,0 +1,96 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Lift</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#12100d;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// LIFT — one elevator, seven floors, everyone in a hurry.
+// Tap a floor to send the car. Pick up, drop off, don't let three tenants rage-quit.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const FLOORS=7,CAP=3,AC='#f59e0b';
+let state='menu',score=0,best=0,pos=0,target=0,dwell=0,waiting=[],riders=[],rage=0,spawnT=2,t=0,served=0;
+function reset(){pos=0;target=0;dwell=0;waiting=[];riders=[];rage=0;score=0;served=0;spawnT=1.2}
+const TOPPAD=90,BOT=()=>H-60,FH=()=>(BOT()-TOPPAD)/FLOORS;
+const floorY=f=>BOT()-f*FH();
+const SHAFT=()=>W*.3;
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ const f=Math.round((BOT()-e.clientY)/FH());
+ if(f>=0&&f<FLOORS)target=f});
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function update(dt){if(state!=='play')return;
+ spawnT-=dt;
+ if(spawnT<=0){spawnT=Math.max(1.4,4.2-served*.08);
+  const f=Math.random()*FLOORS|0;let d=Math.random()*FLOORS|0;
+  while(d===f)d=Math.random()*FLOORS|0;
+  waiting.push({f,d,pat:14,ph:Math.random()*7})}
+ // patience
+ for(const p of waiting){p.pat-=dt;
+  if(p.pat<=0){p.gone=true;rage++;if(rage>=3){state='over';best=Math.max(best,score);return}}}
+ waiting=waiting.filter(p=>!p.gone);
+ // elevator motion
+ if(dwell>0){dwell-=dt;return}
+ const dy=target-pos;
+ if(Math.abs(dy)>.02){pos+=Math.sign(dy)*Math.min(Math.abs(dy),dt*2.1)}
+ else{pos=target;
+  // doors open: unload then load
+  const before=riders.length;
+  riders=riders.filter(r=>{if(r.d===pos){score+=1+(riders.length===CAP?1:0);served++;return false}return true});
+  let loaded=0;
+  for(const p of waiting){if(p.f===pos&&riders.length<CAP){riders.push(p);p.gone=true;loaded++}}
+  waiting=waiting.filter(p=>!p.gone);
+  if(before!==riders.length+ (0)||loaded)dwell=.4;
+ }
+}
+function draw(){
+ g.fillStyle='#12100d';g.fillRect(0,0,W,H);
+ const sx=SHAFT(),fh=FH();
+ // floors
+ for(let f=0;f<FLOORS;f++){const y=floorY(f);
+  g.strokeStyle='rgba(245,158,11,.25)';g.lineWidth=2;
+  g.beginPath();g.moveTo(30,y);g.lineTo(W-16,y);g.stroke();
+  g.fillStyle='rgba(255,255,255,.35)';g.font='12px ui-monospace';g.textAlign='left';
+  g.fillText('F'+f,W-38,y-6);
+  // waiting tenants
+  let n=0;
+  for(const p of waiting)if(p.f===f){const wx=sx+50+n*34;
+   drawPerson(wx,y-14,p,true);n++}}
+ // shaft
+ g.fillStyle='rgba(255,255,255,.05)';g.fillRect(sx-26,TOPPAD-fh*.7,52,BOT()-TOPPAD+fh*.7+8);
+ g.strokeStyle='rgba(255,255,255,.2)';g.strokeRect(sx-26,TOPPAD-fh*.7,52,BOT()-TOPPAD+fh*.7+8);
+ // cable + car
+ const cy=floorY(pos);
+ g.strokeStyle='rgba(255,255,255,.3)';g.beginPath();g.moveTo(sx,TOPPAD-fh*.7);g.lineTo(sx,cy-fh*.86);g.stroke();
+ g.fillStyle=AC;g.fillRect(sx-22,cy-fh*.86,44,fh*.82);
+ g.fillStyle='#12100d';g.fillRect(sx-16,cy-fh*.74,32,fh*.6);
+ // riders inside
+ riders.forEach((r,i)=>{g.fillStyle='#fde68a';
+  g.beginPath();g.arc(sx-9+i*9,cy-fh*.4,5,0,7);g.fill();
+  g.fillStyle='#12100d';g.font='bold 8px ui-monospace';g.textAlign='center';
+  g.fillText(r.d,sx-9+i*9,cy-fh*.37)});
+ // target indicator
+ g.strokeStyle='#fff';g.setLineDash([4,4]);
+ g.strokeRect(sx-26,floorY(target)-fh*.86,52,fh*.82);g.setLineDash([]);
+ // HUD
+ g.textAlign='center';g.fillStyle='#fdf3e0';
+ g.font='bold 30px ui-monospace,Menlo,monospace';g.fillText(score,W/2,44);
+ g.font='13px ui-monospace';g.fillStyle='rgba(253,243,224,.55)';
+ g.fillText('rage '+'▮'.repeat(rage)+'▯'.repeat(3-rage)+'   car '+riders.length+'/'+CAP,W/2,66);
+ if(state==='menu')title('LIFT','You run the only elevator. Tap a floor to go.','Badges show destinations. 3 rage-quits and you\'re fired.');
+ if(state==='over')title('FIRED','Delivered '+score+' · Best '+best,'Tap for a new shift');
+}
+function drawPerson(x,y,p,wait){
+ const frac=Math.max(0,p.pat/14);
+ g.fillStyle=frac<.3?'#f87171':'#fde68a';
+ g.beginPath();g.arc(x,y,7,0,7);g.fill();
+ g.fillStyle='#12100d';g.font='bold 9px ui-monospace';g.textAlign='center';g.fillText(p.d,x,y+3);
+ if(wait){g.fillStyle='rgba(255,255,255,.2)';g.fillRect(x-8,y-14,16,3);
+  g.fillStyle=frac<.3?'#f87171':'#a3e635';g.fillRect(x-8,y-14,16*frac,3)}}
+function title(a,b,c){g.fillStyle='rgba(18,16,13,.82)';g.fillRect(0,0,W,H);
+ g.fillStyle=AC;g.font='bold '+Math.min(56,W/7)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#fdf3e0';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(253,243,224,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

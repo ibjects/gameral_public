@@ -1,0 +1,99 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Comet</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#070812;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// COMET — you're always orbiting something. Tap to let go and fly on the tangent.
+// Get caught by the next planet up the chain. Miss everything and you're deep space debris.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+let state='menu',score=0,best=0,planets=[],cur=0,th=0,dir=1,om=2.1,flying=false,fx=0,fy=0,fvx=0,fvy=0,camY=0,t=0,stars=[],trail=[];
+function mkStars(){stars=[];for(let i=0;i<60;i++)stars.push({x:Math.random()*W,y:Math.random()*H,s:Math.random()*1.8+0.4})}
+mkStars();
+function addPlanet(){const p0=planets[planets.length-1];
+ const y=p0.y-(170+Math.random()*130);
+ const x=40+Math.random()*(W-80);
+ planets.push({x,y,r:16+Math.random()*18,gold:Math.random()<.15,visited:false,
+  col:['#7dd3fc','#c4b5fd','#fda4af','#86efac','#fcd34d'][Math.random()*5|0]})}
+function reset(){planets=[{x:W/2,y:0,r:26,col:'#7dd3fc',visited:true,gold:false}];camY=0;
+ for(let i=0;i<8;i++)addPlanet();
+ cur=0;th=1.57;dir=1;om=2.1;flying=false;score=0;trail=[]}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){reset();state='play';return}
+ if(!flying){const p=planets[cur],orad=p.r+26;
+  fx=p.x+Math.cos(th)*orad;fy=p.y+Math.sin(th)*orad;
+  const sp=om*orad;
+  fvx=-Math.sin(th)*sp*dir;fvy=Math.cos(th)*sp*dir;
+  flying=true}});
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function update(dt){if(state!=='play')return;
+ om=2.1+score*.03;
+ if(!flying){th+=dir*om*dt;
+  const p=planets[cur];
+  fx=p.x+Math.cos(th)*(p.r+26);fy=p.y+Math.sin(th)*(p.r+26);
+ }else{
+  fx+=fvx*dt;fy+=fvy*dt;
+  for(let i=0;i<planets.length;i++){if(i===cur)continue;
+   const p=planets[i],d=Math.hypot(fx-p.x,fy-p.y);
+   if(d<p.r+34){ // captured!
+    cur=i;
+    th=Math.atan2(fy-p.y,fx-p.x);
+    const cross=(fx-p.x)*fvy-(fy-p.y)*fvx;
+    dir=cross>0?1:-1;
+    flying=false;
+    if(!p.visited){p.visited=true;score+=p.gold?3:1}
+    break}}
+  // lost in space?
+  const sy=fy-camY;
+  if(fx<-40||fx>W+40||sy>H+60||sy<-H){state='over';best=Math.max(best,score)}
+ }
+ trail.push({x:fx,y:fy,a:1});for(const p of trail)p.a-=dt*1.6;trail=trail.filter(p=>p.a>0);
+ // camera follows upward
+ const want=fy-H*.55;
+ camY+=(want-camY)*Math.min(1,dt*3);
+ while(planets[planets.length-1].y>camY-200)addPlanet();
+}
+function draw(){
+ g.fillStyle='#070812';g.fillRect(0,0,W,H);
+ g.fillStyle='#fff';
+ for(const s of stars){const y=(s.y-camY*.15%H+H*3)%H;
+  g.globalAlpha=.25+s.s*.2;g.fillRect(s.x,y,s.s,s.s)}
+ g.globalAlpha=1;
+ // planets
+ for(const p of planets){const sy=p.y-camY;
+  if(sy<-80||sy>H+80)continue;
+  g.strokeStyle='rgba(255,255,255,.1)';g.lineWidth=1;
+  g.beginPath();g.arc(p.x,sy,p.r+26,0,7);g.stroke();
+  g.strokeStyle='rgba(255,255,255,.18)';g.setLineDash([2,6]);
+  g.beginPath();g.arc(p.x,sy,p.r+34,0,7);g.stroke();g.setLineDash([]);
+  g.fillStyle=p.gold?'#fbbf24':p.col;
+  g.beginPath();g.arc(p.x,sy,p.r,0,7);g.fill();
+  g.fillStyle='rgba(0,0,0,.25)';
+  g.beginPath();g.arc(p.x+p.r*.3,sy+p.r*.3,p.r*.7,0,7);g.fill();
+  if(p.gold){g.fillStyle='#78350f';g.font='bold 11px ui-monospace';g.textAlign='center';g.fillText('+3',p.x,sy+4)}
+ }
+ // trail + comet
+ for(const p of trail){g.globalAlpha=p.a*.5;g.fillStyle='#e0f2fe';
+  g.beginPath();g.arc(p.x,p.y-camY,4*p.a,0,7);g.fill()}
+ g.globalAlpha=1;
+ g.fillStyle='#fff';g.beginPath();g.arc(fx,fy-camY,7,0,7);g.fill();
+ g.strokeStyle='rgba(224,242,254,.7)';g.beginPath();g.arc(fx,fy-camY,11,0,7);g.stroke();
+ // tangent preview while orbiting
+ if(!flying&&state==='play'){const sp=40;
+  g.strokeStyle='rgba(255,255,255,.35)';g.setLineDash([3,5]);
+  g.beginPath();g.moveTo(fx,fy-camY);
+  g.lineTo(fx-Math.sin(th)*sp*dir*1.6,fy-camY+Math.cos(th)*sp*dir*1.6);g.stroke();g.setLineDash([])}
+ // HUD
+ g.textAlign='center';g.fillStyle='#eef4ff';
+ g.font='bold 34px ui-monospace,Menlo,monospace';g.fillText(score,W/2,54);
+ if(state==='menu')title('COMET','You are always orbiting. Tap to let go —','fly the tangent, get caught by the next planet up.');
+ if(state==='over')title('DEEP SPACE','Hopped '+score+' worlds · Best '+best,'Tap to fall into orbit again');
+}
+function title(a,b,c){g.fillStyle='rgba(7,8,18,.8)';g.fillRect(0,0,W,H);
+ g.fillStyle='#7dd3fc';g.font='bold '+Math.min(52,W/8)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#eef4ff';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(238,244,255,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

@@ -1,0 +1,112 @@
+<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Heist</title>
+<style>html,body{margin:0;height:100%;overflow:hidden;background:#0b0d11;touch-action:none;user-select:none;-webkit-user-select:none;font-family:ui-monospace,Menlo,monospace}canvas{display:block}</style>
+</head><body><canvas></canvas><script>
+// HEIST — endless procedurally generated museum floors. Tap where to sneak.
+// Grab the gem, reach the door. Vision cones fill your "seen" meter — full = caught.
+const cv=document.querySelector('canvas'),g=cv.getContext('2d');let W,H;
+function fit(){const d=devicePixelRatio||1;W=innerWidth;H=innerHeight;cv.width=W*d;cv.height=H*d;g.setTransform(d,0,0,d,0,0)}
+onresize=fit;fit();
+const AC='#34d399',GEM='#38bdf8';
+let state='menu',floor=1,best=0,crates=[],guards=[],p={x:0,y:0},tgt=null,hasGem=false,gem={},door={},alert=0,t=0;
+function rnd(a,b){return a+Math.random()*(b-a)}
+function gen(){crates=[];guards=[];alert=0;hasGem=false;tgt=null;
+ p={x:W/2,y:H-70};gem={x:rnd(40,W-40),y:rnd(120,H*.4)};door={x:rnd(60,W-60),y:64};
+ const nc=7+Math.min(8,floor);
+ for(let i=0;i<60&&crates.length<nc;i++){
+  const c={x:rnd(20,W-100),y:rnd(130,H-160),w:rnd(40,95),h:rnd(30,70)};
+  if(Math.hypot(c.x+c.w/2-p.x,c.y+c.h/2-p.y)>90&&
+     Math.hypot(c.x+c.w/2-gem.x,c.y+c.h/2-gem.y)>70&&
+     Math.hypot(c.x+c.w/2-door.x,c.y+c.h/2-door.y)>80)crates.push(c)}
+ const ng=Math.min(6,1+Math.ceil(floor/2));
+ for(let i=0;i<ng;i++){const wps=[];
+  for(let k=0;k<3;k++)wps.push({x:rnd(40,W-40),y:rnd(120,H-120)});
+  guards.push({x:wps[0].x,y:wps[0].y,wps,wi:1,face:0})}}
+function fullReset(){floor=1;gen();state='play'}
+addEventListener('pointerdown',e=>{e.preventDefault();
+ if(state!=='play'){fullReset();return}
+ tgt={x:Math.max(14,Math.min(W-14,e.clientX)),y:Math.max(50,Math.min(H-14,e.clientY))}});
+let last=0;
+function loop(ts){const dt=Math.min(.033,(ts-last)/1000||0);last=ts;t+=dt;update(dt);draw();requestAnimationFrame(loop)}
+requestAnimationFrame(loop);
+function inCrate(x,y,pad){for(const c of crates)
+ if(x>c.x-pad&&x<c.x+c.w+pad&&y>c.y-pad&&y<c.y+c.h+pad)return c;return null}
+function losBlocked(x1,y1,x2,y2){ // sample the segment
+ const n=14;for(let i=1;i<n;i++){const u=i/n;
+  if(inCrate(x1+(x2-x1)*u,y1+(y2-y1)*u,0))return true}return false}
+function update(dt){if(state!=='play')return;
+ // player move
+ if(tgt){const dx=tgt.x-p.x,dy=tgt.y-p.y,d=Math.hypot(dx,dy);
+  if(d<4)tgt=null;
+  else{const nx=p.x+dx/d*135*dt,ny=p.y+dy/d*135*dt;
+   if(!inCrate(nx,p.y,10))p.x=nx;
+   if(!inCrate(p.x,ny,10))p.y=ny;
+   if(inCrate(nx,p.y,10)&&inCrate(p.x,ny,10))tgt=null}}
+ // guards patrol
+ let seen=false;
+ for(const gd of guards){const wp=gd.wps[gd.wi];
+  const dx=wp.x-gd.x,dy=wp.y-gd.y,d=Math.hypot(dx,dy);
+  if(d<6)gd.wi=(gd.wi+1)%gd.wps.length;
+  else{gd.x+=dx/d*(62+floor*2)*dt;gd.y+=dy/d*(62+floor*2)*dt;
+   gd.face+=(Math.atan2(dy,dx)-gd.face)*Math.min(1,dt*4)}
+  // vision
+  const pdx=p.x-gd.x,pdy=p.y-gd.y,pd=Math.hypot(pdx,pdy);
+  if(pd<160){let ad=Math.atan2(pdy,pdx)-gd.face;
+   while(ad>3.14)ad-=6.28;while(ad<-3.14)ad+=6.28;
+   if(Math.abs(ad)<.55&&!losBlocked(gd.x,gd.y,p.x,p.y))seen=true}
+  if(pd<20){alert=1}
+ }
+ alert+=seen?dt*1.6:-dt*.8;alert=Math.max(0,Math.min(1,alert));
+ if(alert>=1){state='over';best=Math.max(best,floor-1);return}
+ if(!hasGem&&Math.hypot(p.x-gem.x,p.y-gem.y)<20)hasGem=true;
+ if(hasGem&&Math.hypot(p.x-door.x,p.y-door.y)<24){floor++;gen()}
+}
+function draw(){
+ g.fillStyle='#0b0d11';g.fillRect(0,0,W,H);
+ // parquet
+ g.strokeStyle='rgba(255,255,255,.03)';
+ for(let y=50;y<H;y+=34){g.beginPath();g.moveTo(0,y);g.lineTo(W,y);g.stroke()}
+ // door
+ g.fillStyle=hasGem?AC:'#3a4150';g.fillRect(door.x-22,door.y-14,44,20);
+ g.fillStyle='#0b0d11';g.font='10px ui-monospace';g.textAlign='center';
+ g.fillText(hasGem?'EXIT':'LOCKED',door.x,door.y);
+ // gem
+ if(!hasGem){g.save();g.translate(gem.x,gem.y);g.rotate(t);
+  g.fillStyle=GEM;g.beginPath();g.moveTo(0,-11);g.lineTo(9,0);g.lineTo(0,11);g.lineTo(-9,0);g.closePath();g.fill();g.restore();
+  g.strokeStyle='rgba(56,189,248,.3)';g.beginPath();g.arc(gem.x,gem.y,16+Math.sin(t*3)*3,0,7);g.stroke()}
+ // vision cones (under crates so crates visibly block)
+ for(const gd of guards){
+  g.fillStyle='rgba(251,191,36,.13)';
+  g.beginPath();g.moveTo(gd.x,gd.y);
+  g.arc(gd.x,gd.y,160,gd.face-.55,gd.face+.55);g.closePath();g.fill()}
+ // crates
+ for(const c of crates){g.fillStyle='#242b36';g.fillRect(c.x,c.y,c.w,c.h);
+  g.strokeStyle='#39424f';g.strokeRect(c.x,c.y,c.w,c.h);
+  g.beginPath();g.moveTo(c.x,c.y);g.lineTo(c.x+c.w,c.y+c.h);g.moveTo(c.x+c.w,c.y);g.lineTo(c.x,c.y+c.h);g.stroke()}
+ // guards
+ for(const gd of guards){g.fillStyle='#fbbf24';
+  g.beginPath();g.arc(gd.x,gd.y,9,0,7);g.fill();
+  g.strokeStyle='#fbbf24';g.lineWidth=2;
+  g.beginPath();g.moveTo(gd.x,gd.y);g.lineTo(gd.x+Math.cos(gd.face)*14,gd.y+Math.sin(gd.face)*14);g.stroke()}
+ // move target
+ if(tgt){g.strokeStyle='rgba(52,211,153,.6)';g.setLineDash([3,5]);
+  g.beginPath();g.arc(tgt.x,tgt.y,8,0,7);g.stroke();g.setLineDash([])}
+ // player
+ g.fillStyle=AC;g.beginPath();g.arc(p.x,p.y,9,0,7);g.fill();
+ if(hasGem){g.fillStyle=GEM;g.beginPath();g.arc(p.x,p.y-14,4,0,7);g.fill()}
+ // HUD
+ g.textAlign='left';g.fillStyle='#e6ecf2';g.font='bold 18px ui-monospace';
+ g.fillText('FLOOR '+floor,14,30);
+ const bw=Math.min(150,W*.35);
+ g.fillStyle='rgba(255,255,255,.15)';g.fillRect(W-bw-14,18,bw,10);
+ g.fillStyle=alert>.6?'#f87171':'#fbbf24';g.fillRect(W-bw-14,18,bw*alert,10);
+ g.font='10px ui-monospace';g.fillStyle='rgba(230,236,242,.6)';g.textAlign='right';g.fillText('SEEN',W-14,42);
+ if(state==='menu')title('HEIST','Tap where to sneak. Steal the gem, reach the door.','Cones fill your SEEN meter — crates block their view.');
+ if(state==='over')title('CAUGHT','Cleared '+(floor-1)+' floors · Best '+best,'Tap to case a new museum');
+}
+function title(a,b,c){g.fillStyle='rgba(11,13,17,.84)';g.fillRect(0,0,W,H);
+ g.fillStyle=AC;g.font='bold '+Math.min(52,W/8)+'px ui-monospace,Menlo,monospace';g.textAlign='center';
+ g.fillText(a,W/2,H*.4);g.fillStyle='#e6ecf2';g.font='14px ui-monospace,Menlo,monospace';
+ g.fillText(b,W/2,H*.4+40);g.fillStyle='rgba(230,236,242,.6)';g.fillText(c,W/2,H*.4+64)}
+</script></body></html>

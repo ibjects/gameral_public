@@ -1,57 +1,325 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pocket Arcade — Line 01</title>
-<style>
-:root{--night:#0b0e1a;--paper:#f2ede4;--amber:#ffb454;--ink:#14121c;--dim:#8b8fa3}
-*{box-sizing:border-box;margin:0}
-body{background:var(--night);color:var(--paper);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;min-height:100vh;
- background-image:radial-gradient(circle at 20% -10%,rgba(255,180,84,.08),transparent 45%)}
-header{padding:44px 20px 26px;max-width:760px;margin:0 auto}
-.route{display:inline-block;border:1.5px solid var(--amber);color:var(--amber);border-radius:999px;padding:3px 12px;font-size:12px;letter-spacing:.18em}
-h1{font-size:clamp(30px,7vw,52px);letter-spacing:-.02em;margin:14px 0 8px;font-weight:800}
-h1 span{color:var(--amber)}
-.sub{color:var(--dim);font-size:14px;line-height:1.6;max-width:52ch}
-main{max-width:760px;margin:0 auto;padding:8px 16px 70px;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
-a.stub{position:relative;display:block;text-decoration:none;color:var(--ink);background:var(--paper);border-radius:10px;padding:16px 16px 14px 58px;
- transition:transform .12s ease;overflow:hidden}
-a.stub:hover,a.stub:focus-visible{transform:translateY(-3px)}
-a.stub:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
-/* perforated ticket edge */
-a.stub::before{content:"";position:absolute;left:42px;top:6px;bottom:6px;border-left:2px dashed rgba(20,18,28,.28)}
-.code{position:absolute;left:0;top:0;bottom:0;width:42px;display:flex;align-items:center;justify-content:center;
- writing-mode:vertical-rl;transform:rotate(180deg);font-size:11px;letter-spacing:.25em;color:var(--paper);font-weight:700}
-.stub h2{font-size:19px;letter-spacing:.02em}
-.stub p{font-size:12.5px;line-height:1.5;color:#4a4656;margin-top:5px}
-.stub .ctrl{margin-top:9px;font-size:11px;letter-spacing:.08em;color:#726d80;text-transform:uppercase}
-footer{max-width:760px;margin:0 auto;padding:0 20px 50px;color:var(--dim);font-size:12.5px;line-height:1.7}
-@media (prefers-reduced-motion:reduce){a.stub{transition:none}}
-</style></head><body>
-<header>
- <span class="route">LINE 01 · 10 STOPS</span>
- <h1>POCKET <span>ARCADE</span></h1>
- <p class="sub">Ten original one-thumb games for the ride home. No downloads, no ads, no accounts — each one is a single HTML file, the way games used to be made: just for fun.</p>
-</header>
-<main>
- <a class="stub" href="breathe/index.html"><span class="code" style="background:#0f766e">BR-01</span>
-  <h2>Breathe</h2><p>Hold to inflate, release to shrink. Squeeze your bubble through every gate's exact band.</p><div class="ctrl">hold &amp; release</div></a>
- <a class="stub" href="halve/index.html"><span class="code" style="background:#9d2f63">HV-02</span>
-  <h2>Halve</h2><p>A blade sweeps past. Cut the bar exactly in half — your error is trimmed away forever.</p><div class="ctrl">one tap</div></a>
- <a class="stub" href="polarity/index.html"><span class="code" style="background:#1d4ed8">PL-03</span>
-  <h2>Polarity</h2><p>No steering — only a charge to flip. Get pulled and pushed by magnets, touch nothing.</p><div class="ctrl">tap to flip</div></a>
- <a class="stub" href="lag/index.html"><span class="code" style="background:#3f6212">LG-04</span>
-  <h2>Lag</h2><p>A dodger where your controls arrive 600ms late — and the lag keeps growing. Plan ahead.</p><div class="ctrl">tap left / right</div></a>
- <a class="stub" href="wobble/index.html"><span class="code" style="background:#5b21b6">WB-05</span>
-  <h2>Wobble</h2><p>Catch blocks on a tray while keeping the whole tower's centre of gravity balanced on it.</p><div class="ctrl">drag</div></a>
- <a class="stub" href="jarful/index.html"><span class="code" style="background:#854d0e">JF-06</span>
-  <h2>Jarful</h2><p>Fireflies flee your finger. Herd them into the jar before dusk ends. Mind the toad.</p><div class="ctrl">touch to herd</div></a>
- <a class="stub" href="crossroads/index.html"><span class="code" style="background:#166534">CR-07</span>
-  <h2>Crossroads</h2><p>You are the traffic light. One tap switches it. Keep four streams alive with zero crashes.</p><div class="ctrl">one tap</div></a>
- <a class="stub" href="mirror/index.html"><span class="code" style="background:#0e7490">MR-08</span>
-  <h2>Mirror</h2><p>Two runners, one on the ceiling, one tap for both. Find the timing that saves two worlds.</p><div class="ctrl">tap to jump</div></a>
- <a class="stub" href="orbit/index.html"><span class="code" style="background:#b91c1c">OR-09</span>
-  <h2>Orbit</h2><p>You never stop circling — you can only reverse. Catch stars between the growing thorns.</p><div class="ctrl">tap to reverse</div></a>
- <a class="stub" href="inkline/index.html"><span class="code" style="background:#1e40af">IK-10</span>
-  <h2>Inkline</h2><p>One rationed stroke of ink per drop. Draw a ramp, lift your finger, guide the ball home.</p><div class="ctrl">draw a line</div></a>
-</main>
-<footer>Every stop works offline once loaded, fits one hand in portrait, and restarts with a tap — built for the gap between two stations. More lines coming.</footer>
-</body></html>
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pocket Arcade by Gameral | Free Unblocked Games, No Ads, No Downloads</title>
+  <meta name="title" content="Pocket Arcade by Gameral | Free Unblocked Games, No Ads, No Downloads">
+  <meta name="description"
+    content="Play pure, ad-free arcade games instantly in your browser. Pocket Arcade by Gameral requires no downloads, no accounts, and no paywalls. Just retro html5 gaming for free.">
+
+  <meta name="keywords"
+    content="gameral, pocket arcade, free browser games, unblocked games no download, ad-free web games, casual html5 games, retro games online no login, free games online">
+  <meta name="author" content="Gameral">
+  <meta name="robots" content="index, follow">
+
+  <link rel="canonical" href="https://gameral.com/pocket-arcade">
+
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://gameral.com/pocket-arcade">
+  <meta property="og:title" content="Pocket Arcade by Gameral | Free Browser Games">
+  <meta property="og:description"
+    content="No downloads, no ads, no accounts — just the way games used to be made. Jump in and play instantly.">
+  <meta property="og:image" content="https://gameral.com/images/gameral-preview.jpg">
+
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://gameral.com/pocket-arcade">
+  <meta property="twitter:title" content="Pocket Arcade by Gameral | Free Browser Games">
+  <meta property="twitter:description"
+    content="No downloads, no ads, no accounts — just the way games used to be made. Jump in and play instantly.">
+  <meta property="twitter:image" content="https://gameral.com/images/gameral-preview.jpg">
+
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      "name": "Pocket Arcade by Gameral",
+      "url": "https://gameral.com/pocket-arcade",
+      "description": "A collection of free, ad-free, and account-free HTML5 browser games.",
+      "keywords": "browser games, unblocked arcade, free games no download",
+      "publisher": {
+        "@type": "Organization",
+        "name": "Gameral",
+        "url": "https://gameral.com/"
+      }
+    }
+    </script>
+  <style>
+    :root {
+      --night: #0b0e1a;
+      --paper: #f2ede4;
+      --amber: #ffb454;
+      --ink: #14121c;
+      --dim: #8b8fa3
+    }
+
+    a {
+      color: inherit;
+      text-decoration: underline;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0
+    }
+
+    body {
+      background: var(--night);
+      color: var(--paper);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      min-height: 100vh;
+      background-image: radial-gradient(circle at 20% -10%, rgba(255, 180, 84, .08), transparent 45%)
+    }
+
+    header {
+      padding: 44px 20px 26px;
+      max-width: 760px;
+      margin: 0 auto
+    }
+
+    .route {
+      display: inline-block;
+      border: 1.5px solid var(--amber);
+      color: var(--amber);
+      border-radius: 999px;
+      padding: 3px 12px;
+      font-size: 12px;
+      letter-spacing: .18em
+    }
+
+    h1 {
+      font-size: clamp(30px, 7vw, 52px);
+      letter-spacing: -.02em;
+      margin: 14px 0 8px;
+      font-weight: 800
+    }
+
+    h1 span {
+      color: var(--amber)
+    }
+
+    .sub {
+      color: var(--dim);
+      font-size: 14px;
+      line-height: 1.6;
+      max-width: 52ch
+    }
+
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 8px 16px 70px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 14px
+    }
+
+    a.stub {
+      position: relative;
+      display: block;
+      text-decoration: none;
+      color: var(--ink);
+      background: var(--paper);
+      border-radius: 10px;
+      padding: 16px 16px 14px 58px;
+      transition: transform .12s ease;
+      overflow: hidden
+    }
+
+    a.stub:hover,
+    a.stub:focus-visible {
+      transform: translateY(-3px)
+    }
+
+    a.stub:focus-visible {
+      outline: 3px solid var(--amber);
+      outline-offset: 2px
+    }
+
+    /* perforated ticket edge */
+    a.stub::before {
+      content: "";
+      position: absolute;
+      left: 42px;
+      top: 6px;
+      bottom: 6px;
+      border-left: 2px dashed rgba(20, 18, 28, .28)
+    }
+
+    .code {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 42px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      font-size: 11px;
+      letter-spacing: .25em;
+      color: var(--paper);
+      font-weight: 700
+    }
+
+    .stub h2 {
+      font-size: 19px;
+      letter-spacing: .02em
+    }
+
+    .stub p {
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: #4a4656;
+      margin-top: 5px
+    }
+
+    .stub .ctrl {
+      margin-top: 9px;
+      font-size: 11px;
+      letter-spacing: .08em;
+      color: #726d80;
+      text-transform: uppercase
+    }
+
+    footer {
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 0 20px 50px;
+      color: var(--dim);
+      font-size: 12.5px;
+      line-height: 1.7
+    }
+
+    @media (prefers-reduced-motion:reduce) {
+      a.stub {
+        transition: none
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <span class="route">GAMERAL</span>
+    <h1>POCKET <span>ARCADE</span></h1>
+    <p class="sub">No downloads, no ads, no accounts — each one is the way games used to be made: <b>just for fun</b>.
+    </p>
+  </header>
+  <main>
+    <a class="stub" href="breathe/index.html"><span class="code" style="background:#0f766e">BR-01</span>
+      <h2>Breathe</h2>
+      <p>Hold to inflate, release to shrink. Squeeze your bubble through every gate's exact band.</p>
+      <div class="ctrl">hold &amp; release</div>
+    </a>
+    <a class="stub" href="halve/index.html"><span class="code" style="background:#9d2f63">HV-02</span>
+      <h2>Halve</h2>
+      <p>A blade sweeps past. Cut the bar exactly in half — your error is trimmed away forever.</p>
+      <div class="ctrl">one tap</div>
+    </a>
+    <a class="stub" href="polarity/index.html"><span class="code" style="background:#1d4ed8">PL-03</span>
+      <h2>Polarity</h2>
+      <p>No steering — only a charge to flip. Get pulled and pushed by magnets, touch nothing.</p>
+      <div class="ctrl">tap to flip</div>
+    </a>
+    <a class="stub" href="lag/index.html"><span class="code" style="background:#3f6212">LG-04</span>
+      <h2>Lag</h2>
+      <p>A dodger where your controls arrive 600ms late — and the lag keeps growing. Plan ahead.</p>
+      <div class="ctrl">tap left / right</div>
+    </a>
+    <a class="stub" href="wobble/index.html"><span class="code" style="background:#5b21b6">WB-05</span>
+      <h2>Wobble</h2>
+      <p>Catch blocks on a tray while keeping the whole tower's centre of gravity balanced on it.</p>
+      <div class="ctrl">drag</div>
+    </a>
+    <a class="stub" href="jarful/index.html"><span class="code" style="background:#854d0e">JF-06</span>
+      <h2>Jarful</h2>
+      <p>Fireflies flee your finger. Herd them into the jar before dusk ends. Mind the toad.</p>
+      <div class="ctrl">touch to herd</div>
+    </a>
+    <a class="stub" href="crossroads/index.html"><span class="code" style="background:#166534">CR-07</span>
+      <h2>Crossroads</h2>
+      <p>You are the traffic light. One tap switches it. Keep four streams alive with zero crashes.</p>
+      <div class="ctrl">one tap</div>
+    </a>
+    <a class="stub" href="mirror/index.html"><span class="code" style="background:#0e7490">MR-08</span>
+      <h2>Mirror</h2>
+      <p>Two runners, one on the ceiling, one tap for both. Find the timing that saves two worlds.</p>
+      <div class="ctrl">tap to jump</div>
+    </a>
+    <a class="stub" href="orbit/index.html"><span class="code" style="background:#b91c1c">OR-09</span>
+      <h2>Orbit</h2>
+      <p>You never stop circling — you can only reverse. Catch stars between the growing thorns.</p>
+      <div class="ctrl">tap to reverse</div>
+    </a>
+    <a class="stub" href="inkline/index.html"><span class="code" style="background:#1e40af">IK-10</span>
+      <h2>Inkline</h2>
+      <p>One rationed stroke of ink per drop. Draw a ramp, lift your finger, guide the ball home.</p>
+      <div class="ctrl">draw a line</div>
+    </a>
+    <!-- </main> -->
+    <!-- <header style="padding-top:10px">
+    <p class="sub" style="color:var(--amber)">LINE 02 · THE DEEP CUTS</p>
+  </header> -->
+    <!-- <main> -->
+    <a class="stub" href="blocktown/index.html"><span class="code" style="background:#a16207">BT-11</span>
+      <h2>Blocktown ★</h2>
+      <p>An infinite procedural open-world city. Jack cars, run courier gigs, earn heat, outrun cops.</p>
+      <div class="ctrl">hold to steer · button to jack · WASD+E</div>
+    </a>
+    <a class="stub" href="everdeep/index.html"><span class="code" style="background:#365314">ED-12</span>
+      <h2>Everdeep</h2>
+      <p>Sink forever into the trench. Your light is your life — eat the glow, dodge what hides in the dark.</p>
+      <div class="ctrl">drag</div>
+    </a>
+    <a class="stub" href="lift/index.html"><span class="code" style="background:#92400e">LF-13</span>
+      <h2>Lift</h2>
+      <p>You run the tower's only elevator. Badges show destinations, patience bars are shrinking.</p>
+      <div class="ctrl">tap a floor</div>
+    </a>
+    <a class="stub" href="moth/index.html"><span class="code" style="background:#6d28d9">MO-14</span>
+      <h2>Moth</h2>
+      <p>You're only the lantern. The moth chases it, overshoots, circles. Lead it through the cave.</p>
+      <div class="ctrl">drag the lantern</div>
+    </a>
+    <a class="stub" href="rumor/index.html"><span class="code" style="background:#9d174d">RM-15</span>
+      <h2>Rumor</h2>
+      <p>Whisper to guests; gossip spreads on its own. Beat the fact-checkers to 70% of the room.</p>
+      <div class="ctrl">tap people</div>
+    </a>
+    <a class="stub" href="tideline/index.html"><span class="code" style="background:#0369a1">TD-16</span>
+      <h2>Tideline</h2>
+      <p>Draw sand walls between waves to shield your castle. Water erodes everything you build.</p>
+      <div class="ctrl">draw walls</div>
+    </a>
+    <a class="stub" href="heist/index.html"><span class="code" style="background:#065f46">HS-17</span>
+      <h2>Heist</h2>
+      <p>Endless procedural museum floors. Tap to sneak, steal the gem, slip past the vision cones.</p>
+      <div class="ctrl">tap to move</div>
+    </a>
+    <a class="stub" href="comet/index.html"><span class="code" style="background:#1e3a8a">CM-18</span>
+      <h2>Comet</h2>
+      <p>You're always orbiting something. Release on the tangent and get caught by the next world up.</p>
+      <div class="ctrl">tap to let go</div>
+    </a>
+    <a class="stub" href="echo/index.html"><span class="code" style="background:#155e75">EC-19</span>
+      <h2>Echo</h2>
+      <p>A pitch-black cave you can only see by sonar. Ping, memorize, and fly blind between echoes.</p>
+      <div class="ctrl">hold to rise · quick-tap to ping</div>
+    </a>
+    <a class="stub" href="counterfeit/index.html"><span class="code" style="background:#3f6212">CF-20</span>
+      <h2>Counterfeit</h2>
+      <p>Every fake note differs from the reference in exactly one detail. Three strikes at the till.</p>
+      <div class="ctrl">fake / real</div>
+    </a>
+  </main>
+  <footer>© 2026 Gameral Inc. To submit your game, fill out <a
+      href="https://docs.google.com/forms/d/e/1FAIpQLScjUTs6FhT5UoHFt27_Wq0vGaM2NAQWzmuuTUIKE_X6ivFkDw/viewform?usp=sharing&ouid=115584573151067542695"
+      target="_blank" rel="noopener">this form</a> • By <a href="https://chaudhrytalha.carrd.co/" target="_blank"
+      rel="noopener">Chaudhry Talha</a>
+  </footer>
+</body>
+
+</html>
