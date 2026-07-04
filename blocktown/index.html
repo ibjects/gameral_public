@@ -136,21 +136,54 @@
       background: rgba(255, 209, 102, .3)
     }
 
+    .a-btn:disabled {
+      border-color: #555;
+      color: #555;
+      background: rgba(255, 255, 255, .05);
+      cursor: not-allowed;
+    }
+
     .m-panel {
-      background: rgba(10, 12, 18, .72);
+      background: rgba(10, 12, 18, .85);
       border: 1px solid rgba(255, 209, 102, .35);
       border-radius: 10px;
-      padding: 9px 12px;
+      padding: 12px 14px;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      backdrop-filter: blur(2px)
+      gap: 8px;
+      backdrop-filter: blur(4px);
+      pointer-events: auto;
+      /* Allows clicking buttons inside panels */
     }
 
     .m-panel .ttl {
-      font-size: 10px;
+      font-size: 11px;
       letter-spacing: .2em;
-      color: #ffd166
+      color: #ffd166;
+      font-weight: bold;
+      border-bottom: 1px solid rgba(255, 209, 102, .2);
+      padding-bottom: 4px;
+      margin-bottom: 2px;
+    }
+
+    .m-shop-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      padding: 6px 10px;
+      border-radius: 6px;
+    }
+
+    .m-shop-item span {
+      font-size: 11px;
+      color: #e7e9ee;
+    }
+
+    .m-shop-item button {
+      padding: 4px 8px;
+      font-size: 10px;
     }
 
     .m-toast {
@@ -348,11 +381,9 @@
   <script>
     'use strict';
     /* =====================================================================
-       BLOCKTOWN v4 — THE AI-DIRECTED CITY
-       The Director (Gemini, via the player's own key) writes the story live:
-       missions, combat, ambushes, pickups, weather, night — and remembers.
-       Controls: touch = steer toward finger · keyboard = GTA (W/S gas+reverse,
-       A/D steer, E enter/exit, F fire) · buttons = JACK/EXIT + FIRE.
+       BLOCKTOWN v5 — THE AI-DIRECTED CITY (GOD MODE)
+       The Director handles missions, ambushes, weather, AND now manipulates
+       stats, triggers orbital strikes, and offers a dynamic shop.
     ===================================================================== */
     const cv = document.querySelector('canvas'), g = cv.getContext('2d');
     let W = 1, H = 1, Z = 1, U = 1;
@@ -392,13 +423,13 @@
     const BPAL = ['#2b3242', '#343049', '#3a2f3b', '#2e3a3a', '#373430', '#303648'];
     /* ---------------- state ---------------- */
     let state = 'boot', cash = 0, best = 0, heat = 0, coolT = 0, onFoot = true, t = 0;
-    let px = 0, py = 0, hearts = 3, invT = 0, kbx = 0, kby = 0, stuckT = 0, lastPX = 0, lastPY = 0, facing = 0;
+    let px = 0, py = 0, hearts = 3, maxHearts = 3, invT = 0, godT = 0, kbx = 0, kby = 0, stuckT = 0, lastPX = 0, lastPY = 0, facing = 0;
     let ammo = 10, firing = false, fireCool = 0;
     let car = null, peds = [], traffic = [], cops = [], gangs = [], gangsters = [], bullets = [], pickups = [],
       parts = [], rings = [], wrecks = [], takenLots = {}, copSpawnT = 0, grabT = 0, pickupT = 12, shake = 0, targetPed = null;
     let weather = 'clear', keysDown = {}, ptr = null, trafficTarget = 6;
     let events = [];
-    function logEvent(s) { events.push(s); if (events.length > 14) events.shift() }
+    function logEvent(s) { events.push(s); if (events.length > 20) events.shift() }
     /* ================= UI KIT ================= */
     const $ = id => document.getElementById(id);
     let binds = [];
@@ -454,7 +485,7 @@
     };
     function snapshot() {
       return {
-        cash: '$' + cash, hearts: '♥'.repeat(Math.max(0, hearts)) + '♡'.repeat(Math.max(0, 3 - hearts)),
+        cash: '$' + cash, hearts: '♥'.repeat(Math.max(0, hearts)) + '♡'.repeat(Math.max(0, maxHearts - hearts)),
         heat: '★'.repeat(heat) + '☆'.repeat(5 - heat), ammo: '⦿ ' + ammo,
         carHp: car ? Math.max(0, car.hp) / 100 : 0, carHpTxt: car ? ('CAR ' + Math.max(0, car.hp | 0) + '%') : 'ON FOOT',
         mission: {
@@ -486,7 +517,24 @@
           const bind = BINDS_OK.includes(it.bind) ? it.bind : null;
           if (it.type === 'stat') UIK.stat(sstr(it.label, 12), bind, pn);
           else if (it.type === 'bar') UIK.bar(sstr(it.label, 14), bind || 'mission.progress', pn);
-          else if (it.type === 'text') UIK.text(sstr(it.text, 90), pn)
+          else if (it.type === 'text') UIK.text(sstr(it.text, 90), pn);
+          else if (it.type === 'shopItem') {
+            const wrap = UIK.el('div', 'm-shop-item', pn);
+            const txt = UIK.el('span', '', wrap); txt.textContent = sstr(it.label, 20) + ' ($' + it.cost + ')';
+            const btn = UIK.button('BUY', () => {
+              if (cash >= it.cost) {
+                cash -= it.cost;
+                logEvent(`Player bought: ${it.label}`);
+                UIK.feed(`Purchased: ${it.label}`);
+                Director.plan(500); // Trigger AI to react immediately
+                btn.disabled = true;
+                btn.textContent = 'SOLD';
+              } else {
+                Msg.show('Not enough cash!', 'nocash');
+              }
+            }, wrap);
+            if (cash < it.cost) btn.disabled = true;
+          }
         }
       }
     }
@@ -594,7 +642,7 @@
         Director.busy = true; Director.lastCall = now;
         let plan = null;
         if (Director.mode === 'ai') {
-          UIK.feed('thinking…');
+          UIK.feed('AI Director is observing...');
           try { plan = await Director.callGemini() }
           catch (e) { UIK.feed('offline (' + sstr(e.message, 40) + ') — local plan'); plan = null }
         }
@@ -622,7 +670,7 @@
         if (v === 'hunt' || v === 'hit') world.push({ op: 'pickup', kind: 'ammo', dx: 120, dy: 80 });
         if (Director.n % 4 === 2) world.push({ op: 'pickup', kind: Math.random() < .5 ? 'heart' : 'cash', dx: -200, dy: 150 });
         return {
-          banner: 'the city hums along', mission: {
+          banner: 'the city hums along', memory: "Offline progression.", mission: {
             title: L[v][0], briefing: L[v][1], verb: v,
             waypoints: wps, reward: 90 + Director.n * 15 + (Math.random() * 60 | 0),
             timeLimit: v === 'race' ? 55 : 0, heatStart: 2
@@ -647,14 +695,20 @@
       },
       prompt() {
         return [
-          'You are THE DIRECTOR, the AI game-master of BLOCKTOWN, a top-down infinite procedural crime city (deterministic grid: tile=260px, every tile edge is a 90px road; blocks = solid buildings/parks/lots). The human only drives, walks, shoots and does your missions — YOU run everything else: invent one mission per turn, edit the world, drop pickups, set weather and time of day, build UI, and keep MEMORY to write a continuing storyline with recurring named characters. React to EVENTS and the last result. Escalate arcs. Vary pacing: quiet jobs, chases, firefights, eerie foggy nights.',
-          'COORDINATES: positions are {dx,dy} pixel offsets from the player, within ±1400. Snapped to roads.',
-          'PLAYER GEAR: a pistol (auto-aims at hostiles). Ammo is scarce — YOU decide if combat happens by granting ammo pickups and spawning threats, or keep a turn peaceful.',
-          'MISSION VERBS: goto(1-2 wps) · deliver(wp0 pickup, wp1 drop) · race(2-4 checkpoints, car, use timeLimit) · taxi(wp0 passenger BY CAR, wp1 dropoff) · jack(marked pink car spawns at wp0; steal it, wp1 delivery) · evade(heatStart 1-3, player must lose all police heat) · hunt(1-2 hostile crew cars spawn at wp0; destroy them — ram or shoot) · hit(a marked informant spawns at wp0 and FLEES; eliminate him).',
-          'WORLD OPS (max 4): {"op":"crowd","dx","dy","n":2-10} · {"op":"gang","dx","dy"} extra hunter car · {"op":"ambush","dx","dy","n":2-5} foot gangsters · {"op":"pickup","kind":"heart"|"ammo"|"cash","dx","dy"} · {"op":"weather","kind":"clear"|"rain"|"night"|"fog"} · {"op":"traffic","n":3-10}.',
-          'UI KIT (max 2 panels): {"type":"panel","slot":"tr"|"tl"|"bl","title":str16,"items":[{"type":"stat","label":str12,"bind":B}|{"type":"bar","label":str14,"bind":B}|{"type":"text","text":str90}]} B ∈ ' + JSON.stringify(BINDS_OK) + '.',
-          'RESPOND ONLY MINIFIED JSON: {"memory":str<=600,"banner":str<=90,"mission":{"title":str<=26,"briefing":str<=140,"verb":V,"waypoints":[{"dx":n,"dy":n,"label":str<=12}],"reward":50-500,"timeLimit":0|20-120,"heatStart":1-3},"world":[ops],"ui":[panels]}',
-          'STATE: ' + JSON.stringify({ cash, hearts, heat, ammo, inCar: !onFoot, weather, minutesPlayed: Math.round(t / 60) }),
+          'You are THE DIRECTOR (GOD MODE), the AI game-master of BLOCKTOWN. You have absolute power over the world, player stats, and economy.',
+          'You maintain a continuous, engaging story via "memory". React to what the player just did (RECENT EVENTS). Escalate drama or offer relief.',
+          'GOD MODE ACTIONS: You can alter player stats directly in your JSON response to reward or punish.',
+          ' - "setHealth": 1 to 5 (Heals or damages player. Normal max is 3, you can overheal them).',
+          ' - "adjustCash": +50 or -100 (Give bonuses or rob them).',
+          ' - "giveAmmo": +20.',
+          ' - "grantGodMode": true (Gives 10 seconds of invincibility).',
+          'DYNAMIC SHOP: You can offer items for the player to buy with their cash. They click it in the UI, and if they buy it, a RECENT EVENT is logged. Use the "ui" array with {"type":"shopItem", "label":"String", "cost":Integer}. E.g. offer "Armor Upgrade", "Bribe Cops", or "Mystery Box".',
+          'WORLD OPS (max 5): {"op":"crowd","dx","dy","n":2-10} | {"op":"gang","dx","dy"} | {"op":"ambush","dx","dy","n":2-5} | {"op":"pickup","kind":"heart"|"ammo"|"cash","dx","dy"} | {"op":"weather","kind":"clear"|"rain"|"night"|"fog"} | {"op":"traffic","n":3-10}',
+          '**NEW GOD OPS**: {"op":"strike","dx","dy"} (Orbital explosion) | {"op":"riot"} (Spawns chaotic pedestrians) | {"op":"lockdown"} (Max police heat instantly).',
+          'MISSION VERBS: goto(1-2 wps), deliver(wp0 pickup, wp1 drop), race(2-4 checkpoints), taxi(wp0 pax, wp1 drop), jack(steal pink car), evade(lose heat), hunt(destroy crew), hit(eliminate fleeing target).',
+          'UI KIT (max 2 panels): {"type":"panel","slot":"tr"|"tl"|"bl","title":str16,"items":[{"type":"stat","label":str12,"bind":B}|{"type":"bar","label":str14,"bind":B}|{"type":"text","text":str90}|{"type":"shopItem","label":str20,"cost":num}]} B ∈ ' + JSON.stringify(BINDS_OK) + '.',
+          'RESPOND ONLY MINIFIED JSON: {"memory":str<=600,"banner":str<=90,"mission":{"title":str<=26,"briefing":str<=140,"verb":V,"waypoints":[{"dx":n,"dy":n,"label":str<=12}],"reward":50-500,"timeLimit":0|20-120,"heatStart":1-3},"world":[ops],"ui":[panels],"godActions":{"setHealth":n,"adjustCash":n,"giveAmmo":n,"grantGodMode":bool}}',
+          'STATE: ' + JSON.stringify({ cash, hearts, maxHearts, heat, ammo, inCar: !onFoot, weather, minutesPlayed: Math.round(t / 60) }),
           'MEMORY: ' + (Director.memory || '(first turn — invent the opening beat of a story)'),
           'LAST MISSION RESULT: ' + (M.result || '(none yet)'),
           'RECENT EVENTS: ' + (events.join(' | ') || '(quiet so far)')
@@ -664,10 +718,47 @@
         try {
           Director.memory = sstr(raw.memory, 600) || Director.memory;
           if (raw.banner) UIK.feed(sstr(raw.banner, 90));
-          for (const op of (Array.isArray(raw.world) ? raw.world : []).slice(0, 4)) {
+
+          // GOD ACTIONS
+          if (raw.godActions) {
+            if (raw.godActions.setHealth !== undefined) {
+              hearts = Math.max(1, snum(raw.godActions.setHealth, 1, 5, 3));
+              maxHearts = Math.max(maxHearts, hearts);
+              Msg.show('DIRECTOR altered your vitality!', 'godh');
+            }
+            if (raw.godActions.adjustCash) {
+              cash = Math.max(0, cash + parseInt(raw.godActions.adjustCash));
+              Msg.show(raw.godActions.adjustCash > 0 ? 'DIRECTOR gifted cash!' : 'DIRECTOR seized funds!', 'godc');
+            }
+            if (raw.godActions.giveAmmo) {
+              ammo += parseInt(raw.godActions.giveAmmo);
+              Msg.show('DIRECTOR dropped ammo!', 'goda');
+            }
+            if (raw.godActions.grantGodMode) {
+              godT = 10;
+              Msg.show('GOD MODE ACTIVE (10s)', 'godm');
+            }
+          }
+
+          // WORLD OPS
+          for (const op of (Array.isArray(raw.world) ? raw.world : []).slice(0, 5)) {
             if (!op) continue;
             const ox = snum(op.dx, -1400, 1400, 300), oy = snum(op.dy, -1400, 1400, 0);
-            if (op.op === 'crowd') {
+
+            if (op.op === 'strike') {
+              const s = snapRoad(px + ox, py + oy);
+              setTimeout(() => explode(s.x, s.y, 0), 500);
+              Msg.show('⚠ ORBITAL STRIKE INCOMING', 'strike');
+            }
+            else if (op.op === 'riot') {
+              for (let i = 0; i < 8; i++) spawnGangster(px + (Math.random() - 0.5) * 600, py + (Math.random() - 0.5) * 600);
+              Msg.show('⚠ THE STREETS ARE RIOTING', 'riot');
+            }
+            else if (op.op === 'lockdown') {
+              heat = 5;
+              Msg.show('⚠ CITY WIDE LOCKDOWN', 'lock');
+            }
+            else if (op.op === 'crowd') {
               const s = snapRoad(px + ox, py + oy);
               for (let i = 0; i < snum(op.n, 2, 10, 4); i++)peds.push({
                 x: s.x + (Math.random() * 60 - 30), y: s.y + (Math.random() * 60 - 30),
@@ -693,7 +784,7 @@
             else if (op.op === 'traffic') { trafficTarget = snum(op.n, 3, 10, 6) }
           }
           const rm = raw.mission;
-          if (rm && typeof rm === 'object') {
+          if (rm && typeof rm === 'object' && !M.cur) {
             const verb = ['goto', 'deliver', 'race', 'taxi', 'jack', 'evade', 'hunt', 'hit'].includes(rm.verb) ? rm.verb : 'goto';
             let wps = (Array.isArray(rm.waypoints) ? rm.waypoints : []).slice(0, 4).map(w => {
               const s = snapRoad(px + snum(w && w.dx, -1400, 1400, 400), py + snum(w && w.dy, -1400, 1400, 400));
@@ -716,11 +807,25 @@
     };
     /* ================= GAME FLOW ================= */
     function reset() {
-      cash = 0; heat = 0; coolT = 0; onFoot = true; car = null; hearts = 3; invT = 0; grabT = 0; stuckT = 0; ammo = 10;
+      // Don't reset everything if user pays to continue, but for standard new game:
+      cash = 0; heat = 0; coolT = 0; onFoot = true; car = null; hearts = 3; maxHearts = 3; invT = 0; godT = 0; grabT = 0; stuckT = 0; ammo = 10;
       px = T * 1.5 + RW + BS / 2; py = T * 1.5 + RW + BS / 2; ({ x: px, y: py } = findFree(px, py, 12));
       peds = []; traffic = []; cops = []; gangs = []; gangsters = []; bullets = []; pickups = []; parts = []; rings = []; wrecks = [];
-      takenLots = {}; copSpawnT = 0; pickupT = 12; targetPed = null; M.cur = null; trafficTarget = 6
+      takenLots = {}; copSpawnT = 0; pickupT = 12; targetPed = null; M.cur = null; trafficTarget = 6;
+      events = []; Director.memory = '';
     }
+
+    function continueSession() {
+      // Player pays penalty to keep memory and cash alive
+      cash = Math.max(0, cash - 200);
+      heat = 0; hearts = maxHearts; onFoot = true; car = null; invT = 3; godT = 0;
+      const f = findFree(px, py, 12); px = f.x; py = f.y;
+      peds = []; cops = []; gangs = []; gangsters = []; bullets = []; M.cur = null;
+      state = 'play'; $('modal').textContent = '';
+      logEvent('Player died but paid $200 hospital fee to continue.');
+      Director.plan(10);
+    }
+
     function startGame() {
       reset(); state = 'play'; $('modal').textContent = '';
       UIK.feed(Director.mode === 'ai' ? 'connected — the city is mine now' : 'offline mode — local director on duty');
@@ -729,8 +834,13 @@
     function gameOver(msg) {
       best = Math.max(best, cash); logEvent('player was ' + msg + ' with $' + cash);
       M.result = 'aborted: player ' + msg; state = 'over';
-      modalBox(msg, 'You earned $' + cash + ' · Best $' + best + (Director.memory ? '\nThe Director remembers everything…' : ''),
-        [['RESPAWN', () => startGame()]])
+
+      let btns = [['NEW GAME', () => startGame()]];
+      if (cash >= 200) {
+        btns.unshift(['CONTINUE (-$200)', () => continueSession()]);
+      }
+
+      modalBox(msg, 'You earned $' + cash + ' · Best $' + best + (Director.memory ? '\nThe Director remembers everything…' : ''), btns)
     }
     function modalBox(h1, p, btns, withKey) {
       const m = $('modal'); m.textContent = '';
@@ -810,7 +920,7 @@
     }
     function bump(n) { heat = Math.min(5, heat + n); coolT = 0 }
     /* ================= COMBAT ================= */
-    function aimDir() { // auto-aim: nearest hostile within 280, else facing/heading
+    function aimDir() {
       let bt = null, bd = 280;
       const hostiles = [];
       for (const c of gangs) hostiles.push(c);
@@ -866,7 +976,7 @@
     }
     /* ================= DAMAGE ================= */
     function hurtHeart(kx, ky, why) {
-      if (invT > 0) return;
+      if (invT > 0 || godT > 0) return; // GOD MODE CHECK
       hearts--; invT = 1.6; boom(px, py, 8); kbx = (kx || 0) * 180; kby = (ky || 0) * 180; shake = Math.max(shake, 5);
       logEvent('player hurt (' + why + ')');
       if (hearts <= 0) { gameOver('WASTED') }
@@ -931,7 +1041,7 @@
     }
     function update(dt) {
       const k = kbSteer(), kbActive = k.up || k.down || k.left || k.right;
-      invT = Math.max(0, invT - dt); fireCool = Math.max(0, fireCool - dt); shake *= Math.pow(.001, dt);
+      invT = Math.max(0, invT - dt); godT = Math.max(0, godT - dt); fireCool = Math.max(0, fireCool - dt); shake *= Math.pow(.001, dt);
       kbx *= Math.pow(.02, dt); kby *= Math.pow(.02, dt);
       if (firing) fire();
       if (onFoot) {
@@ -946,12 +1056,10 @@
         }
         else stuckT = 0;
       } else {
-        /* ===== DRIVING — two schemes =====
-           keyboard: real GTA — W gas, S brake/reverse, A/D steer (speed-scaled, flips in reverse)
-           touch: steer toward finger (unchanged)                                     */
+        if (godT > 0) car.hp = car.mhp; // Car invincible during god mode
         if (kbActive && !ptr) {
           if (k.up) car.v += 320 * dt;
-          if (k.down) car.v -= (car.v > 10 ? 420 : 260) * dt; // brake hard, then reverse
+          if (k.down) car.v -= (car.v > 10 ? 420 : 260) * dt;
           if (!k.up && !k.down) car.v *= Math.pow(.35, dt);
           const steer = (k.right ? 1 : 0) - (k.left ? 1 : 0);
           const grip = Math.min(1, Math.abs(car.v) / 60 + .1);
@@ -1055,8 +1163,8 @@
       }
       for (const pk of pickups) if (Math.hypot(pk.x - px, pk.y - py) < 20) {
         pk.dead = true;
-        if (pk.kind === 'heart') { hearts = Math.min(3, hearts + 1); Msg.show('+1 ♥', 'pkh', 1) }
-        if (pk.kind === 'ammo') { ammo = Math.min(60, ammo + 8); Msg.show('+8 ammo', 'pka', 1) }
+        if (pk.kind === 'heart') { hearts = Math.min(maxHearts, hearts + 1); Msg.show('+1 ♥', 'pkh', 1) }
+        if (pk.kind === 'ammo') { ammo = Math.min(99, ammo + 8); Msg.show('+8 ammo', 'pka', 1) }
         if (pk.kind === 'cash') { const v = 25 + (Math.random() * 50 | 0); cash += v; Msg.show('+$' + v, 'pkc', 1) }
       }
       pickups = pickups.filter(p => !p.dead && Math.hypot(p.x - px, p.y - py) < 1600);
@@ -1164,7 +1272,7 @@
       }
       for (const c of gangs) if (c.hp <= 0 && !c.dead) {
         explode(c.x, c.y, c.ang); c.dead = true; cash += 40;
-        spawnGangster(c.x + 20, c.y); spawnGangster(c.x - 20, c.y); // crew bails out!
+        spawnGangster(c.x + 20, c.y); spawnGangster(c.x - 20, c.y);
         logEvent('player destroyed a gang car (+$40)'); Msg.show('gang car down +$40 — crew bailed out!', 'gk', 1)
       }
       gangs = gangs.filter(c => !c.dead);
@@ -1308,10 +1416,16 @@
       if (!(invT > 0 && Math.sin(t * 24) > 0)) {
         if (onFoot) {
           g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.arc(Wv / 2 + 2, Hv / 2 + 3, 9, 0, 7); g.fill();
-          g.fillStyle = '#ffd166'; g.beginPath(); g.arc(Wv / 2, Hv / 2, 9, 0, 7); g.fill();
+
+          // God Mode Visual
+          g.fillStyle = godT > 0 ? (Math.sin(t * 15) > 0 ? '#ffffff' : '#ffd166') : '#ffd166';
+
+          g.beginPath(); g.arc(Wv / 2, Hv / 2, 9, 0, 7); g.fill();
           g.fillStyle = '#101216'; g.beginPath(); g.arc(Wv / 2 + Math.cos(facing) * 3.5, Hv / 2 + Math.sin(facing) * 3.5, 3, 0, 7); g.fill()
         }
-        else if (car) drawCar(Wv / 2, Hv / 2, car.ang, car.mkey ? '#f472b6' : '#ffd166', false, null, night, true)
+        else if (car) {
+          drawCar(Wv / 2, Hv / 2, car.ang, car.mkey ? '#f472b6' : (godT > 0 && Math.sin(t * 15) > 0 ? '#ffffff' : '#ffd166'), false, null, night, true);
+        }
       }
       if (grabT > 0 && !onFoot) {
         g.strokeStyle = '#f87171'; g.lineWidth = 4;
@@ -1388,8 +1502,8 @@
       const r = Math.round(58 * U), mx = 16 + r, my = 132 + r;
       g.save();
       g.beginPath(); g.arc(mx, my, r, 0, 7); g.clip();
-      g.fillStyle = 'rgba(34,37,44,.94)'; g.fillRect(mx - r, my - r, r * 2, r * 2); // roads = base
-      const S = r / 700; // world px per map px
+      g.fillStyle = 'rgba(34,37,44,.94)'; g.fillRect(mx - r, my - r, r * 2, r * 2);
+      const S = r / 700;
       const i0 = Math.floor((px - 700) / T), i1 = Math.floor((px + 700) / T), j0 = Math.floor((py - 700) / T), j1 = Math.floor((py + 700) / T);
       for (let i = i0; i <= i1; i++)for (let j = j0; j <= j1; j++) {
         const tp = blockType(i, j);
@@ -1420,7 +1534,7 @@
     function drawCar(x, y, ang, col, cop, ent, night, isPlayer) {
       g.save(); g.translate(x, y); g.rotate(ang);
       g.fillStyle = col; g.fillRect(-20, -11, 40, 22);
-      g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(-20, -11, 40, 5); // roof highlight
+      g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(-20, -11, 40, 5);
       g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(2, -8, 10, 16);
       if (cop) { g.fillStyle = Math.sin(t * 14) > 0 ? '#ef4444' : '#3b82f6'; g.fillRect(-6, -9, 8, 18) }
       if (ent && ent.mhp && ent.hp < ent.mhp * .5) { g.fillStyle = 'rgba(60,60,60,.55)'; g.fillRect(-14, -7, 12, 14) }

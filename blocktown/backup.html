@@ -1,0 +1,1455 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport"
+        content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+    <title>Blocktown — AI Director</title>
+    <style>
+        html,
+        body {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            background: #101216;
+            touch-action: none;
+            user-select: none;
+            -webkit-user-select: none;
+            font-family: ui-monospace, Menlo, monospace
+        }
+
+        canvas {
+            display: block;
+            position: fixed;
+            inset: 0
+        }
+
+        #ui {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 5
+        }
+
+        .slot {
+            position: fixed;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-width: 46vw
+        }
+
+        #sl-tl {
+            top: 10px;
+            left: 10px
+        }
+
+        #sl-tc {
+            top: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            align-items: center
+        }
+
+        #sl-tr {
+            top: 10px;
+            right: 10px;
+            align-items: flex-end
+        }
+
+        #sl-bc {
+            bottom: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            align-items: center;
+            max-width: 92vw
+        }
+
+        #sl-bl {
+            bottom: 12px;
+            left: 10px;
+            max-width: 58vw
+        }
+
+        .a-text {
+            color: #e7e9ee;
+            font-size: 12px;
+            line-height: 1.45;
+            text-shadow: 0 1px 2px #000
+        }
+
+        .a-stat {
+            display: flex;
+            gap: 7px;
+            align-items: baseline;
+            text-shadow: 0 1px 2px #000
+        }
+
+        .a-stat .lb {
+            font-size: 10px;
+            letter-spacing: .14em;
+            color: #8b8fa3
+        }
+
+        .a-stat .vl {
+            font-size: 19px;
+            font-weight: 800;
+            color: #ffd166
+        }
+
+        .a-badge {
+            font-size: 15px;
+            letter-spacing: .1em;
+            color: #f87171;
+            text-shadow: 0 1px 2px #000
+        }
+
+        .a-bar {
+            width: 120px;
+            height: 7px;
+            background: rgba(255, 255, 255, .14);
+            border-radius: 4px;
+            overflow: hidden
+        }
+
+        .a-bar>i {
+            display: block;
+            height: 100%;
+            background: #ffd166;
+            width: 0%
+        }
+
+        .a-btn {
+            pointer-events: auto;
+            border: 2px solid #ffd166;
+            color: #ffd166;
+            background: rgba(255, 209, 102, .13);
+            border-radius: 10px;
+            padding: 10px 14px;
+            font: 700 13px ui-monospace, Menlo, monospace;
+            letter-spacing: .08em;
+            cursor: pointer
+        }
+
+        .a-btn:active {
+            background: rgba(255, 209, 102, .3)
+        }
+
+        .m-panel {
+            background: rgba(10, 12, 18, .72);
+            border: 1px solid rgba(255, 209, 102, .35);
+            border-radius: 10px;
+            padding: 9px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            backdrop-filter: blur(2px)
+        }
+
+        .m-panel .ttl {
+            font-size: 10px;
+            letter-spacing: .2em;
+            color: #ffd166
+        }
+
+        .m-toast {
+            background: rgba(10, 12, 18, .85);
+            border: 1px solid rgba(255, 255, 255, .2);
+            border-radius: 9px;
+            padding: 8px 14px;
+            color: #e7e9ee;
+            font-size: 12px;
+            animation: tin .2s ease, tout .5s ease 3.2s forwards;
+            max-width: 88vw;
+            text-align: center
+        }
+
+        @keyframes tin {
+            from {
+                opacity: 0;
+                transform: translateY(8px)
+            }
+        }
+
+        @keyframes tout {
+            to {
+                opacity: 0
+            }
+        }
+
+        .m-card {
+            background: rgba(10, 12, 18, .78);
+            border: 1px solid rgba(74, 222, 128, .5);
+            border-radius: 12px;
+            padding: 10px 14px;
+            max-width: 320px
+        }
+
+        .m-card .mt {
+            color: #4ade80;
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: .04em
+        }
+
+        .m-card .mb {
+            color: #cfd3dd;
+            font-size: 11.5px;
+            line-height: 1.5;
+            margin-top: 4px
+        }
+
+        .m-card .mr {
+            color: #ffd166;
+            font-size: 11px;
+            margin-top: 5px
+        }
+
+        #feed {
+            display: flex;
+            flex-direction: column;
+            gap: 3px
+        }
+
+        #feed .a-text {
+            font-size: 10.5px;
+            color: #9aa1b4;
+            opacity: .9
+        }
+
+        #feed .a-text b {
+            color: #c8b1ff;
+            font-weight: 700
+        }
+
+        #actbtn {
+            position: fixed;
+            right: 18px;
+            bottom: 22px;
+            width: 82px;
+            height: 82px;
+            border-radius: 50%;
+            z-index: 6;
+            font-size: 13px
+        }
+
+        #firebtn {
+            position: fixed;
+            right: 26px;
+            bottom: 118px;
+            width: 66px;
+            height: 66px;
+            border-radius: 50%;
+            z-index: 6;
+            font-size: 10.5px;
+            border-color: #f87171;
+            color: #f87171;
+            background: rgba(248, 113, 113, .12)
+        }
+
+        #firebtn:active {
+            background: rgba(248, 113, 113, .3)
+        }
+
+        #firebtn.empty {
+            opacity: .4
+        }
+
+        .m-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(8, 9, 13, .86);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9;
+            pointer-events: auto
+        }
+
+        .m-modal .box {
+            background: #14161d;
+            border: 1px solid rgba(255, 209, 102, .5);
+            border-radius: 14px;
+            padding: 26px 22px;
+            width: min(430px, 92vw);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 88vh;
+            overflow: auto
+        }
+
+        .m-modal h1 {
+            margin: 0;
+            color: #ffd166;
+            font-size: 30px
+        }
+
+        .m-modal p {
+            margin: 0;
+            color: #aeb4c2;
+            font-size: 12.5px;
+            line-height: 1.6;
+            white-space: pre-line
+        }
+
+        .m-modal input {
+            pointer-events: auto;
+            background: #0c0e13;
+            border: 1px solid #3a3f4d;
+            color: #e7e9ee;
+            border-radius: 8px;
+            padding: 11px;
+            font: 12px ui-monospace, Menlo, monospace;
+            width: 100%;
+            box-sizing: border-box
+        }
+
+        .m-modal .row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap
+        }
+
+        .m-modal .a-btn {
+            flex: 1;
+            text-align: center;
+            min-width: 130px
+        }
+
+        .ghost {
+            border-color: #5a6070;
+            color: #aeb4c2;
+            background: rgba(255, 255, 255, .05)
+        }
+
+        .small {
+            font-size: 10px;
+            color: #6b7180
+        }
+    </style>
+</head>
+
+<body>
+    <canvas></canvas>
+    <div id="ui">
+        <div class="slot" id="sl-tl"></div>
+        <div class="slot" id="sl-tc"></div>
+        <div class="slot" id="sl-tr"></div>
+        <div class="slot" id="sl-bc"></div>
+        <div class="slot" id="sl-bl">
+            <div id="feed"></div>
+        </div>
+        <button id="firebtn" class="a-btn ui-int">FIRE</button>
+        <button id="actbtn" class="a-btn ui-int">JACK</button>
+    </div>
+    <div id="modal"></div>
+    <script>
+        'use strict';
+        /* =====================================================================
+           BLOCKTOWN v4 — THE AI-DIRECTED CITY
+           The Director (Gemini, via the player's own key) writes the story live:
+           missions, combat, ambushes, pickups, weather, night — and remembers.
+           Controls: touch = steer toward finger · keyboard = GTA (W/S gas+reverse,
+           A/D steer, E enter/exit, F fire) · buttons = JACK/EXIT + FIRE.
+        ===================================================================== */
+        const cv = document.querySelector('canvas'), g = cv.getContext('2d');
+        let W = 1, H = 1, Z = 1, U = 1;
+        function fit() {
+            const vp = window.visualViewport;
+            W = Math.round((vp && vp.width) || innerWidth); H = Math.round((vp && vp.height) || innerHeight);
+            const d = Math.min(2, devicePixelRatio || 1);
+            cv.width = W * d; cv.height = H * d; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+            g.setTransform(d, 0, 0, d, 0, 0);
+            Z = Math.max(.68, Math.min(1, Math.min(W, H) / 560));
+            U = Math.max(.85, Math.min(1.25, Math.min(W, H) / 420))
+        }
+        onresize = fit; fit();
+        const PI = Math.PI, mod = (n, m) => ((n % m) + m) % m, cl = v => Math.max(-1, Math.min(1, v)),
+            na = a => { while (a > PI) a -= 2 * PI; while (a < -PI) a += 2 * PI; return a };
+        /* ---------------- world ---------------- */
+        const T = 260, RW = 90, BS = T - RW;
+        function hsh(i, j, k) { let n = Math.sin(i * 127.1 + j * 311.7 + (k || 0) * 74.7) * 43758.5453; return n - Math.floor(n) }
+        function blockType(i, j) { const h = hsh(i, j, 1); return h < .14 ? 'park' : h < .30 ? 'lot' : 'bldg' }
+        function solidAt(x, y) {
+            const i = Math.floor(x / T), j = Math.floor(y / T);
+            if (x - i * T < RW || y - j * T < RW) return false; return blockType(i, j) === 'bldg'
+        }
+        function clearAt(x, y, r) {
+            return !solidAt(x, y) && !solidAt(x + r, y) && !solidAt(x - r, y) && !solidAt(x, y + r) && !solidAt(x, y - r)
+                && !solidAt(x + r * .7, y + r * .7) && !solidAt(x - r * .7, y + r * .7) && !solidAt(x + r * .7, y - r * .7) && !solidAt(x - r * .7, y - r * .7)
+        }
+        function findFree(x, y, r) {
+            r = r || 12; if (clearAt(x, y, r)) return { x, y };
+            for (let d = 14; d < 520; d += 14)for (let a = 0; a < 6.28; a += .45) {
+                const fx = x + Math.cos(a) * d, fy = y + Math.sin(a) * d;
+                if (clearAt(fx, fy, r)) return { x: fx, y: fy }
+            }
+            return { x: Math.round(x / T) * T + RW / 2, y: Math.round(y / T) * T + RW / 2 }
+        }
+        function snapRoad(x, y) { return { x: Math.round(x / T) * T + RW / 2, y: Math.round(y / T) * T + RW / 2 } }
+        const BPAL = ['#2b3242', '#343049', '#3a2f3b', '#2e3a3a', '#373430', '#303648'];
+        /* ---------------- state ---------------- */
+        let state = 'boot', cash = 0, best = 0, heat = 0, coolT = 0, onFoot = true, t = 0;
+        let px = 0, py = 0, hearts = 3, invT = 0, kbx = 0, kby = 0, stuckT = 0, lastPX = 0, lastPY = 0, facing = 0;
+        let ammo = 10, firing = false, fireCool = 0;
+        let car = null, peds = [], traffic = [], cops = [], gangs = [], gangsters = [], bullets = [], pickups = [],
+            parts = [], rings = [], wrecks = [], takenLots = {}, copSpawnT = 0, grabT = 0, pickupT = 12, shake = 0, targetPed = null;
+        let weather = 'clear', keysDown = {}, ptr = null, trafficTarget = 6;
+        let events = [];
+        function logEvent(s) { events.push(s); if (events.length > 14) events.shift() }
+        /* ================= UI KIT ================= */
+        const $ = id => document.getElementById(id);
+        let binds = [];
+        const UIK = {
+            el(tag, cls, parent) { const n = document.createElement(tag); if (cls) n.className = cls; if (parent) parent.appendChild(n); return n },
+            text(s, parent) { const n = UIK.el('div', 'a-text', parent); n.textContent = s; return n },
+            stat(label, bind, parent) {
+                const n = UIK.el('div', 'a-stat', parent);
+                const lb = UIK.el('span', 'lb', n); lb.textContent = label;
+                const vl = UIK.el('span', 'vl', n); vl.textContent = '—';
+                if (bind) binds.push({ n: vl, path: bind }); return n
+            },
+            badge(bind, parent) { const n = UIK.el('div', 'a-badge', parent); if (bind) binds.push({ n, path: bind }); return n },
+            bar(label, bind, parent) {
+                const wrap = UIK.el('div', '', parent);
+                if (label) { const l = UIK.el('div', 'a-text', wrap); l.textContent = label; l.style.fontSize = '9px' }
+                const b = UIK.el('div', 'a-bar', wrap); const i = UIK.el('i', '', b);
+                if (bind) binds.push({ n: i, path: bind, bar: 1 }); return wrap
+            },
+            button(label, cb, parent) {
+                const n = UIK.el('button', 'a-btn ui-int', parent); n.textContent = label;
+                n.addEventListener('pointerdown', e => { e.stopPropagation(); cb() }); return n
+            },
+            panel(title, slot) {
+                const p = UIK.el('div', 'm-panel', $('sl-' + slot));
+                if (title) { const tt = UIK.el('div', 'ttl', p); tt.textContent = title } return p
+            },
+            card() {
+                let c = $('sl-tc').querySelector && $('sl-tc').querySelector('.m-card');
+                if (!c) {
+                    c = UIK.el('div', 'm-card', $('sl-tc'));
+                    UIK.el('div', 'mt', c); UIK.el('div', 'mb', c); UIK.el('div', 'mr', c)
+                } return c
+            },
+            feed(s, who) {
+                const f = $('feed'); const n = UIK.el('div', 'a-text', f);
+                const b = UIK.el('b', '', n); b.textContent = (who || 'DIRECTOR') + ' ';
+                n.appendChild(document.createTextNode(s));
+                while (f.children.length > 3) f.children[0].remove(); return n
+            }
+        };
+        /* ---- message system: deduped, throttled, max 2 visible ---- */
+        const Msg = {
+            last: {}, show(text, key, cool) {
+                key = key || text; cool = cool == null ? 4 : cool;
+                if (Msg.last[key] && t - Msg.last[key] < cool) return;
+                Msg.last[key] = t;
+                const box = $('sl-bc');
+                while (box.children.length >= 2) box.children[0].remove();
+                const n = UIK.el('div', 'm-toast', box); n.textContent = text;
+                setTimeout(() => n.remove && n.remove(), 3800)
+            }
+        };
+        function snapshot() {
+            return {
+                cash: '$' + cash, hearts: '♥'.repeat(Math.max(0, hearts)) + '♡'.repeat(Math.max(0, 3 - hearts)),
+                heat: '★'.repeat(heat) + '☆'.repeat(5 - heat), ammo: '⦿ ' + ammo,
+                carHp: car ? Math.max(0, car.hp) / 100 : 0, carHpTxt: car ? ('CAR ' + Math.max(0, car.hp | 0) + '%') : 'ON FOOT',
+                mission: {
+                    title: M.cur ? M.cur.title : '—', reward: M.cur ? ('$' + M.cur.reward) : '—',
+                    timeLeft: M.cur && M.cur.timeLimit ? Math.max(0, Math.ceil(M.cur.timeLimit - M.cur.t)) + 's' : '—',
+                    progress: M.cur ? M.progress() : 0, step: M.cur ? (M.cur.step + 1) + '/' + Math.max(1, M.cur.wps.length) : '—'
+                }
+            }
+        }
+        function resolve(o, path) { return path.split('.').reduce((a, k) => a == null ? a : a[k], o) }
+        function refreshBinds() {
+            const s = snapshot();
+            for (const b of binds) {
+                const v = resolve(s, b.path);
+                if (b.bar) b.n.style.width = Math.round(Math.max(0, Math.min(1, +v || 0)) * 100) + '%';
+                else b.n.textContent = v == null ? '—' : v
+            }
+        }
+        let aiNodes = [];
+        function clearAINodes() { for (const n of aiNodes) n.remove && n.remove(); aiNodes = [] }
+        function renderSpec(list) {
+            clearAINodes(); if (!Array.isArray(list)) return;
+            for (const p of list.slice(0, 2)) {
+                if (!p || p.type !== 'panel') continue;
+                const slot = ['tl', 'tr', 'bl', 'bc'].includes(p.slot) ? p.slot : 'tr';
+                const pn = UIK.panel(sstr(p.title, 16), slot); aiNodes.push(pn);
+                for (const it of (Array.isArray(p.items) ? p.items : []).slice(0, 5)) {
+                    if (!it) continue;
+                    const bind = BINDS_OK.includes(it.bind) ? it.bind : null;
+                    if (it.type === 'stat') UIK.stat(sstr(it.label, 12), bind, pn);
+                    else if (it.type === 'bar') UIK.bar(sstr(it.label, 14), bind || 'mission.progress', pn);
+                    else if (it.type === 'text') UIK.text(sstr(it.text, 90), pn)
+                }
+            }
+        }
+        const BINDS_OK = ['cash', 'hearts', 'heat', 'ammo', 'carHpTxt', 'carHp', 'mission.title', 'mission.reward', 'mission.timeLeft', 'mission.progress', 'mission.step'];
+        function sstr(v, n) { return String(v == null ? '' : v).replace(/\s+/g, ' ').slice(0, n) }
+        function snum(v, a, b, d) { v = +v; return isFinite(v) ? Math.max(a, Math.min(b, v)) : d }
+        /* ================= MISSIONS ================= */
+        const M = {
+            cur: null, result: null,
+            progress() {
+                const m = M.cur; if (!m) return 0;
+                if (m.verb === 'evade') return Math.max(0, Math.min(1, 1 - heat / (m.heat0 || 1)));
+                if (m.verb === 'hunt') return m.hunt0 ? 1 - gangs.filter(c => c.hunt).length / m.hunt0 : 0;
+                if (m.verb === 'hit') return targetPed ? 0 : 1;
+                return m.step / Math.max(1, m.wps.length)
+            },
+            navTarget() {
+                const m = M.cur; if (!m) return null;
+                if (m.verb === 'hunt') {
+                    let bt = null, bd = 1e9;
+                    for (const c of gangs) if (c.hunt) { const d = Math.hypot(c.x - px, c.y - py); if (d < bd) { bd = d; bt = c } }
+                    return bt
+                }
+                if (m.verb === 'hit') return targetPed;
+                return m.wps[m.step] || null
+            },
+            cleanup() {
+                targetPed = null;
+                traffic = traffic.filter(c => !c.mkey || c === car);
+                for (const c of gangs) c.hunt = 0
+            },
+            start(m) {
+                M.cleanup(); M.cur = m; m.step = 0; m.t = 0; m.aboard = false;
+                if (m.verb === 'jack') {
+                    const s = snapRoad(m.wps[0].x, m.wps[0].y);
+                    traffic.push({ x: s.x, y: s.y, ang: 0, v: 0, hp: 80, mhp: 80, col: '#f472b6', parked: true, mkey: 1 })
+                }
+                if (m.verb === 'evade') { m.heat0 = Math.max(1, m.heatStart || 2); heat = Math.max(heat, m.heat0); coolT = 0 }
+                if (m.verb === 'hunt') {
+                    const n = m.reward > 240 ? 2 : 1; m.hunt0 = n;
+                    for (let i = 0; i < n; i++) {
+                        const f = findFree(m.wps[0].x + i * 80, m.wps[0].y + i * 40, 16);
+                        gangs.push({ x: f.x, y: f.y, v: 0, ang: 0, hp: 60, ramCd: 0, hunt: 1 })
+                    }
+                }
+                if (m.verb === 'hit') {
+                    const f = findFree(m.wps[0].x, m.wps[0].y, 12);
+                    targetPed = { x: f.x, y: f.y, a: Math.random() * 7, hp: 2, flee: false }
+                }
+                const c = UIK.card(); c.children[0].textContent = m.title;
+                c.children[1].textContent = m.briefing;
+                c.children[2].textContent = 'REWARD $' + m.reward + (m.timeLimit ? ' · ' + m.timeLimit + 's limit' : '');
+                Msg.show('NEW MISSION: ' + m.title, 'newm', 1)
+            },
+            finish(ok, why) {
+                const m = M.cur; if (!m) return; M.cur = null; M.cleanup();
+                if (ok) {
+                    cash += m.reward; logEvent('mission "' + m.title + '" SUCCEEDED (+$' + m.reward + ')');
+                    Msg.show('✔ ' + m.title + ' — +$' + m.reward, 'md', 0)
+                }
+                else { logEvent('mission "' + m.title + '" FAILED (' + why + ')'); Msg.show('✘ mission failed — ' + why, 'md', 0) }
+                M.result = (ok ? 'success' : 'failed: ' + why);
+                const c = UIK.card(); c.children[0].textContent = ok ? 'MISSION COMPLETE' : 'MISSION FAILED';
+                c.children[1].textContent = 'the Director is writing the next chapter…'; c.children[2].textContent = '';
+                Director.plan(1800)
+            },
+            update(dt) {
+                const m = M.cur; if (!m) return; m.t += dt;
+                if (m.timeLimit && m.t > m.timeLimit) return M.finish(false, 'out of time');
+                if (m.verb === 'evade') { if (heat === 0 && m.t > 2) M.finish(true); return }
+                if (m.verb === 'hunt') { if (!gangs.some(c => c.hunt)) M.finish(true); return }
+                if (m.verb === 'hit') {
+                    if (!targetPed) return M.finish(true);
+                    if (Math.hypot(targetPed.x - px, targetPed.y - py) > 1700) return M.finish(false, 'the target escaped');
+                    return
+                }
+                const wp = m.wps[m.step]; if (!wp) return M.finish(true);
+                const dd = Math.hypot(wp.x - px, wp.y - py);
+                if (m.verb === 'jack' && m.step === 0) {
+                    if (car && car.mkey) { m.step = 1; Msg.show('marked car secured — deliver it!', 'mk'); if (m.wps.length < 2) M.finish(true) }
+                    return
+                }
+                if (dd < 46) {
+                    if (m.verb === 'taxi') {
+                        if (onFoot) { Msg.show('you need a car for the passenger', 'needcar'); return }
+                        if (m.step === 0) { m.aboard = true; Msg.show('passenger aboard', 'pax') }
+                        else if (!m.aboard) return
+                    }
+                    if (m.verb === 'race' && onFoot) { Msg.show('checkpoints need wheels', 'wheels'); return }
+                    if (m.verb === 'jack' && m.step === 1 && (!car || !car.mkey)) { Msg.show('deliver the MARKED car', 'mkd'); return }
+                    m.step++;
+                    if (m.step >= m.wps.length) M.finish(true);
+                    else Msg.show('checkpoint ' + m.step + '/' + m.wps.length, 'cp', 1)
+                }
+            }
+        };
+        /* ================= DIRECTOR ================= */
+        const Director = {
+            key: '', mode: 'offline', memory: '', busy: false, lastCall: 0, timer: null, n: 0,
+            plan(delay) { clearTimeout(Director.timer); Director.timer = setTimeout(() => Director.go(), delay || 10) },
+            async go() {
+                if (Director.busy || state !== 'play') return;
+                const now = Date.now();
+                if (now - Director.lastCall < 8000) { Director.plan(8000 - (now - Director.lastCall)); return }
+                Director.busy = true; Director.lastCall = now;
+                let plan = null;
+                if (Director.mode === 'ai') {
+                    UIK.feed('thinking…');
+                    try { plan = await Director.callGemini() }
+                    catch (e) { UIK.feed('offline (' + sstr(e.message, 40) + ') — local plan'); plan = null }
+                }
+                if (!plan) plan = Director.offline();
+                Director.apply(plan); Director.busy = false
+            },
+            offline() {
+                Director.n++;
+                const verbs = ['deliver', 'race', 'hunt', 'taxi', 'jack', 'evade', 'hit', 'goto'];
+                const v = verbs[Director.n % verbs.length];
+                const wp = (d) => { const a = Math.random() * 6.28; return { dx: Math.cos(a) * d, dy: Math.sin(a) * d, label: '' } };
+                const L = {
+                    deliver: ['Hot Package', 'No questions. Pick it up, drop it off, get paid.'],
+                    race: ['Street Sprint', 'Checkpoints. The clock is already laughing at you.'],
+                    goto: ['Meet the Contact', 'Someone wants a word. Come alone.'],
+                    taxi: ['Fare Dodger', 'A passenger needs out of the neighborhood. Fast.'],
+                    jack: ['Repo Job', 'A marked pink ride needs "recovering". Bring it in.'],
+                    evade: ['Burn Notice', 'Too famous. Lose the heat, earn the quiet.'],
+                    hunt: ['Crew Cut', 'A rival crew is cruising your block. Erase them.'],
+                    hit: ['Loose End', 'An informant in orange knows too much. He runs fast.']
+                };
+                const wps = v === 'race' ? [wp(500), wp(800), wp(1100)] : ['goto', 'evade', 'hunt', 'hit'].includes(v) ? [wp(620)] : [wp(550), wp(1000)];
+                const world = [];
+                if (Director.n % 3 === 0) world.push({ op: 'weather', kind: ['night', 'rain', 'clear', 'fog'][(Director.n / 3 | 0) % 4] });
+                if (v === 'hunt' || v === 'hit') world.push({ op: 'pickup', kind: 'ammo', dx: 120, dy: 80 });
+                if (Director.n % 4 === 2) world.push({ op: 'pickup', kind: Math.random() < .5 ? 'heart' : 'cash', dx: -200, dy: 150 });
+                return {
+                    banner: 'the city hums along', mission: {
+                        title: L[v][0], briefing: L[v][1], verb: v,
+                        waypoints: wps, reward: 90 + Director.n * 15 + (Math.random() * 60 | 0),
+                        timeLimit: v === 'race' ? 55 : 0, heatStart: 2
+                    }, world, ui: []
+                }
+            },
+            async callGemini() {
+                const prompt = Director.prompt();
+                const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=' + encodeURIComponent(Director.key), {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                        generationConfig: { temperature: 1.0, responseMimeType: 'application/json' }
+                    })
+                });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                const data = await r.json();
+                let txt = ((((data.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
+                txt = txt.replace(/```json|```/g, '');
+                const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
+                return JSON.parse(txt.slice(a, b + 1))
+            },
+            prompt() {
+                return [
+                    'You are THE DIRECTOR, the AI game-master of BLOCKTOWN, a top-down infinite procedural crime city (deterministic grid: tile=260px, every tile edge is a 90px road; blocks = solid buildings/parks/lots). The human only drives, walks, shoots and does your missions — YOU run everything else: invent one mission per turn, edit the world, drop pickups, set weather and time of day, build UI, and keep MEMORY to write a continuing storyline with recurring named characters. React to EVENTS and the last result. Escalate arcs. Vary pacing: quiet jobs, chases, firefights, eerie foggy nights.',
+                    'COORDINATES: positions are {dx,dy} pixel offsets from the player, within ±1400. Snapped to roads.',
+                    'PLAYER GEAR: a pistol (auto-aims at hostiles). Ammo is scarce — YOU decide if combat happens by granting ammo pickups and spawning threats, or keep a turn peaceful.',
+                    'MISSION VERBS: goto(1-2 wps) · deliver(wp0 pickup, wp1 drop) · race(2-4 checkpoints, car, use timeLimit) · taxi(wp0 passenger BY CAR, wp1 dropoff) · jack(marked pink car spawns at wp0; steal it, wp1 delivery) · evade(heatStart 1-3, player must lose all police heat) · hunt(1-2 hostile crew cars spawn at wp0; destroy them — ram or shoot) · hit(a marked informant spawns at wp0 and FLEES; eliminate him).',
+                    'WORLD OPS (max 4): {"op":"crowd","dx","dy","n":2-10} · {"op":"gang","dx","dy"} extra hunter car · {"op":"ambush","dx","dy","n":2-5} foot gangsters · {"op":"pickup","kind":"heart"|"ammo"|"cash","dx","dy"} · {"op":"weather","kind":"clear"|"rain"|"night"|"fog"} · {"op":"traffic","n":3-10}.',
+                    'UI KIT (max 2 panels): {"type":"panel","slot":"tr"|"tl"|"bl","title":str16,"items":[{"type":"stat","label":str12,"bind":B}|{"type":"bar","label":str14,"bind":B}|{"type":"text","text":str90}]} B ∈ ' + JSON.stringify(BINDS_OK) + '.',
+                    'RESPOND ONLY MINIFIED JSON: {"memory":str<=600,"banner":str<=90,"mission":{"title":str<=26,"briefing":str<=140,"verb":V,"waypoints":[{"dx":n,"dy":n,"label":str<=12}],"reward":50-500,"timeLimit":0|20-120,"heatStart":1-3},"world":[ops],"ui":[panels]}',
+                    'STATE: ' + JSON.stringify({ cash, hearts, heat, ammo, inCar: !onFoot, weather, minutesPlayed: Math.round(t / 60) }),
+                    'MEMORY: ' + (Director.memory || '(first turn — invent the opening beat of a story)'),
+                    'LAST MISSION RESULT: ' + (M.result || '(none yet)'),
+                    'RECENT EVENTS: ' + (events.join(' | ') || '(quiet so far)')
+                ].join('\n')
+            },
+            apply(raw) {
+                try {
+                    Director.memory = sstr(raw.memory, 600) || Director.memory;
+                    if (raw.banner) UIK.feed(sstr(raw.banner, 90));
+                    for (const op of (Array.isArray(raw.world) ? raw.world : []).slice(0, 4)) {
+                        if (!op) continue;
+                        const ox = snum(op.dx, -1400, 1400, 300), oy = snum(op.dy, -1400, 1400, 0);
+                        if (op.op === 'crowd') {
+                            const s = snapRoad(px + ox, py + oy);
+                            for (let i = 0; i < snum(op.n, 2, 10, 4); i++)peds.push({
+                                x: s.x + (Math.random() * 60 - 30), y: s.y + (Math.random() * 60 - 30),
+                                a: Math.random() * 6.28, col: ['#e0c9a6', '#b6c9d6', '#d6b6c9', '#c9d6b6'][Math.random() * 4 | 0]
+                            })
+                        }
+                        else if (op.op === 'gang' && gangs.length < 3) {
+                            const s = snapRoad(px + ox, py + oy);
+                            const f = findFree(s.x, s.y, 16); gangs.push({ x: f.x, y: f.y, v: 0, ang: 0, hp: 60, ramCd: 0 });
+                            Msg.show('⚠ a hostile crew is hunting you', 'gang')
+                        }
+                        else if (op.op === 'ambush') {
+                            const s = snapRoad(px + ox, py + oy);
+                            for (let i = 0; i < snum(op.n, 2, 5, 3) && gangsters.length < 8; i++)spawnGangster(s.x + i * 20, s.y + i * 14);
+                            Msg.show('⚠ ambush nearby', 'amb')
+                        }
+                        else if (op.op === 'pickup' && pickups.length < 8) {
+                            const s = snapRoad(px + ox, py + oy);
+                            const kind = ['heart', 'ammo', 'cash'].includes(op.kind) ? op.kind : 'cash';
+                            const f = findFree(s.x, s.y, 10); pickups.push({ x: f.x, y: f.y, kind })
+                        }
+                        else if (op.op === 'weather') { weather = ['clear', 'rain', 'night', 'fog'].includes(op.kind) ? op.kind : 'clear' }
+                        else if (op.op === 'traffic') { trafficTarget = snum(op.n, 3, 10, 6) }
+                    }
+                    const rm = raw.mission;
+                    if (rm && typeof rm === 'object') {
+                        const verb = ['goto', 'deliver', 'race', 'taxi', 'jack', 'evade', 'hunt', 'hit'].includes(rm.verb) ? rm.verb : 'goto';
+                        let wps = (Array.isArray(rm.waypoints) ? rm.waypoints : []).slice(0, 4).map(w => {
+                            const s = snapRoad(px + snum(w && w.dx, -1400, 1400, 400), py + snum(w && w.dy, -1400, 1400, 400));
+                            return { x: s.x, y: s.y, label: sstr(w && w.label, 12) }
+                        });
+                        if (!wps.length) wps = [(() => { const s = snapRoad(px + 500, py + 300); return { x: s.x, y: s.y, label: '' } })()];
+                        if ((verb === 'deliver' || verb === 'taxi' || verb === 'jack') && wps.length < 2) {
+                            const s = snapRoad(wps[0].x + 600, wps[0].y + 300); wps.push({ x: s.x, y: s.y, label: '' })
+                        }
+                        M.start({
+                            title: sstr(rm.title, 26) || 'Odd Job', briefing: sstr(rm.briefing, 140) || 'Get it done.',
+                            verb, wps, reward: Math.round(snum(rm.reward, 50, 500, 120)),
+                            timeLimit: snum(rm.timeLimit, 0, 120, 0), heatStart: snum(rm.heatStart, 1, 3, 2)
+                        })
+                    }
+                    else if (!M.cur) Director.plan(9000);
+                    renderSpec(raw.ui);
+                } catch (e) { UIK.feed('bad plan — local fallback'); if (!M.cur) Director.apply(Director.offline()) }
+            }
+        };
+        /* ================= GAME FLOW ================= */
+        function reset() {
+            cash = 0; heat = 0; coolT = 0; onFoot = true; car = null; hearts = 3; invT = 0; grabT = 0; stuckT = 0; ammo = 10;
+            px = T * 1.5 + RW + BS / 2; py = T * 1.5 + RW + BS / 2; ({ x: px, y: py } = findFree(px, py, 12));
+            peds = []; traffic = []; cops = []; gangs = []; gangsters = []; bullets = []; pickups = []; parts = []; rings = []; wrecks = [];
+            takenLots = {}; copSpawnT = 0; pickupT = 12; targetPed = null; M.cur = null; trafficTarget = 6
+        }
+        function startGame() {
+            reset(); state = 'play'; $('modal').textContent = '';
+            UIK.feed(Director.mode === 'ai' ? 'connected — the city is mine now' : 'offline mode — local director on duty');
+            Director.plan(10)
+        }
+        function gameOver(msg) {
+            best = Math.max(best, cash); logEvent('player was ' + msg + ' with $' + cash);
+            M.result = 'aborted: player ' + msg; state = 'over';
+            modalBox(msg, 'You earned $' + cash + ' · Best $' + best + (Director.memory ? '\nThe Director remembers everything…' : ''),
+                [['RESPAWN', () => startGame()]])
+        }
+        function modalBox(h1, p, btns, withKey) {
+            const m = $('modal'); m.textContent = '';
+            const ov = UIK.el('div', 'm-modal', m), box = UIK.el('div', 'box', ov);
+            const t1 = UIK.el('h1', '', box); t1.textContent = h1;
+            const pp = UIK.el('p', '', box); pp.textContent = p;
+            let inp = null;
+            if (withKey) {
+                inp = UIK.el('input', 'ui-int', box); inp.type = 'password';
+                inp.placeholder = 'Google AI Studio API key (kept in local memory only)';
+                inp.addEventListener('pointerdown', e => e.stopPropagation());
+                const s = UIK.el('p', 'small', box);
+                s.textContent = 'Your key never leaves this page except to call Google\'s Gemini API directly. It is not saved — re-enter next session.'
+            }
+            const row = UIK.el('div', 'row', box);
+            for (const [label, cb, ghost] of btns) { const b = UIK.button(label, () => cb(inp), row); if (ghost) b.className += ' ghost' }
+            return ov
+        }
+        function bootMenu() {
+            state = 'menu';
+            modalBox('BLOCKTOWN', 'An infinite city, run by an AI Director. Paste a Gemini key and it invents missions, ambushes, pickups, weather and night — live — and remembers your story.\n\nTouch: hold to steer toward finger. Keyboard: W/S gas & reverse, A/D steer, E enter/exit, F fire. Buttons: JACK/EXIT + FIRE. 3 hearts. Ammo is scarce.',
+                [['▶ AI DIRECTOR MODE', (inp) => {
+                    const k = (inp && inp.value || '').trim();
+                    if (!k) { Msg.show('paste a key, or choose offline', 'nokey'); return }
+                    Director.key = k; Director.mode = 'ai'; startGame()
+                }],
+                ['PLAY OFFLINE', () => { Director.mode = 'offline'; startGame() }, 1]], true)
+        }
+        (function coreHUD() {
+            UIK.stat('CASH', 'cash', $('sl-tl')); UIK.badge('hearts', $('sl-tl'));
+            UIK.stat('AMMO', 'ammo', $('sl-tl'));
+            UIK.badge('heat', $('sl-tc'));
+            const p = UIK.panel('', 'tr'); UIK.stat('', 'carHpTxt', p); UIK.bar('', 'carHp', p)
+        })();
+        /* ================= INPUT ================= */
+        const actbtn = $('actbtn'), firebtn = $('firebtn');
+        actbtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); action() });
+        firebtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); firing = true; fire() });
+        firebtn.addEventListener('pointerup', e => { firing = false });
+        addEventListener('keydown', e => {
+            const k = e.key.toLowerCase(); keysDown[k] = 1;
+            if (k.startsWith('arrow') || k === ' ') e.preventDefault && e.preventDefault();
+            if (k === 'e') action();
+            if (k === 'f') { firing = true; fire() }
+        });
+        addEventListener('keyup', e => { const k = e.key.toLowerCase(); keysDown[k] = 0; if (k === 'f') firing = false });
+        addEventListener('pointerdown', e => {
+            if (e.target && e.target.closest && e.target.closest('.ui-int')) return;
+            e.preventDefault();
+            if (state === 'play') ptr = { x: e.clientX, y: e.clientY }
+        });
+        addEventListener('pointermove', e => { if (ptr) ptr = { x: e.clientX, y: e.clientY } });
+        addEventListener('pointerup', () => { ptr = null }); addEventListener('pointercancel', () => { ptr = null; firing = false });
+        function action() {
+            if (state !== 'play') return;
+            if (!onFoot) {
+                const cands = [[0, 36], [0, -36], [40, 0], [-40, 0], [32, 32], [-32, 32], [32, -32], [-32, -32]];
+                let spot = null;
+                for (const s of cands) {
+                    const ex = car.x + Math.cos(car.ang) * s[0] - Math.sin(car.ang) * s[1],
+                        ey = car.y + Math.sin(car.ang) * s[0] + Math.cos(car.ang) * s[1];
+                    if (clearAt(ex, ey, 12)) { spot = { x: ex, y: ey }; break }
+                }
+                if (!spot) spot = findFree(car.x, car.y, 12);
+                px = spot.x; py = spot.y;
+                onFoot = true; car.parked = true; car.v = 0; traffic.push(car); car = null; return
+            }
+            let bestC = null, bd = 60;
+            for (const c of traffic) { const d = Math.hypot(c.x - px, c.y - py); if (d < bd) { bd = d; bestC = c } }
+            if (bestC) {
+                traffic.splice(traffic.indexOf(bestC), 1);
+                if (!bestC.parked) { bump(1); logEvent('player carjacked a moving car'); Msg.show('★ CARJACKING — police en route', 'cj') }
+                car = bestC; car.v = 0; car.hp = car.hp == null ? 100 : car.hp; car.mhp = 100; onFoot = false; grabT = 0;
+                if (car.mkey) logEvent('player stole the marked car')
+            }
+            else Msg.show('no car in reach', 'nocar', 2)
+        }
+        function bump(n) { heat = Math.min(5, heat + n); coolT = 0 }
+        /* ================= COMBAT ================= */
+        function aimDir() { // auto-aim: nearest hostile within 280, else facing/heading
+            let bt = null, bd = 280;
+            const hostiles = [];
+            for (const c of gangs) hostiles.push(c);
+            for (const gg of gangsters) hostiles.push(gg);
+            if (targetPed) hostiles.push(targetPed);
+            for (const c of cops) hostiles.push(c);
+            for (const h of hostiles) { const d = Math.hypot(h.x - px, h.y - py); if (d < bd) { bd = d; bt = h } }
+            if (bt) return Math.atan2(bt.y - py, bt.x - px);
+            return onFoot ? facing : car.ang
+        }
+        function fire() {
+            if (state !== 'play' || fireCool > 0) return;
+            if (ammo <= 0) { Msg.show('out of ammo — find a crate', 'noammo', 3); return }
+            ammo--; fireCool = .22;
+            const a = aimDir();
+            bullets.push({ x: px + Math.cos(a) * 16, y: py + Math.sin(a) * 16, vx: Math.cos(a) * 560, vy: Math.sin(a) * 560, life: .65 });
+            parts.push({ x: px + Math.cos(a) * 18, y: py + Math.sin(a) * 18, vx: Math.cos(a) * 80, vy: Math.sin(a) * 80, a: .5, c: '#fde68a' })
+        }
+        function spawnGangster(x, y) {
+            const f = findFree(x, y, 10);
+            gangsters.push({ x: f.x, y: f.y, a: Math.random() * 7, hp: 3, atkCd: 0 })
+        }
+        /* ================= SPAWN HELPERS ================= */
+        function ring_(min, max) {
+            const a = Math.random() * 6.283, d = min + Math.random() * (max - min);
+            return { x: px + Math.cos(a) * d, y: py + Math.sin(a) * d }
+        }
+        function roadPoint(min, max) {
+            const p = ring_(min, max);
+            const i = Math.round(p.x / T), j = Math.round(p.y / T);
+            return Math.random() < .5 ? { x: i * T + (Math.random() < .5 ? 25 : 65), y: p.y, axis: 'v' } : { x: p.x, y: j * T + (Math.random() < .5 ? 25 : 65), axis: 'h' }
+        }
+        function spawnTraffic() {
+            const p = roadPoint(420, 780);
+            const lane = p.axis === 'v' ? mod(p.x, T) : mod(p.y, T);
+            const dir = lane < RW / 2 ? 1 : -1;
+            traffic.push({
+                x: p.x, y: p.y, ang: p.axis === 'v' ? (dir > 0 ? PI / 2 : -PI / 2) : (dir > 0 ? 0 : PI),
+                v: 118, hp: 60, mhp: 60, tm: Math.random() < .5 ? 'brake' : 'flee',
+                col: ['#c8553d', '#588b8b', '#f2d492', '#7d80da', '#94a89a'][Math.random() * 5 | 0], parked: false
+            })
+        }
+        function spawnPed() {
+            const p = roadPoint(300, 650);
+            peds.push({
+                x: p.x + (Math.random() * 20 - 10), y: p.y + (Math.random() * 20 - 10), a: Math.random() * 6.283,
+                col: ['#e0c9a6', '#b6c9d6', '#d6b6c9', '#c9d6b6'][Math.random() * 4 | 0]
+            })
+        }
+        function lotCarAt(i, j) {
+            if (blockType(i, j) !== 'lot' || hsh(i, j, 2) < .45 || takenLots[i + ',' + j]) return null;
+            return { x: i * T + RW + BS / 2, y: j * T + RW + BS / 2, key: i + ',' + j, col: BPAL[(hsh(i, j, 3) * 6) | 0], vert: hsh(i, j, 4) < .5 }
+        }
+        /* ================= DAMAGE ================= */
+        function hurtHeart(kx, ky, why) {
+            if (invT > 0) return;
+            hearts--; invT = 1.6; boom(px, py, 8); kbx = (kx || 0) * 180; kby = (ky || 0) * 180; shake = Math.max(shake, 5);
+            logEvent('player hurt (' + why + ')');
+            if (hearts <= 0) { gameOver('WASTED') }
+            else Msg.show('−1 ♥ ' + why + ' — ' + hearts + ' left', 'hurt', 1)
+        }
+        function explode(x, y, ang) {
+            wrecks.push({ x, y, ang, life: 9 }); if (wrecks.length > 12) wrecks.shift();
+            rings.push({ x, y, r: 8, a: 1 }); shake = Math.max(shake, 9);
+            for (let i = 0; i < 26; i++)parts.push({
+                x, y, vx: (Math.random() - .5) * 380, vy: (Math.random() - .5) * 380, a: 1,
+                c: ['#fbbf24', '#f87171', '#fde68a', '#4b5563'][Math.random() * 4 | 0]
+            });
+            for (const c of traffic) if (Math.hypot(c.x - x, c.y - y) < 95) c.hp -= 45;
+            for (const c of cops) if (Math.hypot(c.x - x, c.y - y) < 95) c.hp -= 45;
+            for (const c of gangs) if (Math.hypot(c.x - x, c.y - y) < 95) c.hp -= 45;
+            for (const gg of gangsters) if (Math.hypot(gg.x - x, gg.y - y) < 80) gg.hp = 0;
+            if (targetPed && Math.hypot(targetPed.x - x, targetPed.y - y) < 80) targetPed.hp = 0;
+            let killed = 0; for (const p of peds) if (Math.hypot(p.x - x, p.y - y) < 70) { p.dead = true; killed++ }
+            if (killed) { bump(1); logEvent('an explosion killed bystanders') }
+            if (car && Math.hypot(car.x - x, car.y - y) < 95) car.hp -= 45;
+            if (onFoot && Math.hypot(px - x, py - y) < 80) hurtHeart((px - x) / 80, (py - y) / 80, 'caught in a blast')
+        }
+        function boom(x, y, n) { for (let i = 0; i < n; i++)parts.push({ x, y, vx: (Math.random() - .5) * 220, vy: (Math.random() - .5) * 220, a: 1, c: Math.random() < .5 ? '#fbbf24' : '#f87171' }) }
+        /* ================= UPDATE ================= */
+        let last = 0;
+        function loop(ts) {
+            const dt = Math.min(.033, (ts - last) / 1000 || 0); last = ts; t += dt;
+            const vp = window.visualViewport;
+            if (Math.round((vp && vp.width) || innerWidth) !== W || Math.round((vp && vp.height) || innerHeight) !== H) fit();
+            if (state === 'play') update(dt);
+            draw(); refreshBinds();
+            actbtn.textContent = onFoot ? 'JACK' : 'EXIT';
+            firebtn.textContent = 'FIRE ' + ammo; firebtn.className = 'a-btn ui-int' + (ammo <= 0 ? ' empty' : '');
+            requestAnimationFrame(loop)
+        }
+        requestAnimationFrame(loop);
+        function kbSteer() {
+            return {
+                up: keysDown.w || keysDown.arrowup, down: keysDown.s || keysDown.arrowdown,
+                left: keysDown.a || keysDown.arrowleft, right: keysDown.d || keysDown.arrowright
+            }
+        }
+        function moveDir() {
+            let dx = 0, dy = 0;
+            if (ptr) { dx = ptr.x - W / 2; dy = ptr.y - H / 2 }
+            const k = kbSteer();
+            if (k.up) dy -= 100; if (k.down) dy += 100; if (k.left) dx -= 100; if (k.right) dx += 100;
+            const m = Math.hypot(dx, dy); return m > 14 ? { x: dx / m, y: dy / m, m: Math.min(1, m / 130) } : null
+        }
+        function tryMove(nx, ny, r) {
+            if (!solidAt(nx, py - r) && !solidAt(nx, py + r) && !solidAt(nx - r, py) && !solidAt(nx + r, py)) px = nx;
+            if (!solidAt(px, ny - r) && !solidAt(px, ny + r) && !solidAt(px - r, ny) && !solidAt(px + r, ny)) py = ny
+        }
+        function chase(c, dt, spd) {
+            const dx = px - c.x, dy = py - c.y, dd = Math.hypot(dx, dy) || 1;
+            c.ang += cl(na(Math.atan2(dy, dx) - c.ang)) * 2.5 * dt;
+            c.v += (spd - c.v) * dt * 1.5;
+            const nx = c.x + Math.cos(c.ang) * c.v * dt, ny = c.y + Math.sin(c.ang) * c.v * dt;
+            if (!solidAt(nx, c.y)) c.x = nx; else c.v *= .4;
+            if (!solidAt(c.x, ny)) c.y = ny; else c.v *= .4;
+            return dd
+        }
+        function update(dt) {
+            const k = kbSteer(), kbActive = k.up || k.down || k.left || k.right;
+            invT = Math.max(0, invT - dt); fireCool = Math.max(0, fireCool - dt); shake *= Math.pow(.001, dt);
+            kbx *= Math.pow(.02, dt); kby *= Math.pow(.02, dt);
+            if (firing) fire();
+            if (onFoot) {
+                const d = moveDir(), sp = 125;
+                let mx = kbx * dt, my = kby * dt;
+                if (d) { mx += d.x * sp * d.m * dt; my += d.y * sp * d.m * dt; facing = Math.atan2(d.y, d.x) }
+                if (mx || my) tryMove(px + mx, py + my, 9);
+                if (!clearAt(px, py, 9.5)) ({ x: px, y: py } = findFree(px, py, 12));
+                if (d && Math.hypot(px - lastPX, py - lastPY) < 1.2) {
+                    stuckT += dt;
+                    if (stuckT > 1.6) { ({ x: px, y: py } = findFree(px + 20, py + 20, 12)); stuckT = 0; Msg.show('…squeezed free', 'sq', 3) }
+                }
+                else stuckT = 0;
+            } else {
+                /* ===== DRIVING — two schemes =====
+                   keyboard: real GTA — W gas, S brake/reverse, A/D steer (speed-scaled, flips in reverse)
+                   touch: steer toward finger (unchanged)                                     */
+                if (kbActive && !ptr) {
+                    if (k.up) car.v += 320 * dt;
+                    if (k.down) car.v -= (car.v > 10 ? 420 : 260) * dt; // brake hard, then reverse
+                    if (!k.up && !k.down) car.v *= Math.pow(.35, dt);
+                    const steer = (k.right ? 1 : 0) - (k.left ? 1 : 0);
+                    const grip = Math.min(1, Math.abs(car.v) / 60 + .1);
+                    car.ang += steer * (1.6 + Math.min(1.4, Math.abs(car.v) / 140)) * grip * dt * (car.v < 0 ? -1 : 1);
+                } else {
+                    const d = moveDir();
+                    if (d) {
+                        const want = Math.atan2(d.y, d.x), diff = na(want - car.ang);
+                        if (Math.abs(diff) > 2.45 && car.v < 50) {
+                            const rd = na(want + PI - car.ang);
+                            car.ang += cl(rd) * 1.7 * dt; car.v -= 210 * d.m * dt
+                        }
+                        else {
+                            const turn = 1.8 + Math.min(1.5, Math.abs(car.v) / 130);
+                            car.ang += cl(diff) * turn * dt;
+                            car.v += 330 * Math.max(.15, Math.cos(Math.min(Math.abs(diff), 1.45))) * d.m * dt;
+                            if (Math.abs(diff) > 1.9) car.v *= Math.pow(.45, dt)
+                        }
+                    }
+                    else car.v *= Math.pow(.2, dt)
+                }
+                car.v = Math.max(-140, Math.min(340, car.v));
+                const speed0 = car.v;
+                const nx = car.x + Math.cos(car.ang) * car.v * dt, ny = car.y + Math.sin(car.ang) * car.v * dt;
+                let hitB = false;
+                for (const s of [[19, 0], [-19, 0], [0, 10], [0, -10]]) {
+                    const cx = nx + Math.cos(car.ang) * s[0] - Math.sin(car.ang) * s[1], cy = ny + Math.sin(car.ang) * s[0] + Math.cos(car.ang) * s[1];
+                    if (solidAt(cx, cy)) hitB = true
+                }
+                if (hitB) {
+                    if (Math.abs(speed0) > 170) { car.hp -= (Math.abs(speed0) - 150) / 9; boom(car.x, car.y, 3); shake = Math.max(shake, 4) }
+                    if (Math.abs(speed0) > 285) hurtHeart(-Math.cos(car.ang) * .6, -Math.sin(car.ang) * .6, 'brutal crash');
+                    car.v *= -.32
+                }
+                else { car.x = nx; car.y = ny }
+                if (!clearAt(car.x, car.y, 10)) { const f = findFree(car.x, car.y, 14); car.x = f.x; car.y = f.y; car.v = 0 }
+                px = car.x; py = car.y; facing = car.ang;
+                if (car.hp <= 0) {
+                    const wasM = car.mkey;
+                    explode(car.x, car.y, car.ang);
+                    const f = findFree(car.x + 40, car.y + 40, 12); px = f.x; py = f.y;
+                    onFoot = true; car = null; logEvent("player's car exploded");
+                    if (wasM && M.cur && M.cur.verb === 'jack') M.finish(false, 'the marked car was destroyed');
+                    if (state === 'play') { invT = 0; hurtHeart(.5, .5, 'car explosion') }
+                    if (state !== 'play') return
+                }
+            }
+            lastPX = px; lastPY = py;
+            M.update(dt);
+            /* bullets */
+            for (const b of bullets) {
+                b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+                if (b.life <= 0 || solidAt(b.x, b.y)) { b.dead = true; continue }
+                for (const gg of gangsters) if (!b.dead && Math.hypot(gg.x - b.x, gg.y - b.y) < 12) { gg.hp--; b.dead = true; boom(b.x, b.y, 2) }
+                if (targetPed && !b.dead && Math.hypot(targetPed.x - b.x, targetPed.y - b.y) < 12) {
+                    targetPed.hp--; targetPed.flee = true; b.dead = true; boom(b.x, b.y, 2)
+                }
+                for (const c of gangs) if (!b.dead && Math.hypot(c.x - b.x, c.y - b.y) < 22) { c.hp -= 12; b.dead = true; boom(b.x, b.y, 2) }
+                for (const c of cops) if (!b.dead && Math.hypot(c.x - b.x, c.y - b.y) < 22) { c.hp -= 9; b.dead = true; boom(b.x, b.y, 2) }
+                for (const c of traffic) if (!b.dead && Math.hypot(c.x - b.x, c.y - b.y) < 22) { c.hp -= 9; b.dead = true; boom(b.x, b.y, 2) }
+                for (const p of peds) if (!b.dead && Math.hypot(p.x - b.x, p.y - b.y) < 10) {
+                    p.dead = true; b.dead = true; bump(1); logEvent('player shot a bystander')
+                }
+            }
+            bullets = bullets.filter(b => !b.dead);
+            /* gangsters (foot crew) */
+            for (const gg of gangsters) {
+                gg.atkCd = Math.max(0, gg.atkCd - dt);
+                const dx = px - gg.x, dy = py - gg.y, dd = Math.hypot(dx, dy) || 1;
+                if (dd < 560) {
+                    const nx = gg.x + dx / dd * 95 * dt, ny = gg.y + dy / dd * 95 * dt;
+                    if (!solidAt(nx, gg.y)) gg.x = nx; if (!solidAt(gg.x, ny)) gg.y = ny
+                }
+                if (onFoot && dd < 16 && gg.atkCd <= 0) { gg.atkCd = 1; hurtHeart(dx / dd * -1, dy / dd * -1, 'jumped by the crew') }
+                if (!onFoot && dd < 20 && Math.abs(car.v) > 70) { gg.hp = 0; bump(0) }
+                if (gg.hp <= 0) { gg.dead = true; boom(gg.x, gg.y, 6); cash += 10; logEvent('player took down a gangster') }
+            }
+            gangsters = gangsters.filter(gg => !gg.dead && Math.hypot(gg.x - px, gg.y - py) < 1400);
+            /* hit target */
+            if (targetPed) {
+                const tp = targetPed;
+                const dd = Math.hypot(tp.x - px, tp.y - py);
+                if (dd < 180 || tp.flee) tp.flee = true;
+                const sp = tp.flee ? 118 : 30;
+                if (tp.flee) { const a = Math.atan2(tp.y - py, tp.x - px); tp.a = a + Math.sin(t * 2) * .5 }
+                else tp.a += (Math.random() - .5) * dt * 3;
+                const nx = tp.x + Math.cos(tp.a) * sp * dt, ny = tp.y + Math.sin(tp.a) * sp * dt;
+                if (!solidAt(nx, ny)) { tp.x = nx; tp.y = ny } else tp.a += 1.6;
+                if (!onFoot && Math.abs(car.v) > 70 && dd < 20) { tp.hp = 0; bump(1); logEvent('player ran down the target') }
+                if (tp.hp <= 0) { boom(tp.x, tp.y, 10); targetPed = null; logEvent('the informant was silenced') }
+            }
+            /* pickups */
+            pickupT -= dt;
+            if (pickupT <= 0) {
+                pickupT = 12;
+                if (pickups.length < 5 && Math.random() < .5) {
+                    const p = roadPoint(250, 600);
+                    const kind = hearts < 3 && Math.random() < .3 ? 'heart' : (Math.random() < .55 ? 'ammo' : 'cash');
+                    const f = findFree(p.x, p.y, 10); pickups.push({ x: f.x, y: f.y, kind })
+                }
+            }
+            for (const pk of pickups) if (Math.hypot(pk.x - px, pk.y - py) < 20) {
+                pk.dead = true;
+                if (pk.kind === 'heart') { hearts = Math.min(3, hearts + 1); Msg.show('+1 ♥', 'pkh', 1) }
+                if (pk.kind === 'ammo') { ammo = Math.min(60, ammo + 8); Msg.show('+8 ammo', 'pka', 1) }
+                if (pk.kind === 'cash') { const v = 25 + (Math.random() * 50 | 0); cash += v; Msg.show('+$' + v, 'pkc', 1) }
+            }
+            pickups = pickups.filter(p => !p.dead && Math.hypot(p.x - px, p.y - py) < 1600);
+            /* peds */
+            while (peds.length < 13) spawnPed();
+            for (const p of peds) {
+                p.a += (Math.random() - .5) * dt * 3;
+                let vx = Math.cos(p.a) * 26, vy = Math.sin(p.a) * 26;
+                if (!onFoot && Math.abs(car.v) > 90) {
+                    const dx = p.x - px, dy = p.y - py, dd = Math.hypot(dx, dy);
+                    if (dd < 90 && dd > 0) { vx += dx / dd * 150; vy += dy / dd * 150 }
+                }
+                const nx2 = p.x + vx * dt, ny2 = p.y + vy * dt;
+                if (!solidAt(nx2, ny2)) { p.x = nx2; p.y = ny2 } else p.a += 2;
+                if (!onFoot && Math.abs(car.v) > 70 && Math.hypot(p.x - px, p.y - py) < 20) {
+                    boom(p.x, p.y, 8); p.dead = true; bump(1); logEvent('player ran over a pedestrian')
+                }
+            }
+            peds = peds.filter(p => !p.dead && Math.hypot(p.x - px, p.y - py) < 1100);
+            /* traffic */
+            while (traffic.filter(c => !c.parked).length < trafficTarget) spawnTraffic();
+            const wf = weather === 'rain' ? .78 : weather === 'fog' ? .85 : 1;
+            for (const c of traffic) {
+                if (c.parked) continue;
+                const pd = Math.hypot(c.x - px, c.y - py);
+                const threat = !onFoot && Math.abs(car.v) > 110 && pd < 160;
+                const panicked = threat || heat >= 3 && pd < 200;
+                let vt = 118 * wf;
+                if (panicked) vt = c.tm === 'flee' ? 238 : 6;
+                c.v += (vt - c.v) * dt * (panicked ? 4 : 1.2);
+                if (panicked && c.tm === 'brake' && pd > 1) { c.x += (c.x - px) / pd * 26 * dt; c.y += (c.y - py) / pd * 26 * dt }
+                c.x += Math.cos(c.ang) * c.v * dt; c.y += Math.sin(c.ang) * c.v * dt;
+                if (!onFoot) {
+                    const dd = Math.hypot(c.x - car.x, c.y - car.y);
+                    if (dd < 34 && dd > 0) {
+                        const nx3 = (c.x - car.x) / dd, ny3 = (c.y - car.y) / dd;
+                        c.x += nx3 * (34 - dd); c.y += ny3 * (34 - dd);
+                        const impact = Math.abs(car.v) + Math.abs(c.v) * .4;
+                        if (impact > 130) {
+                            const dmg = (impact - 110) / 6; c.hp -= dmg; car.hp -= dmg * .45; boom((c.x + car.x) / 2, (c.y + car.y) / 2, 4);
+                            if (impact > 300) hurtHeart(-Math.cos(car.ang) * .5, -Math.sin(car.ang) * .5, 'head-on collision')
+                        }
+                        car.v *= .6
+                    }
+                }
+                else {
+                    const dd = Math.hypot(c.x - px, c.y - py);
+                    if (dd < 22) {
+                        if (c.v > 90) hurtHeart((px - c.x) / 22, (py - c.y) / 22, 'hit by a car');
+                        else if (dd > 1) { px += (px - c.x) / dd * 40 * dt; py += (py - c.y) / dd * 40 * dt }
+                    }
+                }
+            }
+            const ci = Math.floor(px / T), cj = Math.floor(py / T);
+            for (let i = ci - 2; i <= ci + 2; i++)for (let j = cj - 2; j <= cj + 2; j++) {
+                const lc = lotCarAt(i, j);
+                if (lc && !traffic.some(c => c.key === lc.key)) {
+                    traffic.push({ x: lc.x, y: lc.y, ang: lc.vert ? PI / 2 : 0, v: 0, hp: 60, mhp: 60, col: lc.col, parked: true, key: lc.key });
+                    takenLots[lc.key] = false
+                }
+            }
+            for (const c of traffic) if (c.key && !c.parked) takenLots[c.key] = true;
+            /* cops */
+            const wantCops = heat > 0 ? Math.min(6, heat + (heat >= 4 ? 1 : 0)) : 0;
+            copSpawnT -= dt;
+            if (cops.length < wantCops && copSpawnT <= 0) {
+                copSpawnT = .9;
+                const p = ring_(520, 700), f = findFree(p.x, p.y, 16);
+                cops.push({ x: f.x, y: f.y, v: 0, ang: 0, hp: 70, ramCd: 0 })
+            }
+            if (cops.length > wantCops) cops.length = wantCops;
+            let copNear = false, grabbing = false;
+            for (const c of cops) {
+                c.ramCd = Math.max(0, c.ramCd - dt);
+                const dd = chase(c, dt, (280 + heat * 16) * wf);
+                if (dd < 380) copNear = true;
+                if (onFoot && dd < 30) return gameOver('BUSTED');
+                if (!onFoot && dd < 40 && c.ramCd <= 0) {
+                    c.ramCd = .7; car.hp -= 7 + heat * 2.2; car.v *= .82; shake = Math.max(shake, 3);
+                    boom((c.x + px) / 2, (c.y + py) / 2, 6);
+                    const nn = { x: (c.x - px) / dd, y: (c.y - py) / dd }; c.x += nn.x * 26; c.y += nn.y * 26; c.v *= .5
+                }
+                if (!onFoot && dd < 58 && Math.abs(car.v) < 28) grabbing = true;
+                if (!onFoot && dd < 34 && Math.abs(car.v) > 150) c.hp -= (Math.abs(car.v) - 130) / 5
+            }
+            if (grabbing) {
+                grabT += dt * (heat >= 3 ? 1.25 : 1);
+                if (grabT >= 1.6) return gameOver('BUSTED')
+            }
+            else grabT = Math.max(0, grabT - dt * 1.6);
+            for (const c of cops) if (c.hp <= 0) { explode(c.x, c.y, c.ang); c.dead = true; bump(1); logEvent('player destroyed a police car') }
+            cops = cops.filter(c => !c.dead);
+            /* gangs */
+            for (const c of gangs) {
+                c.ramCd = Math.max(0, c.ramCd - dt);
+                const dd = chase(c, dt, 265 * wf);
+                if (!onFoot && dd < 40 && c.ramCd <= 0) {
+                    c.ramCd = .8; car.hp -= 10; car.v *= .8; boom((c.x + px) / 2, (c.y + py) / 2, 6); shake = Math.max(shake, 3);
+                    const nn = { x: (c.x - px) / dd, y: (c.y - py) / dd }; c.x += nn.x * 26; c.y += nn.y * 26; c.v *= .5
+                }
+                if (onFoot && dd < 22 && c.v > 90) hurtHeart((px - c.x) / dd, (py - c.y) / dd, 'gang hit-and-run');
+                if (!onFoot && dd < 34 && Math.abs(car.v) > 150) c.hp -= (Math.abs(car.v) - 130) / 5;
+                if (dd > 1800) c.far = (c.far || 0) + dt; else c.far = 0;
+                if (c.far > 6 && !c.hunt) c.dead = true
+            }
+            for (const c of gangs) if (c.hp <= 0 && !c.dead) {
+                explode(c.x, c.y, c.ang); c.dead = true; cash += 40;
+                spawnGangster(c.x + 20, c.y); spawnGangster(c.x - 20, c.y); // crew bails out!
+                logEvent('player destroyed a gang car (+$40)'); Msg.show('gang car down +$40 — crew bailed out!', 'gk', 1)
+            }
+            gangs = gangs.filter(c => !c.dead);
+            /* traffic explosions */
+            for (const c of traffic) if (c.hp <= 0) {
+                explode(c.x, c.y, c.ang); c.gone = true;
+                if (c.mkey && M.cur && M.cur.verb === 'jack') M.finish(false, 'the marked car was destroyed')
+            }
+            traffic = traffic.filter(c => !c.gone && (c.parked ? Math.hypot(c.x - px, c.y - py) < 1300 : Math.hypot(c.x - px, c.y - py) < 980));
+            if (heat > 0 && !copNear) { coolT += dt; if (coolT > 7) { heat--; coolT = 0; if (heat === 0) { Msg.show('heat lost — clean', 'cool'); cops.length = 0 } } }
+            else if (copNear) coolT = 0;
+            for (const p of parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.a -= dt * 1.8 }
+            parts = parts.filter(p => p.a > 0);
+            for (const r of rings) { r.r += 260 * dt; r.a -= dt * 1.8 }
+            rings = rings.filter(r => r.a > 0);
+            for (const wk of wrecks) {
+                wk.life -= dt;
+                if (wk.life > 7 && Math.random() < dt * 10) parts.push({ x: wk.x, y: wk.y - 4, vx: (Math.random() - .5) * 20, vy: -40, a: .8, c: '#6b7280' })
+            }
+            wrecks = wrecks.filter(w => w.life > 0);
+        }
+        /* ================= DRAW ================= */
+        function draw() {
+            g.fillStyle = '#15171c'; g.fillRect(0, 0, W, H);
+            g.save();
+            if (shake > 0.3) g.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake);
+            g.scale(Z, Z);
+            const Wv = W / Z, Hv = H / Z, camx = px - Wv / 2, camy = py - Hv / 2;
+            const i0 = Math.floor(camx / T) - 1, i1 = Math.floor((camx + Wv) / T) + 1, j0 = Math.floor(camy / T) - 1, j1 = Math.floor((camy + Hv) / T) + 1;
+            const night = weather === 'night';
+            // roads
+            g.fillStyle = '#22252c';
+            for (let i = i0; i <= i1; i++)g.fillRect(i * T - camx, 0, RW, Hv);
+            for (let j = j0; j <= j1; j++)g.fillRect(0, j * T - camy, Wv, RW);
+            g.strokeStyle = 'rgba(255,220,120,.28)'; g.lineWidth = 2; g.setLineDash([14, 18]);
+            for (let i = i0; i <= i1; i++) { g.beginPath(); g.moveTo(i * T + RW / 2 - camx, 0); g.lineTo(i * T + RW / 2 - camx, Hv); g.stroke() }
+            for (let j = j0; j <= j1; j++) { g.beginPath(); g.moveTo(0, j * T + RW / 2 - camy); g.lineTo(Wv, j * T + RW / 2 - camy); g.stroke() }
+            g.setLineDash([]);
+            // building cast shadows (depth!)
+            g.fillStyle = 'rgba(0,0,0,.24)';
+            for (let i = i0; i <= i1; i++)for (let j = j0; j <= j1; j++)
+                if (blockType(i, j) === 'bldg') g.fillRect(i * T + RW - camx + 8, j * T + RW - camy + 10, BS, BS);
+            // blocks
+            for (let i = i0; i <= i1; i++)for (let j = j0; j <= j1; j++) {
+                const x = i * T + RW - camx, y = j * T + RW - camy, tp = blockType(i, j);
+                if (tp === 'bldg') {
+                    const roof = BPAL[(hsh(i, j, 5) * 6) | 0];
+                    g.fillStyle = '#191d27'; g.fillRect(x, y, BS, BS);         // dark walls
+                    g.fillStyle = roof; g.fillRect(x, y, BS - 8, BS - 8);          // lit roof (extruded, lit top-left)
+                    g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(x, y, BS - 8, 4); g.fillRect(x, y, 4, BS - 8);
+                    // skylights / windows (glow at night)
+                    g.fillStyle = 'rgba(255,240,170,' + ((night ? 0.24 : 0.06) + hsh(i, j, 6) * .08) + ')';
+                    const wn = 3 + (hsh(i, j, 7) * 3 | 0);
+                    for (let a = 0; a < wn; a++)for (let b = 0; b < wn; b++)
+                        if (hsh(i * 9 + a, j * 9 + b, 8) < .4) g.fillRect(x + 12 + a * (BS - 30) / wn, y + 12 + b * (BS - 30) / wn, 8, 10);
+                    // roof furniture
+                    g.fillStyle = 'rgba(0,0,0,.3)';
+                    if (hsh(i, j, 9) < .7) g.fillRect(x + 18 + hsh(i, j, 11) * 70, y + 18 + hsh(i, j, 12) * 70, 16, 14);
+                    if (hsh(i, j, 13) < .4) g.fillRect(x + 30 + hsh(i, j, 14) * 60, y + 40 + hsh(i, j, 15) * 60, 12, 12);
+                    g.strokeStyle = 'rgba(0,0,0,.4)'; g.strokeRect(x, y, BS, BS)
+                }
+                else if (tp === 'park') {
+                    g.fillStyle = '#233327'; g.fillRect(x, y, BS, BS);
+                    for (let kk = 0; kk < 5; kk++) {
+                        const tx = x + 20 + hsh(i, j, 10 + kk) * (BS - 40), ty = y + 20 + hsh(i, j, 20 + kk) * (BS - 40);
+                        g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(tx + 3, ty + 4, 10 + hsh(i, j, 30 + kk) * 8, 0, 7); g.fill();
+                        g.fillStyle = '#2f4a33'; g.beginPath(); g.arc(tx, ty, 10 + hsh(i, j, 30 + kk) * 8, 0, 7); g.fill()
+                    }
+                }
+                else {
+                    g.fillStyle = '#1d2026'; g.fillRect(x, y, BS, BS);
+                    g.strokeStyle = 'rgba(255,255,255,.1)';
+                    for (let kk = 1; kk < 4; kk++) { g.beginPath(); g.moveTo(x + kk * BS / 4, y + 20); g.lineTo(x + kk * BS / 4, y + BS - 20); g.stroke() }
+                }
+            }
+            // wrecks
+            for (const wk of wrecks) {
+                g.save(); g.translate(wk.x - camx, wk.y - camy); g.rotate(wk.ang);
+                g.fillStyle = '#1c1f24'; g.fillRect(-20, -11, 40, 22);
+                g.fillStyle = 'rgba(251,146,60,' + Math.max(0, (wk.life - 7) / 2) * .8 + ')'; g.fillRect(-8, -5, 16, 10);
+                g.strokeStyle = '#000'; g.strokeRect(-20, -11, 40, 22); g.restore()
+            }
+            // pickups
+            for (const pk of pickups) {
+                const x = pk.x - camx, y = pk.y - camy, pu = 1 + Math.sin(t * 5) * .15;
+                if (pk.kind === 'heart') { g.fillStyle = '#f87171'; g.font = 'bold ' + 16 * pu + 'px ui-monospace'; g.textAlign = 'center'; g.fillText('♥', x, y + 6) }
+                if (pk.kind === 'ammo') {
+                    g.fillStyle = '#fbbf24'; g.fillRect(x - 8, y - 6, 16, 12); g.fillStyle = '#7c5806'; g.fillText && 0;
+                    g.fillStyle = '#78350f'; g.font = 'bold 9px ui-monospace'; g.textAlign = 'center'; g.fillText('AMMO', x, y + 3)
+                }
+                if (pk.kind === 'cash') { g.fillStyle = '#4ade80'; g.font = 'bold ' + 15 * pu + 'px ui-monospace'; g.textAlign = 'center'; g.fillText('$', x, y + 5) }
+            }
+            // mission waypoints
+            if (M.cur) M.cur.wps.forEach((wp, i) => {
+                if (['hunt', 'hit'].includes(M.cur.verb)) return;
+                const gx = wp.x - camx, gy = wp.y - camy, curW = i === M.cur.step;
+                if (i < M.cur.step) return;
+                g.globalAlpha = curW ? 1 : .35;
+                g.fillStyle = curW ? '#4ade80' : '#9ca3af';
+                g.save(); g.translate(gx, gy); g.rotate(t * 2); g.fillRect(-10, -10, 20, 20); g.restore();
+                g.font = '11px ui-monospace'; g.textAlign = 'center';
+                g.fillText(wp.label || (M.cur.verb === 'deliver' && i === 0 ? 'PICKUP' : M.cur.verb === 'jack' && i === 0 ? 'MARKED CAR' : 'GO'), gx, gy - 18);
+                g.globalAlpha = 1
+            });
+            // entity shadows
+            g.fillStyle = 'rgba(0,0,0,.28)';
+            for (const c of traffic) { g.beginPath(); g.ellipse(c.x - camx + 3, c.y - camy + 5, 22, 12, c.ang, 0, 7); g.fill() }
+            for (const c of gangs) { g.beginPath(); g.ellipse(c.x - camx + 3, c.y - camy + 5, 22, 12, c.ang, 0, 7); g.fill() }
+            for (const c of cops) { g.beginPath(); g.ellipse(c.x - camx + 3, c.y - camy + 5, 22, 12, c.ang, 0, 7); g.fill() }
+            // cars & people
+            for (const c of traffic) {
+                drawCar(c.x - camx, c.y - camy, c.ang, c.col, false, c, night);
+                if (c.mkey) {
+                    g.fillStyle = '#f472b6'; g.save(); g.translate(c.x - camx, c.y - camy - 24); g.rotate(t * 3);
+                    g.fillRect(-5, -5, 10, 10); g.restore()
+                }
+            }
+            for (const p of peds) {
+                g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(p.x - camx + 2, p.y - camy + 3, 6, 0, 7); g.fill();
+                g.fillStyle = p.col; g.beginPath(); g.arc(p.x - camx, p.y - camy, 6, 0, 7); g.fill();
+                g.fillStyle = 'rgba(0,0,0,.5)'; g.beginPath(); g.arc(p.x - camx, p.y - camy, 2.5, 0, 7); g.fill()
+            }
+            for (const gg of gangsters) {
+                g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(gg.x - camx + 2, gg.y - camy + 3, 7, 0, 7); g.fill();
+                g.fillStyle = '#b91c1c'; g.beginPath(); g.arc(gg.x - camx, gg.y - camy, 7, 0, 7); g.fill();
+                g.fillStyle = '#000'; g.fillRect(gg.x - camx - 5, gg.y - camy - 9, 10, 3)
+            }
+            if (targetPed) {
+                const tp = targetPed;
+                g.fillStyle = '#fb923c'; g.beginPath(); g.arc(tp.x - camx, tp.y - camy, 7, 0, 7); g.fill();
+                g.strokeStyle = '#fb923c'; g.setLineDash([3, 4]);
+                g.beginPath(); g.arc(tp.x - camx, tp.y - camy, 14 + Math.sin(t * 4) * 3, 0, 7); g.stroke(); g.setLineDash([]);
+                g.font = '10px ui-monospace'; g.textAlign = 'center'; g.fillText('TARGET', tp.x - camx, tp.y - camy - 18)
+            }
+            for (const c of gangs) drawCar(c.x - camx, c.y - camy, c.ang, '#b91c1c', false, c, night);
+            for (const c of cops) drawCar(c.x - camx, c.y - camy, c.ang, '#e8e8ee', true, c, night);
+            // bullets
+            g.fillStyle = '#fde68a';
+            for (const b of bullets) g.fillRect(b.x - camx - 2, b.y - camy - 2, 4, 4);
+            // player
+            if (!(invT > 0 && Math.sin(t * 24) > 0)) {
+                if (onFoot) {
+                    g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.arc(Wv / 2 + 2, Hv / 2 + 3, 9, 0, 7); g.fill();
+                    g.fillStyle = '#ffd166'; g.beginPath(); g.arc(Wv / 2, Hv / 2, 9, 0, 7); g.fill();
+                    g.fillStyle = '#101216'; g.beginPath(); g.arc(Wv / 2 + Math.cos(facing) * 3.5, Hv / 2 + Math.sin(facing) * 3.5, 3, 0, 7); g.fill()
+                }
+                else if (car) drawCar(Wv / 2, Hv / 2, car.ang, car.mkey ? '#f472b6' : '#ffd166', false, null, night, true)
+            }
+            if (grabT > 0 && !onFoot) {
+                g.strokeStyle = '#f87171'; g.lineWidth = 4;
+                g.beginPath(); g.arc(Wv / 2, Hv / 2, 26, -PI / 2, -PI / 2 + 6.28 * Math.min(1, grabT / 1.6)); g.stroke();
+                g.fillStyle = '#f87171'; g.font = 'bold 11px ui-monospace'; g.textAlign = 'center';
+                g.fillText('DRIVE!', Wv / 2, Hv / 2 - 34)
+            }
+            for (const p of parts) { g.globalAlpha = Math.max(0, p.a); g.fillStyle = p.c; g.fillRect(p.x - camx - 3, p.y - camy - 3, 6, 6) }
+            g.globalAlpha = 1;
+            for (const r of rings) {
+                g.globalAlpha = Math.max(0, r.a); g.strokeStyle = '#fbbf24'; g.lineWidth = 3;
+                g.beginPath(); g.arc(r.x - camx, r.y - camy, r.r, 0, 7); g.stroke()
+            }
+            g.globalAlpha = 1;
+            // ---- atmosphere layers ----
+            if (night) {
+                g.fillStyle = 'rgba(8,12,34,.44)'; g.fillRect(0, 0, Wv, Hv);
+                // street lamps at intersections
+                for (let i = i0; i <= i1; i++)for (let j = j0; j <= j1; j++) {
+                    const lx = i * T + RW / 2 - camx, ly = j * T + RW / 2 - camy;
+                    const gr = g.createRadialGradient(lx, ly, 4, lx, ly, 66);
+                    gr.addColorStop(0, 'rgba(255,214,130,.16)'); gr.addColorStop(1, 'rgba(255,214,130,0)');
+                    g.fillStyle = gr; g.fillRect(lx - 66, ly - 66, 132, 132);
+                    g.fillStyle = '#ffe9b0'; g.fillRect(lx - 1.5, ly - 1.5, 3, 3)
+                }
+                // headlights
+                const beam = (x, y, a) => {
+                    g.fillStyle = 'rgba(255,236,180,.10)';
+                    g.beginPath(); g.moveTo(x + Math.cos(a) * 18, y + Math.sin(a) * 18);
+                    g.lineTo(x + Math.cos(a - .3) * 95, y + Math.sin(a - .3) * 95);
+                    g.lineTo(x + Math.cos(a + .3) * 95, y + Math.sin(a + .3) * 95); g.closePath(); g.fill()
+                };
+                for (const c of traffic) if (!c.parked) beam(c.x - camx, c.y - camy, c.ang);
+                for (const c of cops) beam(c.x - camx, c.y - camy, c.ang);
+                if (car) beam(Wv / 2, Hv / 2, car.ang)
+            }
+            if (weather === 'fog') {
+                g.fillStyle = 'rgba(190,200,215,.16)'; g.fillRect(0, 0, Wv, Hv);
+                const fg = g.createRadialGradient(Wv / 2, Hv / 2, 120, Wv / 2, Hv / 2, Math.max(Wv, Hv) * .55);
+                fg.addColorStop(0, 'rgba(190,200,215,0)'); fg.addColorStop(1, 'rgba(190,200,215,.42)');
+                g.fillStyle = fg; g.fillRect(0, 0, Wv, Hv)
+            }
+            if (weather === 'rain') { g.fillStyle = 'rgba(40,60,100,.10)'; g.fillRect(0, 0, Wv, Hv) }
+            g.restore();
+            if (weather === 'rain') {
+                g.strokeStyle = 'rgba(150,190,255,.35)'; g.lineWidth = 1;
+                for (let i = 0; i < 50; i++) {
+                    const x = (i * 97 + t * 640) % (W + 40) - 20, y = (i * 61 + t * 900) % (H + 40) - 20;
+                    g.beginPath(); g.moveTo(x, y); g.lineTo(x - 4, y + 14); g.stroke()
+                }
+            }
+            // vignette
+            const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * .35, W / 2, H / 2, Math.max(W, H) * .72);
+            vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,.34)');
+            g.fillStyle = vg; g.fillRect(0, 0, W, H);
+            // ---- navigation: floating arrow + distance ----
+            const nav = M.navTarget && M.navTarget();
+            if (nav && state === 'play') {
+                const dist = Math.hypot(nav.x - px, nav.y - py);
+                const an = Math.atan2(nav.y - py, nav.x - px);
+                const sx = (nav.x - px) * Z + W / 2, sy = (nav.y - py) * Z + H / 2;
+                const offscreen = sx < 30 || sx > W - 30 || sy < 30 || sy > H - 30;
+                if (offscreen || dist > 320) {
+                    const ax = W / 2 + Math.cos(an) * 56, ay = H / 2 + Math.sin(an) * 56;
+                    g.save(); g.translate(ax, ay); g.rotate(an); g.fillStyle = '#4ade80';
+                    g.beginPath(); g.moveTo(16, 0); g.lineTo(-7, 9); g.lineTo(-2, 0); g.lineTo(-7, -9); g.closePath(); g.fill(); g.restore();
+                    g.fillStyle = '#4ade80'; g.font = 'bold 11px ui-monospace'; g.textAlign = 'center';
+                    g.fillText(Math.round(dist / 10) + 'm', ax, ay + 24)
+                }
+            }
+            drawMinimap(nav);
+        }
+        function drawMinimap(nav) {
+            const r = Math.round(58 * U), mx = 16 + r, my = 132 + r;
+            g.save();
+            g.beginPath(); g.arc(mx, my, r, 0, 7); g.clip();
+            g.fillStyle = 'rgba(34,37,44,.94)'; g.fillRect(mx - r, my - r, r * 2, r * 2); // roads = base
+            const S = r / 700; // world px per map px
+            const i0 = Math.floor((px - 700) / T), i1 = Math.floor((px + 700) / T), j0 = Math.floor((py - 700) / T), j1 = Math.floor((py + 700) / T);
+            for (let i = i0; i <= i1; i++)for (let j = j0; j <= j1; j++) {
+                const tp = blockType(i, j);
+                const x = mx + (i * T + RW - px) * S, y = my + (j * T + RW - py) * S, s = BS * S;
+                g.fillStyle = tp === 'bldg' ? '#12141b' : tp === 'park' ? '#1d2b20' : '#181a20';
+                g.fillRect(x, y, s, s)
+            }
+            // blips
+            const blip = (x, y, col, sz) => {
+                const bx = mx + (x - px) * S, by = my + (y - py) * S;
+                const d = Math.hypot(bx - mx, by - my), m = Math.min(1, (r - 5) / (d || 1));
+                g.fillStyle = col; g.beginPath(); g.arc(mx + (bx - mx) * m, my + (by - my) * m, sz || 2.6, 0, 7); g.fill()
+            };
+            for (const c of cops) blip(c.x, c.y, '#60a5fa');
+            for (const c of gangs) blip(c.x, c.y, '#ef4444');
+            for (const gg of gangsters) blip(gg.x, gg.y, '#ef4444', 2);
+            for (const pk of pickups) blip(pk.x, pk.y, '#fbbf24', 2);
+            for (const c of traffic) if (c.mkey) blip(c.x, c.y, '#f472b6');
+            if (targetPed) blip(targetPed.x, targetPed.y, '#fb923c', 3);
+            if (nav) blip(nav.x, nav.y, '#4ade80', 3.4);
+            // player
+            g.save(); g.translate(mx, my); g.rotate(onFoot ? facing : (car ? car.ang : 0));
+            g.fillStyle = '#ffd166'; g.beginPath(); g.moveTo(6, 0); g.lineTo(-4, 4); g.lineTo(-4, -4); g.closePath(); g.fill(); g.restore();
+            g.restore();
+            g.strokeStyle = 'rgba(255,209,102,.6)'; g.lineWidth = 2;
+            g.beginPath(); g.arc(mx, my, r, 0, 7); g.stroke()
+        }
+        function drawCar(x, y, ang, col, cop, ent, night, isPlayer) {
+            g.save(); g.translate(x, y); g.rotate(ang);
+            g.fillStyle = col; g.fillRect(-20, -11, 40, 22);
+            g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(-20, -11, 40, 5); // roof highlight
+            g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(2, -8, 10, 16);
+            if (cop) { g.fillStyle = Math.sin(t * 14) > 0 ? '#ef4444' : '#3b82f6'; g.fillRect(-6, -9, 8, 18) }
+            if (ent && ent.mhp && ent.hp < ent.mhp * .5) { g.fillStyle = 'rgba(60,60,60,.55)'; g.fillRect(-14, -7, 12, 14) }
+            if (night) {
+                g.fillStyle = '#fff7d6'; g.fillRect(17, -9, 3, 4); g.fillRect(17, 5, 3, 4);
+                g.fillStyle = '#ff6b6b'; g.fillRect(-20, -9, 2, 4); g.fillRect(-20, 5, 2, 4)
+            }
+            g.strokeStyle = 'rgba(0,0,0,.5)'; g.strokeRect(-20, -11, 40, 22);
+            g.restore()
+        }
+        /* ================= BOOT ================= */
+        bootMenu();
+        window.__bt = {
+            get s() {
+                return {
+                    px, py, hearts, heat, onFoot, state, cops, gangs, gangsters, traffic, bullets, pickups,
+                    W, H, Z, weather, ammo, mission: M.cur, memory: Director.memory, mode: Director.mode, targetPed,
+                    car, facing
+                }
+            },
+            set(o) {
+                for (const k of ['px', 'py', 'onFoot', 'heat', 'hearts', 'state', 'ammo']) if (o[k] !== undefined) eval(k + '=o[k]');
+                if (o.car !== undefined) car = o.car; if (o.key !== undefined) Director.key = o.key;
+                if (o.mode !== undefined) Director.mode = o.mode; if (o.targetPed !== undefined) targetPed = o.targetPed
+            },
+            clearAt, solidAt, findFree, mod, reset, startGame, action, fire, spawnGangster,
+            applyPlan: p => Director.apply(p), offline: () => Director.offline(), goDirector: () => Director.go(), M, snapshot
+        };
+    </script>
+</body>
+
+</html>
