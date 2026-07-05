@@ -298,6 +298,50 @@
       opacity: .4
     }
 
+    .credit {
+      position: fixed;
+      left: 50%;
+      bottom: calc(6px + env(safe-area-inset-bottom));
+      transform: translateX(-50%);
+      z-index: 7;
+      max-width: calc(100vw - 138px);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+      pointer-events: auto;
+      color: rgba(231, 233, 238, .72);
+      font: 11px ui-monospace, Menlo, monospace;
+      text-shadow: 0 1px 2px #000
+    }
+
+    .credit a {
+      color: #ffd166;
+      text-decoration: none
+    }
+
+    .credit a:hover {
+      text-decoration: underline
+    }
+
+    .credit-short {
+      display: none
+    }
+
+    @media (max-width: 380px) {
+      .credit {
+        max-width: calc(100vw - 112px);
+        font-size: 10px
+      }
+
+      .credit-full {
+        display: none
+      }
+
+      .credit-short {
+        display: inline
+      }
+    }
+
     .m-modal {
       position: fixed;
       inset: 0;
@@ -413,6 +457,7 @@
     </div>
     <button id="firebtn" class="a-btn ui-int">FIRE</button>
     <button id="actbtn" class="a-btn ui-int">JACK</button>
+    <div class="credit ui-int"><span class="credit-full">Created By: </span><span class="credit-short">By: </span><a href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry Talha</a></div>
   </div>
   <div id="modal"></div>
   <script>
