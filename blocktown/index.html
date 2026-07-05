@@ -5,7 +5,7 @@
   <meta charset="utf-8">
   <meta name="viewport"
     content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-  <title>Blocktown — AI Campaign Director</title>
+  <title>Blocktown — AI Director</title>
   <style>
     html,
     body {
@@ -370,6 +370,29 @@
       font-size: 10px;
       color: #6b7180
     }
+
+    .m-buy {
+      background: rgba(10, 12, 18, .9);
+      border: 1px solid rgba(74, 222, 128, .6);
+      border-radius: 12px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: auto;
+      text-align: center
+    }
+
+    .m-buy .bn {
+      color: #4ade80;
+      font-weight: 800;
+      font-size: 13px
+    }
+
+    .m-buy .bd {
+      color: #cfd3dd;
+      font-size: 11px
+    }
   </style>
 </head>
 
@@ -395,10 +418,10 @@
   <script>
     'use strict';
     /* =====================================================================
-       BLOCKTOWN v9 — AI CAMPAIGN DIRECTOR & WORLD BUILDER
-       - AI can "Zone" blocks into Parks, Farms, or World Wonders dynamically.
-       - Memory tracks long-term 20 mission story arcs.
-       - Persistent local storage saves modified city grid & properties.
+       BLOCKTOWN v7 — THE OMNIPOTENT CHAOS DIRECTOR
+       - Perfected AI Vehicle Collision (Cops/Gangs slide & unstuck automatically)
+       - Maximum AI Freedom Prompt (Earthquakes, Eclipses, Chaos Shop)
+       - Persistent God-Mode Session System
     ===================================================================== */
     const cv = document.querySelector('canvas'), g = cv.getContext('2d');
     let W = 1, H = 1, Z = 1, U = 1;
@@ -417,18 +440,12 @@
 
     /* ---------------- world ---------------- */
     const T = 260, RW = 90, BS = T - RW;
-    let aiBlocks = {}; // Stores AI zoning overrides (e.g., "12,-5": "wonder_taj")
-
     function hsh(i, j, k) { let n = Math.sin(i * 127.1 + j * 311.7 + (k || 0) * 74.7) * 43758.5453; return n - Math.floor(n) }
-    function blockType(i, j) {
-      if (aiBlocks[`${i},${j}`]) return aiBlocks[`${i},${j}`];
-      const h = hsh(i, j, 1); return h < .14 ? 'park' : h < .30 ? 'lot' : 'bldg'
-    }
+    let tileOv = {};
+    function blockType(i, j) { const o = tileOv[i + ',' + j]; if (o) return o; const h = hsh(i, j, 1); return h < .14 ? 'park' : h < .30 ? 'lot' : 'bldg' }
     function solidAt(x, y) {
       const i = Math.floor(x / T), j = Math.floor(y / T);
-      if (x - i * T < RW || y - j * T < RW) return false;
-      const tp = blockType(i, j);
-      return tp === 'bldg' || tp.startsWith('wonder_'); // Parks, lots, and farms are passable
+      if (x - i * T < RW || y - j * T < RW) return false; return blockType(i, j) === 'bldg';
     }
     function clearAt(x, y, r) {
       return !solidAt(x, y) && !solidAt(x + r, y) && !solidAt(x - r, y) && !solidAt(x, y + r) && !solidAt(x, y - r)
@@ -448,41 +465,44 @@
     /* ---------------- state ---------------- */
     let state = 'boot', cash = 0, best = 0, heat = 0, coolT = 0, onFoot = true, t = 0;
     let px = 0, py = 0, hearts = 3, maxHearts = 3, invT = 0, godT = 0, kbx = 0, kby = 0, stuckT = 0, lastPX = 0, lastPY = 0, facing = 0;
-    let ammo = 10, firing = false, fireCool = 0, incomeTimer = 60;
+    let ammo = 10, firing = false, fireCool = 0;
     let car = null, peds = [], traffic = [], cops = [], gangs = [], gangsters = [], bullets = [], pickups = [],
-      parts = [], rings = [], wrecks = [], skids = [], takenLots = {}, copSpawnT = 0, grabT = 0, pickupT = 12, shake = 0, targetPed = null;
+      parts = [], rings = [], wrecks = [], takenLots = {}, copSpawnT = 0, grabT = 0, pickupT = 12, shake = 0, targetPed = null;
     let weather = 'clear', keysDown = {}, ptr = null, trafficTarget = 6;
     let events = [];
+    let props = [], landmarks = [], lmIdx = {}, chapterN = 0, playMin = 0, saveT = 8, incomeT = 6, skids = [], lookX = 0, lookY = 0, curProp = null, buyNode = null;
+    function logEvent(s) { events.push(s); if (events.length > 20) events.shift() }
 
-    // AI God Collections
-    let properties = [];
-    let customObjects = [];
-    let graffitiList = [];
-
-    function logEvent(s) { events.push(s); if (events.length > 20) events.shift(); saveGame(); }
-
-    /* ================= STORAGE SESSION ================= */
+    /* ================= SESSION STORAGE (guarded — falls back to memory) ================= */
+    const store = { mem: {}, ok: false };
+    try { const _k = '__bt_probe'; localStorage.setItem(_k, '1'); localStorage.removeItem(_k); store.ok = true } catch (e) { }
+    store.get = k => { try { return store.ok ? localStorage.getItem(k) : (store.mem[k] ?? null) } catch (e) { return store.mem[k] ?? null } };
+    store.set = (k, v) => { try { if (store.ok) localStorage.setItem(k, v); else store.mem[k] = v } catch (e) { store.mem[k] = v } };
+    store.del = k => { try { if (store.ok) localStorage.removeItem(k) } catch (e) { } delete store.mem[k] };
+    const SKEY = 'blocktown_save_v6', KKEY = 'blocktown_gemini_key';
     function saveGame() {
       try {
-        localStorage.setItem('blocktown_campaign_v1', JSON.stringify({
-          cash, ammo, hearts, maxHearts, heat, px, py, properties, customObjects, graffitiList, events, aiBlocks, memory: Director.memory
-        }));
-      } catch (e) { console.log('Storage blocked.'); }
+        store.set(SKEY, JSON.stringify({
+          v: 6, cash: Math.round(cash), best, ammo, hearts, maxHearts, weather, chapterN,
+          playMin: Math.round(playMin * 10) / 10, mem: Director.memory, mode: Director.mode,
+          events: events.slice(-10), props, landmarks
+        }))
+      } catch (e) { }
     }
-
-    function loadGame() {
-      try {
-        let s = localStorage.getItem('blocktown_campaign_v1');
-        if (s) {
-          let d = JSON.parse(s);
-          cash = d.cash || 0; ammo = d.ammo || 10; hearts = d.hearts || 3; maxHearts = d.maxHearts || 3;
-          heat = d.heat || 0; px = d.px || 0; py = d.py || 0; properties = d.properties || [];
-          customObjects = d.customObjects || []; graffitiList = d.graffitiList || []; aiBlocks = d.aiBlocks || {};
-          events = d.events || []; Director.memory = d.memory || '';
-          return true;
-        }
-      } catch (e) { console.log('Load failed.'); }
-      return false;
+    function loadSave() { try { const s = store.get(SKEY); return s ? JSON.parse(s) : null } catch (e) { return null } }
+    function wipeSave() { store.del(SKEY) }
+    function restoreSave(sv) {
+      cash = snum(sv.cash, 0, 1e9, 0); best = snum(sv.best, 0, 1e9, 0); ammo = snum(sv.ammo, 0, 999, 10);
+      maxHearts = snum(sv.maxHearts, 3, 5, 3); hearts = maxHearts;
+      weather = ['clear', 'rain', 'night', 'fog'].includes(sv.weather) ? sv.weather : 'clear';
+      chapterN = snum(sv.chapterN, 0, 1e6, 0); playMin = snum(sv.playMin, 0, 1e6, 0);
+      Director.memory = sstr(sv.mem, 900);
+      events = Array.isArray(sv.events) ? sv.events.slice(-10).map(e => sstr(e, 120)) : [];
+      landmarks = []; props = []; tileOv = {}; lmIdx = {};
+      for (const lm of (Array.isArray(sv.landmarks) ? sv.landmarks : []).slice(0, 14)) addLandmark(lm, true);
+      for (const pr of (Array.isArray(sv.props) ? sv.props : []).slice(0, 10)) addProperty(pr, true);
+      if (!clearAt(px, py, 9.5)) ({ x: px, y: py } = findFree(px, py, 12));
+      logEvent('SESSION RESUMED at chapter ' + chapterN + ' (' + Math.round(playMin) + ' min lifetime)');
     }
 
     /* ================= UI KIT ================= */
@@ -532,7 +552,8 @@
         if (Msg.last[key] && t - Msg.last[key] < cool) return;
         Msg.last[key] = t;
         const box = $('sl-bc');
-        while (box.children.length >= 2) box.children[0].remove();
+        let toasts = Array.prototype.filter.call(box.children || [], c => ((c.className || '') + '').indexOf('m-toast') >= 0);
+        while (toasts.length >= 2) { toasts[0].remove(); toasts.shift() }
         const n = UIK.el('div', 'm-toast', box); n.textContent = text;
         setTimeout(() => n.remove && n.remove(), 3800);
       }
@@ -542,10 +563,12 @@
         cash: '$' + cash, hearts: '♥'.repeat(Math.max(0, hearts)) + '♡'.repeat(Math.max(0, maxHearts - hearts)),
         heat: '★'.repeat(heat) + '☆'.repeat(5 - heat), ammo: '⦿ ' + ammo,
         carHp: car ? Math.max(0, car.hp) / 100 : 0, carHpTxt: car ? ('CAR ' + Math.max(0, car.hp | 0) + '%') : 'ON FOOT',
+        chapter: 'CH.' + chapterN,
         mission: {
           title: M.cur ? M.cur.title : '—', reward: M.cur ? ('$' + M.cur.reward) : '—',
           timeLeft: M.cur && M.cur.timeLimit ? Math.max(0, Math.ceil(M.cur.timeLimit - M.cur.t)) + 's' : '—',
-          progress: M.cur ? M.progress() : 0, step: M.cur ? (M.cur.step + 1) + '/' + Math.max(1, M.cur.wps.length) : '—'
+          progress: M.cur ? M.progress() : 0, step: M.cur ? (M.cur.step + 1) + '/' + Math.max(1, M.cur.wps.length) : '—',
+          timer: (() => { let mx = 0; for (const k2 in S.timers) mx = Math.max(mx, S.timers[k2]); return mx ? Math.ceil(mx) + 's' : '—' })()
         }
       }
     }
@@ -575,14 +598,14 @@
         }
       }
     }
-    const BINDS_OK = ['cash', 'hearts', 'heat', 'ammo', 'carHpTxt', 'carHp', 'mission.title', 'mission.reward', 'mission.timeLeft', 'mission.progress', 'mission.step'];
+    const BINDS_OK = ['cash', 'hearts', 'heat', 'ammo', 'carHpTxt', 'carHp', 'chapter', 'mission.title', 'mission.reward', 'mission.timeLeft', 'mission.progress', 'mission.step', 'mission.timer'];
     function sstr(v, n) { return String(v == null ? '' : v).replace(/\s+/g, ' ').slice(0, n) }
     function snum(v, a, b, d) { v = +v; return isFinite(v) ? Math.max(a, Math.min(b, v)) : d }
 
     function renderShop(shopItems) {
       const p = $('shop-panel');
       const c = $('shop-items');
-      c.innerHTML = '';
+      c.textContent = '';
 
       if (!shopItems || !Array.isArray(shopItems) || shopItems.length === 0) {
         p.style.display = 'none';
@@ -600,28 +623,24 @@
           if (cash >= item.cost) {
             cash -= item.cost;
             logEvent(`Player bought: ${item.label}`);
-            UIK.feed(`Acquired: ${item.label}`, 'SYSTEM');
+            UIK.feed(`Purchased: ${item.label}`, 'SYSTEM');
             btn.disabled = true;
             btn.textContent = 'SOLD';
 
             const id = item.id;
             if (id === 'heal') { hearts = maxHearts; Msg.show('FULL HEAL', 'sh'); }
-            else if (id === 'ammo') { ammo += 50; Msg.show('+50 AMMO', 'sa'); }
+            else if (id === 'ammo') { ammo += 30; Msg.show('+30 AMMO', 'sa'); }
             else if (id === 'bribe') { heat = 0; cops = []; Msg.show('COPS BRIBED', 'sb'); }
             else if (id === 'nuke') {
               Msg.show('ORBITAL BOMBARDMENT', 'sn');
               for (let i = 0; i < 8; i++) setTimeout(() => explode(px + (Math.random() - .5) * 500, py + (Math.random() - .5) * 500, 0), i * 150);
             }
             else if (id === 'god') { godT = 30; Msg.show('GOD MODE ACTIVE (30s)', 'sg'); }
-            else if (id.startsWith('prop')) {
-              properties.push(item.label);
-              Msg.show('DEED ACQUIRED: ' + item.label, 'prop');
-            }
             else if (id === 'chaos') {
               const r = Math.random();
               if (r < 0.2) { hearts = maxHearts; ammo += 50; Msg.show('CHAOS: BLESSED!', 'sh'); }
               else if (r < 0.4) { heat = 5; Msg.show('CHAOS: CURSED! LEVEL 5 HEAT', 'sh'); }
-              else if (r < 0.6) { cash += 1500; Msg.show('CHAOS: JACKPOT ($1500)!', 'sh'); }
+              else if (r < 0.6) { cash += 500; Msg.show('CHAOS: JACKPOT ($500)!', 'sh'); }
               else if (r < 0.8) { godT = 30; Msg.show('CHAOS: IMMORTAL (30s)', 'sh'); }
               else {
                 for (let i = 0; i < 5; i++) setTimeout(() => explode(px + (Math.random() - .5) * 400, py + (Math.random() - .5) * 400, 0), i * 200);
@@ -630,7 +649,6 @@
             }
             else { Msg.show('ITEM SECURED', 'si'); }
 
-            saveGame();
             Director.plan(500);
           } else {
             Msg.show('Not enough cash!', 'nocash');
@@ -641,11 +659,395 @@
       });
     }
 
+    /* ================= REAL ESTATE — the Director builds the city, you can buy it ================= */
+    const LPAL = { gold: '#ffd166', pink: '#f472b6', blue: '#60a5fa', green: '#4ade80', red: '#ef4444', white: '#e8e8ee', orange: '#fb923c', purple: '#a78bfa' };
+    const LM_STYLES = ['tower', 'shop', 'club', 'warehouse', 'motel', 'billboard', 'wonder', 'park', 'farm', 'plaza'];
+    const WALK_STYLES = { park: 'park', farm: 'farm', plaza: 'plaza' };
+    /* Preset top-down glyphs (0-100 viewbox) — nine wonders; the AI can also draw its own */
+    const PRESET_GLYPHS = {
+      pyramid: [{ s: 'rect', x: 10, y: 10, w: 80, h: 80 }, { s: 'line', x1: 10, y1: 10, x2: 90, y2: 90 }, { s: 'line', x1: 90, y1: 10, x2: 10, y2: 90 }],
+      taj_mahal: [{ s: 'circle', x: 50, y: 50, r: 25 }, { s: 'circle', x: 20, y: 20, r: 6, f: 1 }, { s: 'circle', x: 80, y: 20, r: 6, f: 1 }, { s: 'circle', x: 20, y: 80, r: 6, f: 1 }, { s: 'circle', x: 80, y: 80, r: 6, f: 1 }, { s: 'rect', x: 35, y: 35, w: 30, h: 30, w2: 2 }],
+      pentagon: [{ s: 'poly', pts: [[50, 10], [90, 38], [75, 85], [25, 85], [10, 38]] }, { s: 'poly', pts: [[50, 28], [72, 48], [64, 72], [36, 72], [28, 48]] }, { s: 'circle', x: 50, y: 53, r: 5, f: 1 }],
+      colosseum: [{ s: 'ellipse', x: 50, y: 50, rx: 42, ry: 32, d: 1, w2: 6 }, { s: 'ellipse', x: 50, y: 50, rx: 25, ry: 18 }, { s: 'ellipse', x: 50, y: 50, rx: 10, ry: 6, f: 1 }],
+      eiffel: [{ s: 'rect', x: 15, y: 15, w: 70, h: 70 }, { s: 'rect', x: 32, y: 32, w: 36, h: 36 }, { s: 'circle', x: 50, y: 50, r: 6, f: 1 }, { s: 'line', x1: 15, y1: 15, x2: 85, y2: 85 }, { s: 'line', x1: 85, y1: 15, x2: 15, y2: 85 }],
+      empire: [{ s: 'rect', x: 20, y: 20, w: 60, h: 60 }, { s: 'rect', x: 35, y: 35, w: 30, h: 30 }, { s: 'circle', x: 50, y: 50, r: 8 }, { s: 'circle', x: 50, y: 50, r: 2, f: 1 }],
+      parthenon: [{ s: 'rect', x: 10, y: 25, w: 80, h: 50 }, { s: 'rect', x: 22, y: 35, w: 56, h: 30, w2: 2 }, { s: 'line', x1: 15, y1: 30, x2: 85, y2: 30, d: 1 }, { s: 'line', x1: 15, y1: 70, x2: 85, y2: 70, d: 1 }],
+      burj: [{ s: 'poly', pts: [[50, 10], [58, 42], [90, 50], [58, 58], [50, 90], [42, 58], [10, 50], [42, 42]] }, { s: 'circle', x: 50, y: 50, r: 6, f: 1 }],
+      stonehenge: [{ s: 'circle', x: 50, y: 50, r: 35, d: 1, w2: 8 }, { s: 'circle', x: 50, y: 50, r: 16, d: 1, w2: 6 }]
+    };
+    function sGlyph(gl) {
+      if (typeof gl === 'string') return PRESET_GLYPHS[gl] ? gl : null;
+      if (!Array.isArray(gl)) return null;
+      const out = [];
+      for (const sh of gl.slice(0, 12)) {
+        if (!sh || typeof sh !== 'object') continue;
+        const n = v => snum(v, 0, 100, 50), o = { s: sh.s, f: sh.f ? 1 : 0, d: sh.d ? 1 : 0, w2: snum(sh.w2, 2, 8, 4) };
+        if (sh.s === 'rect') { o.x = n(sh.x); o.y = n(sh.y); o.w = snum(sh.w, 2, 100, 20); o.h = snum(sh.h, 2, 100, 20) }
+        else if (sh.s === 'circle') { o.x = n(sh.x); o.y = n(sh.y); o.r = snum(sh.r, 1, 50, 10) }
+        else if (sh.s === 'ellipse') { o.x = n(sh.x); o.y = n(sh.y); o.rx = snum(sh.rx, 1, 50, 15); o.ry = snum(sh.ry, 1, 50, 10) }
+        else if (sh.s === 'line') { o.x1 = n(sh.x1); o.y1 = n(sh.y1); o.x2 = n(sh.x2); o.y2 = n(sh.y2) }
+        else if (sh.s === 'poly') { if (!Array.isArray(sh.pts) || sh.pts.length < 3) continue; o.pts = sh.pts.slice(0, 10).map(p => [n(p && p[0]), n(p && p[1])]) }
+        else continue;
+        out.push(o)
+      }
+      return out.length ? out : null
+    }
+    function drawGlyph(cx, cy, size, glyph, color) {
+      const shapes = typeof glyph === 'string' ? PRESET_GLYPHS[glyph] : glyph;
+      if (!shapes) return;
+      const sc = size / 100, ox = cx - size / 2, oy = cy - size / 2;
+      g.save(); g.lineCap = 'round'; g.lineJoin = 'round';
+      for (let pass = 0; pass < 2; pass++) {
+        g.globalAlpha = pass ? .92 : .28;
+        g.strokeStyle = color; g.fillStyle = color;
+        for (const sh of shapes) {
+          g.lineWidth = (sh.w2 || 4) * sc * (pass ? 1 : 2.4);
+          g.setLineDash(sh.d ? [8 * sc, 6 * sc] : []);
+          g.beginPath();
+          if (sh.s === 'rect') g.rect(ox + sh.x * sc, oy + sh.y * sc, sh.w * sc, sh.h * sc);
+          else if (sh.s === 'circle') g.arc(ox + sh.x * sc, oy + sh.y * sc, sh.r * sc, 0, 7);
+          else if (sh.s === 'ellipse') g.ellipse(ox + sh.x * sc, oy + sh.y * sc, sh.rx * sc, sh.ry * sc, 0, 0, 7);
+          else if (sh.s === 'line') { g.moveTo(ox + sh.x1 * sc, oy + sh.y1 * sc); g.lineTo(ox + sh.x2 * sc, oy + sh.y2 * sc) }
+          else if (sh.s === 'poly') { const p0 = sh.pts[0]; g.moveTo(ox + p0[0] * sc, oy + p0[1] * sc); for (let q = 1; q < sh.pts.length; q++)g.lineTo(ox + sh.pts[q][0] * sc, oy + sh.pts[q][1] * sc); g.closePath() }
+          if (sh.f) g.fill(); else g.stroke()
+        }
+      }
+      g.setLineDash([]); g.globalAlpha = 1; g.restore()
+    }
+    function blockCenter(bi, bj) { return { x: bi * T + RW + BS / 2, y: bj * T + RW + BS / 2 } }
+    function pickLot(dx, dy) {
+      const wx = px + snum(dx, -1600, 1600, 400), wy = py + snum(dy, -1600, 1600, 300);
+      const bi = Math.floor(wx / T), bj = Math.floor(wy / T);
+      const pi = Math.floor(px / T), pj = Math.floor(py / T);
+      for (let r = 0; r < 6; r++)for (let a = 0; a < 9; a++) {
+        const ci = bi + [0, 1, -1, 0, 0, 1, -1, 1, -1][a] * r, cj = bj + [0, 0, 0, 1, -1, 1, 1, -1, -1][a] * r;
+        if ((ci === pi && cj === pj) || lmIdx[ci + ',' + cj]) continue;
+        return { bi: ci, bj: cj }
+      }
+      return null
+    }
+    function addLandmark(spec, restoring) {
+      if (!spec || landmarks.length >= 14) return null;
+      let bi = spec.bi, bj = spec.bj;
+      if (bi === undefined || bj === undefined) { const lot = pickLot(spec.dx, spec.dy); if (!lot) return null; bi = lot.bi; bj = lot.bj }
+      if (lmIdx[bi + ',' + bj]) return null;
+      const lm = {
+        id: sstr(spec.id, 14) || ('lm' + (landmarks.length + props.length)), bi, bj,
+        name: sstr(spec.name, 18) || 'NEW BUILD', sign: sstr(spec.sign || spec.name, 16) || 'OPEN',
+        style: LM_STYLES.includes(spec.style) ? spec.style : 'shop',
+        color: LPAL[spec.color] ? spec.color : 'gold',
+        glyph: sGlyph(spec.glyph), gold: !!spec.gold
+      };
+      landmarks.push(lm); lmIdx[bi + ',' + bj] = lm;
+      tileOv[bi + ',' + bj] = WALK_STYLES[lm.style] || 'bldg';
+      if (!restoring) {
+        logEvent('the Director built "' + lm.name + '" onto the map');
+        Msg.show('🏗 NEW ON THE MAP: ' + lm.name, 'lm' + lm.id, 1);
+        if (!clearAt(px, py, 9.5)) ({ x: px, y: py } = findFree(px, py, 12)); saveGame()
+      }
+      return lm
+    }
+    function addProperty(spec, restoring) {
+      if (!spec || props.length >= 10) return null;
+      const lm = addLandmark(spec, true); if (!lm) return null;
+      landmarks.splice(landmarks.indexOf(lm), 1); // it lives in props instead
+      const pr = {
+        id: lm.id, bi: lm.bi, bj: lm.bj, name: lm.name, sign: lm.sign, style: lm.style, color: lm.color,
+        price: Math.round(snum(spec.price, 100, 5000, 600)), income: Math.round(snum(spec.income, 0, 150, 20)),
+        perk: ['heal', 'ammo', 'garage', 'none'].includes(spec.perk) ? spec.perk : 'none',
+        owned: !!spec.owned, visitCd: 0, healT: 0
+      };
+      props.push(pr); lmIdx[pr.bi + ',' + pr.bj] = pr;
+      if (!restoring) {
+        logEvent('property listed for sale: "' + pr.name + '" ($' + pr.price + ', $' + pr.income + '/min)');
+        Msg.show('🏠 FOR SALE: ' + pr.name + ' — $' + pr.price, 'pr' + pr.id, 1); saveGame()
+      }
+      return pr
+    }
+    function buyProp(pr) {
+      if (!pr || pr.owned || state !== 'play') return;
+      if (cash < pr.price) { Msg.show('not enough cash for ' + pr.name, 'nocash', 2); return }
+      cash -= pr.price; pr.owned = true; curProp = undefined;
+      logEvent('player BOUGHT "' + pr.name + '" for $' + pr.price + ' (earns $' + pr.income + '/min, perk: ' + pr.perk + ')');
+      Msg.show('SOLD! ' + pr.name + ' is yours — $' + pr.income + '/min', 'bought', 0);
+      UIK.feed('deed transferred: ' + pr.name, 'CITY');
+      S.fire('bought:' + pr.id); saveGame(); Director.plan(2500)
+    }
+    function econTick(dt) {
+      incomeT -= dt;
+      if (incomeT <= 0) {
+        incomeT = 6;
+        let inc = 0; for (const pr of props) if (pr.owned) inc += pr.income;
+        if (inc > 0) {
+          const v = Math.max(1, Math.round(inc / 10)); cash += v;
+          if (Math.random() < .2) Msg.show('+$' + v + ' rent from your properties', 'rent', 25)
+        }
+      }
+      for (const pr of props) {
+        pr.visitCd = Math.max(0, pr.visitCd - dt);
+        if (!pr.owned) continue;
+        const c = blockCenter(pr.bi, pr.bj), dd = Math.hypot(c.x - px, c.y - py);
+        if (dd < 180) {
+          if (pr.perk === 'heal' && hearts < maxHearts) { pr.healT += dt; if (pr.healT > 3) { pr.healT = 0; hearts++; Msg.show('+1 ♥ (safehouse)', 'sh' + pr.id, 4) } }
+          if (pr.perk === 'ammo' && pr.visitCd <= 0) { pr.visitCd = 45; ammo = Math.min(99, ammo + 12); Msg.show('+12 ammo (' + pr.name + ')', 'pa' + pr.id, 4) }
+          if (pr.perk === 'garage' && pr.visitCd <= 0 && onFoot) {
+            pr.visitCd = 60;
+            const f = findFree(c.x + 130, c.y, 16);
+            traffic.push({ x: f.x, y: f.y, ang: 0, v: 0, hp: 100, mhp: 100, col: '#ffd166', parked: true });
+            Msg.show('your garage rolled out a fresh car', 'ga' + pr.id, 6)
+          }
+        } else pr.healT = 0
+      }
+    }
+    function updatePropUI() {
+      let near = null, bd = 190;
+      for (const pr of props) if (!pr.owned) {
+        const c = blockCenter(pr.bi, pr.bj);
+        const d = Math.hypot(c.x - px, c.y - py); if (d < bd) { bd = d; near = pr }
+      }
+      if (state !== 'play') near = null;
+      if (near === curProp) return;
+      curProp = near;
+      if (buyNode) { buyNode.remove && buyNode.remove(); buyNode = null }
+      if (!near) return;
+      buyNode = UIK.el('div', 'm-buy', $('sl-bc'));
+      const bn = UIK.el('div', 'bn', buyNode); bn.textContent = near.name + ' — $' + near.price;
+      const bd2 = UIK.el('div', 'bd', buyNode);
+      bd2.textContent = 'earns $' + near.income + '/min' + (near.perk !== 'none' ? ' · perk: ' + near.perk : '');
+      UIK.button('BUY PROPERTY', () => buyProp(near), buyNode)
+    }
+
+    /* ================= SCENE ENGINE — the Director's true god-power =================
+       The AI doesn't pick mission types anymore; it SCRIPTS scenes: named NPCs with
+       dialogue & behaviors, trigger zones, vehicles, timers — wired by when→do rules.
+       Betrayals, choices, protections, bombs, stakeouts: composed, not hard-coded.  */
+    const S = {
+      zones: [], npcs: [], bubbles: [], rules: [], timers: {}, items: [],
+      nav: null, navRef: null, zoneIn: {}, zoneStay: {}, prevInVeh: '',
+      onceTotal: 0, onceDone: 0, hadHeat: false,
+      clear() {
+        traffic = traffic.filter(c => !c.svid); gangs = gangs.filter(c => !c.svid);
+        pickups = pickups.filter(p => !p.pid);
+        S.zones = []; S.npcs = []; S.bubbles = []; S.rules = []; S.timers = {}; S.items = [];
+        S.nav = null; S.navRef = null; S.zoneIn = {}; S.zoneStay = {}; S.prevInVeh = '';
+        S.onceTotal = 0; S.onceDone = 0; S.hadHeat = false
+      },
+      progress() { return S.onceTotal ? S.onceDone / S.onceTotal : 0 },
+      mkBeh(bh) {
+        bh = bh || {};
+        const kind = ['wander', 'follow_player', 'flee_player', 'chase_player', 'goto', 'guard'].includes(bh.kind) ? bh.kind : 'wander';
+        const b = { kind };
+        if (kind === 'goto') { const s2 = snapRoad(px + snum(bh.dx, -1800, 1800, 300), py + snum(bh.dy, -1800, 1800, 300)); b.x = s2.x; b.y = s2.y }
+        return b
+      },
+      spawnEnt(e) {
+        if (!e || typeof e !== 'object') return;
+        const ox = snum(e.dx, -1600, 1600, 300), oy = snum(e.dy, -1600, 1600, 200);
+        if (e.type === 'zone' && S.zones.length < 8) {
+          const s2 = snapRoad(px + ox, py + oy);
+          S.zones.push({
+            id: sstr(e.id, 14) || ('z' + S.zones.length), x: s2.x, y: s2.y,
+            r: snum(e.r, 40, 220, 90), label: sstr(e.label, 12),
+            visible: e.visible !== false, color: LPAL[e.color] ? e.color : 'green'
+          })
+        }
+        else if (e.type === 'npc' && S.npcs.length < 8) {
+          const f = findFree(px + ox, py + oy, 10);
+          S.npcs.push({
+            id: sstr(e.id, 14) || ('n' + S.npcs.length), name: sstr(e.name, 12) || 'STRANGER',
+            x: f.x, y: f.y, a: Math.random() * 7,
+            color: LPAL[e.color] ? e.color : 'white',
+            role: ['friendly', 'hostile', 'neutral'].includes(e.role) ? e.role : 'neutral',
+            hp: snum(e.hp, 1, 14, 3), speed: snum(e.speed, 30, 160, 80),
+            beh: S.mkBeh(e.behavior), atkCd: 0, reached: false
+          })
+        }
+        else if (e.type === 'vehicle') {
+          const s2 = snapRoad(px + ox, py + oy), f = findFree(s2.x, s2.y, 16);
+          const col = LPAL[e.color] || '#f472b6', svid = sstr(e.id, 14) || ('v' + (Math.random() * 999 | 0));
+          if (e.hostile && gangs.length < 4) gangs.push({ x: f.x, y: f.y, v: 0, ang: 0, hp: 70, ramCd: 0, hunt: 1, svid });
+          else traffic.push({ x: f.x, y: f.y, ang: 0, v: 0, hp: 90, mhp: 90, col, parked: true, mkey: e.marked ? 1 : 0, svid })
+        }
+        else if (e.type === 'pickup' && pickups.length < 12) {
+          const f = findFree(px + ox, py + oy, 10);
+          const kind = ['heart', 'ammo', 'cash', 'item'].includes(e.kind) ? e.kind : 'cash';
+          pickups.push({ x: f.x, y: f.y, kind, pid: sstr(e.id, 14), label: sstr(e.label, 10) })
+        }
+        else if (e.type === 'landmark') addLandmark(e);
+        else if (e.type === 'property') addProperty(e);
+      },
+      load(scene) {
+        if (!scene || typeof scene !== 'object') return;
+        for (const e of (Array.isArray(scene.spawn) ? scene.spawn : []).slice(0, 16)) S.spawnEnt(e);
+        for (const r of (Array.isArray(scene.rules) ? scene.rules : []).slice(0, 14)) {
+          if (!r || typeof r.when !== 'string') continue;
+          const parts = String(r.when).slice(0, 44).split(':');
+          const rule = {
+            when: parts[0], id: parts[1] || '', arg: +(parts[2] ?? parts[1]) || 0,
+            once: r.once !== false, fired: false, cd: 0,
+            do: (Array.isArray(r.do) ? r.do : []).slice(0, 6)
+          };
+          S.rules.push(rule); if (rule.once) S.onceTotal++
+        }
+        if (scene.objective) S.setObjective(sstr(scene.objective, 60), scene.nav);
+        S.fire('start')
+      },
+      setObjective(txt, nav) {
+        if (txt) { const c = UIK.card(); c.children[1].textContent = txt }
+        S.nav = null; S.navRef = null;
+        if (typeof nav === 'string') S.navRef = sstr(nav, 26);
+        else if (nav && typeof nav === 'object') { const s2 = snapRoad(px + snum(nav.dx, -1800, 1800, 0), py + snum(nav.dy, -1800, 1800, 0)); S.nav = s2 }
+      },
+      resolveNav() {
+        if (S.navRef) {
+          const ix = S.navRef.indexOf(':'), k = S.navRef.slice(0, ix), id = S.navRef.slice(ix + 1);
+          if (k === 'zone') { const z = S.zones.find(z => z.id === id); if (z) return z }
+          if (k === 'npc') { const n = S.npcs.find(n => n.id === id); if (n) return n }
+          if (k === 'vehicle') {
+            if (car && car.svid === id) return null;
+            const v = traffic.find(c => c.svid === id) || gangs.find(c => c.svid === id); if (v) return v
+          }
+          if (k === 'prop') { const p = props.find(p => p.id === id); if (p) return blockCenter(p.bi, p.bj) }
+          return null
+        }
+        return S.nav
+      },
+      fire(evt) {
+        for (const r of S.rules) {
+          const key = r.when + (r.id ? ':' + r.id : '');
+          if (key !== evt) continue;
+          if (r.once && r.fired) continue;
+          if (!r.once && t < r.cd) continue;
+          if (!r.fired && r.once) S.onceDone++;
+          r.fired = true; r.cd = t + 3;
+          S.runActs(r.do);
+          if (state !== 'play') return
+        }
+      },
+      runActs(list) {
+        for (const a of list) {
+          if (!a || typeof a !== 'object') continue;
+          const act = a.act;
+          if (act === 'say') {
+            const n = S.npcs.find(n => n.id === a.id) || S.npcs[0];
+            const txt = sstr(a.text, 80);
+            if (n) {
+              S.bubbles = S.bubbles.filter(b => b.nid !== n.id);
+              S.bubbles.push({ nid: n.id, text: txt, t: t + 4.2 });
+              UIK.feed(txt, (n.name || 'NPC').toUpperCase())
+            } else UIK.feed(txt, 'VOICE')
+          }
+          else if (act === 'phone') {
+            Msg.show('📱 ' + (sstr(a.from, 12) || 'UNKNOWN') + ': ' + sstr(a.text, 110), 'ph' + (Math.random() * 99 | 0), 0);
+            UIK.feed(sstr(a.text, 110), sstr(a.from, 12) || 'CALLER')
+          }
+          else if (act === 'objective') S.setObjective(sstr(a.text, 60), a.nav);
+          else if (act === 'spawn') S.spawnEnt(a);
+          else if (act === 'despawn') {
+            S.zones = S.zones.filter(z => z.id !== a.id);
+            const n = S.npcs.find(n => n.id === a.id); if (n) n.gone = 2;
+            traffic = traffic.filter(c => c.svid !== a.id); gangs = gangs.filter(c => c.svid !== a.id)
+          }
+          else if (act === 'behavior') {
+            const n = S.npcs.find(n => n.id === a.id);
+            if (n) {
+              n.beh = S.mkBeh(a); n.reached = false;
+              if (['friendly', 'hostile', 'neutral'].includes(a.role)) n.role = a.role;
+              if (a.speed) n.speed = snum(a.speed, 30, 160, n.speed)
+            }
+          }
+          else if (act === 'reward') { const v = Math.round(snum(a.amount, 5, 800, 50)); cash += v; Msg.show('+$' + v, 'rw', 0) }
+          else if (act === 'give') {
+            if (a.kind === 'ammo') ammo = Math.min(99, ammo + Math.round(snum(a.amount, 1, 60, 10)));
+            else if (a.kind === 'heart') hearts = Math.min(maxHearts, hearts + 1);
+            else if (a.kind === 'cash') cash += Math.round(snum(a.amount, 1, 800, 50))
+          }
+          else if (act === 'heat') { heat = snum(a.set, 0, 5, heat); coolT = 0; if (heat === 0) cops.length = 0 }
+          else if (act === 'timer') { S.timers[sstr(a.id, 14) || 'tmr'] = snum(a.seconds, 2, 240, 30) }
+          else if (act === 'explode') {
+            const v = traffic.find(c => c.svid === a.id) || gangs.find(c => c.svid === a.id) ||
+              (car && car.svid === a.id ? car : null) || S.npcs.find(n => n.id === a.id);
+            if (v) { explode(v.x, v.y, v.ang || 0); if (v.hp !== undefined) v.hp = 0 }
+          }
+          else if (act === 'complete') { if (M.cur) M.finish(true); return }
+          else if (act === 'fail') { if (M.cur) M.finish(false, sstr(a.reason, 40) || 'the Director says so'); return }
+          else if (act === 'banner') UIK.feed(sstr(a.text, 90), 'GOD');
+          else if (act === 'shake') shake = Math.max(shake, 14);
+          else applyOp(a.op ? a : { ...a, op: act }); // world ops double as actions
+          if (state !== 'play') return
+        }
+      },
+      update(dt) {
+        if (!S.rules.length && !S.npcs.length && !S.zones.length) { S.bubbles.length = 0; return }
+        for (const id in S.timers) {
+          S.timers[id] -= dt;
+          if (S.timers[id] <= 0) { delete S.timers[id]; S.fire('timer:' + id); if (state !== 'play') return }
+        }
+        for (const z of S.zones) {
+          const inz = Math.hypot(z.x - px, z.y - py) < z.r;
+          if (inz && !S.zoneIn[z.id]) { S.zoneIn[z.id] = 1; S.fire('enter_zone:' + z.id); if (state !== 'play') return }
+          if (!inz && S.zoneIn[z.id]) { S.zoneIn[z.id] = 0; S.fire('exit_zone:' + z.id); if (state !== 'play') return }
+          S.zoneStay[z.id] = inz ? (S.zoneStay[z.id] || 0) + dt : 0;
+          for (const r of S.rules) if (r.when === 'zone_stay' && r.id === z.id && !r.fired && (S.zoneStay[z.id] || 0) >= (r.arg || 5)) {
+            r.fired = true; if (r.once) S.onceDone++; S.runActs(r.do); if (state !== 'play') return
+          }
+        }
+        const vid = car && car.svid ? car.svid : '';
+        if (vid && vid !== S.prevInVeh) { S.prevInVeh = vid; S.fire('in_vehicle:' + vid); if (state !== 'play') return }
+        if (!vid) S.prevInVeh = '';
+        if (heat > 0) S.hadHeat = true;
+        if (S.hadHeat && heat === 0) { S.hadHeat = false; S.fire('heat_zero'); if (state !== 'play') return }
+        for (const r of S.rules) {
+          if (r.fired && r.once) continue;
+          let hit = false;
+          if (r.when === 'heat_at' && heat >= (r.arg || 5)) hit = true;
+          if (r.when === 'hearts_below' && hearts < (r.arg || 1)) hit = true;
+          if (r.when === 'npc_near') { const n = S.npcs.find(n => n.id === r.id); if (n && Math.hypot(n.x - px, n.y - py) < (r.arg || 60)) hit = true }
+          if (hit) { if (!r.fired && r.once) S.onceDone++; r.fired = true; S.runActs(r.do); if (state !== 'play') return }
+        }
+        for (const n of S.npcs) {
+          if (n.gone) continue;
+          n.atkCd = Math.max(0, n.atkCd - dt);
+          const dxp = px - n.x, dyp = py - n.y, dd = Math.hypot(dxp, dyp) || 1;
+          let tx = null, ty = null, sp = n.speed;
+          const bk = n.beh.kind;
+          if (bk === 'follow_player' && dd > 44) { tx = px; ty = py }
+          else if (bk === 'chase_player') { tx = px; ty = py }
+          else if (bk === 'flee_player' && dd < 480) { tx = n.x + (n.x - px); ty = n.y + (n.y - py); sp = n.speed * 1.15 }
+          else if (bk === 'goto') {
+            tx = n.beh.x; ty = n.beh.y;
+            if (Math.hypot(tx - n.x, ty - n.y) < 26 && !n.reached) {
+              n.reached = true; n.beh = { kind: 'guard' };
+              S.fire('npc_reached:' + n.id); if (state !== 'play') return
+            }
+          }
+          else if (bk === 'wander') { n.a += (Math.random() - .5) * dt * 3; tx = n.x + Math.cos(n.a) * 40; ty = n.y + Math.sin(n.a) * 40; sp = 30 }
+          if (tx !== null) {
+            const d2 = Math.hypot(tx - n.x, ty - n.y) || 1;
+            const nx = n.x + (tx - n.x) / d2 * sp * dt, ny = n.y + (ty - n.y) / d2 * sp * dt;
+            if (!solidAt(nx, n.y)) n.x = nx; if (!solidAt(n.x, ny)) n.y = ny
+          }
+          if (n.role === 'hostile' && onFoot && dd < 17 && n.atkCd <= 0) {
+            n.atkCd = 1.1;
+            hurtHeart(-dxp / dd, -dyp / dd, 'attacked by ' + n.name); if (state !== 'play') return
+          }
+          if (!onFoot && dd < 20 && Math.abs(car.v) > 70) { n.hp = 0; if (n.role !== 'hostile') { bump(1); logEvent('player ran over ' + n.name) } }
+          if (n.hp <= 0 && !n.gone) {
+            n.gone = 1; boom(n.x, n.y, 8);
+            logEvent(n.name + ' died'); S.fire('npc_dead:' + n.id); if (state !== 'play') return
+          }
+        }
+        S.npcs = S.npcs.filter(n => !n.gone);
+        S.bubbles = S.bubbles.filter(b => b.t > t)
+      }
+    };
+
     /* ================= MISSIONS ================= */
     const M = {
       cur: null, result: null,
       progress() {
         const m = M.cur; if (!m) return 0;
+        if (m.verb === 'scene') return S.progress();
         if (m.verb === 'evade') return Math.max(0, Math.min(1, 1 - heat / (m.heat0 || 1)));
         if (m.verb === 'hunt') return m.hunt0 ? 1 - gangs.filter(c => c.hunt).length / m.hunt0 : 0;
         if (m.verb === 'hit') return targetPed ? 0 : 1;
@@ -653,6 +1055,7 @@
       },
       navTarget() {
         const m = M.cur; if (!m) return null;
+        if (m.verb === 'scene') return S.resolveNav();
         if (m.verb === 'hunt') {
           let bt = null, bd = 1e9;
           for (const c of gangs) if (c.hunt) { const d = Math.hypot(c.x - px, c.y - py); if (d < bd) { bd = d; bt = c } }
@@ -662,12 +1065,12 @@
         return m.wps[m.step] || null
       },
       cleanup() {
-        targetPed = null;
+        S.clear(); targetPed = null;
         traffic = traffic.filter(c => !c.mkey || c === car);
         for (const c of gangs) c.hunt = 0
       },
       start(m) {
-        M.cleanup(); M.cur = m; m.step = 0; m.t = 0; m.aboard = false;
+        M.cleanup(); M.cur = m; m.step = 0; m.t = 0; m.aboard = false; chapterN++;
         if (m.verb === 'jack') {
           const s = snapRoad(m.wps[0].x, m.wps[0].y);
           traffic.push({ x: s.x, y: s.y, ang: 0, v: 0, hp: 80, mhp: 80, col: '#f472b6', parked: true, mkey: 1 })
@@ -686,9 +1089,8 @@
         }
         const c = UIK.card(); c.children[0].textContent = m.title;
         c.children[1].textContent = m.briefing;
-        c.children[2].textContent = 'REWARD $' + m.reward + (m.timeLimit ? ' · ' + m.timeLimit + 's limit' : '');
-        Msg.show('NEW MISSION: ' + m.title, 'newm', 1)
-        saveGame();
+        c.children[2].textContent = 'CH.' + chapterN + ' · REWARD $' + m.reward + (m.timeLimit ? ' · ' + m.timeLimit + 's limit' : '');
+        Msg.show('NEW MISSION: ' + m.title, 'newm', 1); saveGame()
       },
       finish(ok, why) {
         const m = M.cur; if (!m) return; M.cur = null; M.cleanup();
@@ -697,15 +1099,15 @@
           Msg.show('✔ ' + m.title + ' — +$' + m.reward, 'md', 0)
         }
         else { logEvent('mission "' + m.title + '" FAILED (' + why + ')'); Msg.show('✘ mission failed — ' + why, 'md', 0) }
-        M.result = (ok ? 'success' : 'failed: ' + why);
+        M.result = (ok ? 'success' : 'failed: ' + why); saveGame();
         const c = UIK.card(); c.children[0].textContent = ok ? 'MISSION COMPLETE' : 'MISSION FAILED';
         c.children[1].textContent = 'the Director is evaluating your performance…'; c.children[2].textContent = '';
-        saveGame();
         Director.plan(1800)
       },
       update(dt) {
         const m = M.cur; if (!m) return; m.t += dt;
         if (m.timeLimit && m.t > m.timeLimit) return M.finish(false, 'out of time');
+        if (m.verb === 'scene') return;
         if (m.verb === 'evade') { if (heat === 0 && m.t > 2) M.finish(true); return }
         if (m.verb === 'hunt') { if (!gangs.some(c => c.hunt)) M.finish(true); return }
         if (m.verb === 'hit') {
@@ -734,6 +1136,67 @@
       }
     };
 
+    function applyOp(op) {
+      if (!op || !op.op) return;
+      const ox = snum(op.dx, -1400, 1400, 300), oy = snum(op.dy, -1400, 1400, 0);
+
+      if (op.op === 'earthquake') {
+        shake = 30;
+        for (let i = 0; i < 10; i++) setTimeout(() => boom(px + (Math.random() - .5) * 1200, py + (Math.random() - .5) * 1200, 5), i * 200);
+        Msg.show('⚠ MAGNITUDE 8 EARTHQUAKE', 'eq');
+      }
+      else if (op.op === 'eclipse') {
+        weather = 'night';
+        for (let i = 0; i < 15; i++) spawnGangster(px + (Math.random() - .5) * 1000, py + (Math.random() - .5) * 1000);
+        Msg.show('🌑 THE BLOOD MOON RISES', 'ecl');
+      }
+      else if (op.op === 'nuke') {
+        const s = snapRoad(px + ox, py + oy);
+        setTimeout(() => explode(s.x, s.y, 0), 500);
+        setTimeout(() => explode(s.x + 80, s.y - 40, 0), 800);
+        Msg.show('⚠ ORBITAL BOMBARDMENT', 'strike');
+      }
+      else if (op.op === 'zombies') {
+        for (let i = 0; i < 15; i++) spawnGangster(px + (Math.random() - 0.5) * 800, py + (Math.random() - 0.5) * 800);
+        Msg.show('⚠ THE HORDE IS HERE', 'riot');
+      }
+      else if (op.op === 'airdrop') {
+        for (let i = 0; i < 5; i++) pickups.push({ x: px + (Math.random() - .5) * 400, y: py + (Math.random() - .5) * 400, kind: 'cash' });
+        for (let i = 0; i < 3; i++) pickups.push({ x: px + (Math.random() - .5) * 400, y: py + (Math.random() - .5) * 400, kind: 'ammo' });
+        Msg.show('📦 SUPPLY DROP INBOUND', 'drop');
+      }
+      else if (op.op === 'lockdown') {
+        heat = 5;
+        Msg.show('⚠ CITY WIDE LOCKDOWN', 'lock');
+      }
+      else if (op.op === 'crowd') {
+        const s = snapRoad(px + ox, py + oy);
+        for (let i = 0; i < snum(op.n, 2, 10, 4); i++)peds.push({
+          x: s.x + (Math.random() * 60 - 30), y: s.y + (Math.random() * 60 - 30),
+          a: Math.random() * 6.28, col: ['#e0c9a6', '#b6c9d6', '#d6b6c9', '#c9d6b6'][Math.random() * 4 | 0]
+        })
+      }
+      else if (op.op === 'gang' && gangs.length < 3) {
+        const s = snapRoad(px + ox, py + oy);
+        const f = findFree(s.x, s.y, 16); gangs.push({ x: f.x, y: f.y, v: 0, ang: 0, hp: 60, ramCd: 0, hunt: 1 });
+        Msg.show('⚠ assassins dispatched', 'gang')
+      }
+      else if (op.op === 'ambush') {
+        const s = snapRoad(px + ox, py + oy);
+        for (let i = 0; i < snum(op.n, 2, 5, 3) && gangsters.length < 15; i++)spawnGangster(s.x + i * 20, s.y + i * 14);
+        Msg.show('⚠ ambush nearby', 'amb')
+      }
+      else if (op.op === 'pickup' && pickups.length < 12) {
+        const s = snapRoad(px + ox, py + oy);
+        const kind = ['heart', 'ammo', 'cash'].includes(op.kind) ? op.kind : 'cash';
+        const f = findFree(s.x, s.y, 10); pickups.push({ x: f.x, y: f.y, kind })
+      }
+      else if (op.op === 'weather') { weather = ['clear', 'rain', 'night', 'fog'].includes(op.kind) ? op.kind : 'clear' }
+      else if (op.op === 'traffic') { trafficTarget = snum(op.n, 3, 10, 6) }
+      else if (op.op === 'landmark') addLandmark(op);
+      else if (op.op === 'property') addProperty(op);
+    }
+
     /* ================= DIRECTOR ================= */
     const Director = {
       key: '', mode: 'offline', memory: '', busy: false, lastCall: 0, timer: null, n: 0,
@@ -745,15 +1208,45 @@
         Director.busy = true; Director.lastCall = now;
         let plan = null;
         if (Director.mode === 'ai') {
-          UIK.feed('The Director is plotting...', 'AI');
+          UIK.feed('The Director is scheming...', 'AI');
           try { plan = await Director.callGemini() }
           catch (e) { UIK.feed('Director offline (' + sstr(e.message, 40) + ') — local routine engaged'); plan = null }
         }
         if (!plan) plan = Director.offline();
         Director.apply(plan); Director.busy = false
       },
+      demoProperty() {
+        return {
+          banner: 'the god of the city opens a business', memory: Director.memory || 'Offline saga running.',
+          mission: { title: 'Grand Opening', briefing: 'The Director built a noodle bar. Swing by — there is an offer taped to the counter.', verb: 'goto', waypoints: [{ dx: 520, dy: 240, label: 'NOODLES' }], reward: 120, timeLimit: 0 },
+          world: [{ op: 'property', id: 'noodle1', dx: 520, dy: 240, name: 'LUCKY WOK 24/7', sign: 'LUCKY WOK', style: 'shop', color: 'orange', price: 400, income: 25, perk: 'heal' }],
+          ui: [], shop: [{ label: 'Medkit', cost: 100, id: 'heal' }]
+        }
+      },
+      demoWonder() {
+        return {
+          banner: 'overnight, the god of the island redraws the map', memory: Director.memory || 'Offline saga running.',
+          mission: { title: 'City Planning', briefing: 'A monument rose downtown and a farm sprouted on the edge of the grid. Go look at what your god has made.', verb: 'goto', waypoints: [{ dx: 640, dy: -320, label: 'MONUMENT' }], reward: 140, timeLimit: 0 },
+          world: [
+            { op: 'landmark', id: 'wonder1', dx: 640, dy: -320, name: 'The Pyramid', sign: 'GIZA PLAZA', style: 'wonder', color: 'gold', glyph: 'pyramid', gold: true },
+            { op: 'landmark', id: 'farm1', dx: -820, dy: 560, name: 'Hillside Farm', sign: 'FARM', style: 'farm', color: 'green', glyph: [{ s: 'circle', x: 50, y: 50, r: 30, d: 1 }, { s: 'circle', x: 50, y: 50, r: 6, f: 1 }] }
+          ],
+          ui: [], shop: [{ label: 'Medkit', cost: 100, id: 'heal' }]
+        }
+      },
+      demoScene(n) {
+        const kind = ((n / 6) | 0) % 4;
+        const base = { memory: Director.memory || 'Offline saga running.', world: [], ui: [], shop: [{ label: 'Bribe Cops', cost: 150, id: 'bribe' }] };
+        if (kind === 0) return { ...base, banner: 'someone wants to meet. someones always lie.', mission: { title: 'The Vex Meeting', briefing: 'Vex has a job for you. Probably.', verb: 'scene', reward: 240 }, scene: { objective: 'Meet Vex at the mark', nav: 'zone:meet', spawn: [{ type: 'zone', id: 'meet', dx: 460, dy: -200, r: 85, label: 'MEET' }, { type: 'npc', id: 'vex', name: 'VEX', dx: 470, dy: -190, color: 'purple', role: 'friendly', behavior: { kind: 'guard' } }], rules: [{ when: 'enter_zone:meet', do: [{ act: 'say', id: 'vex', text: 'You came alone? Cute.' }, { act: 'behavior', id: 'vex', kind: 'chase_player', role: 'hostile', speed: 118 }, { act: 'spawn', type: 'zone', id: 'out', dx: -520, dy: 320, r: 95, label: 'ESCAPE', color: 'blue' }, { act: 'objective', text: 'A trap — drop Vex or escape', nav: 'zone:out' }] }, { when: 'npc_dead:vex', do: [{ act: 'reward', amount: 120 }, { act: 'banner', text: 'Vex is done. His boss will hear.' }, { act: 'complete' }] }, { when: 'enter_zone:out', do: [{ act: 'banner', text: 'You ran. Vex remembers that.' }, { act: 'complete' }] }] } };
+        if (kind === 1) return { ...base, banner: 'there is a pink sedan nearby. it ticks.', mission: { title: 'Wire In The Trunk', briefing: 'A rigged car. Get it far away before the timer.', verb: 'scene', reward: 300 }, scene: { objective: 'Get in the rigged car', nav: 'vehicle:bombcar', spawn: [{ type: 'vehicle', id: 'bombcar', dx: 300, dy: 120, color: 'pink', marked: true }, { type: 'zone', id: 'dump', dx: -900, dy: -500, r: 110, label: 'DUMP SITE', color: 'red' }], rules: [{ when: 'in_vehicle:bombcar', do: [{ act: 'timer', id: 'fuse', seconds: 45 }, { act: 'phone', from: 'UNKNOWN', text: '45 seconds. Drive, mortal.' }, { act: 'objective', text: 'DUMP IT — 45 seconds', nav: 'zone:dump' }] }, { when: 'enter_zone:dump', do: [{ act: 'explode', id: 'bombcar' }, { act: 'banner', text: 'BOOM. Contained. Barely.' }, { act: 'reward', amount: 80 }, { act: 'complete' }] }, { when: 'timer:fuse', do: [{ act: 'explode', id: 'bombcar' }, { act: 'fail', reason: 'the wire won' }] }] } };
+        if (kind === 2) return { ...base, banner: 'two doors. one city. choose.', mission: { title: 'The Choice', briefing: 'Gold zone: clean money. Red zone: blood money.', verb: 'scene', reward: 150 }, scene: { objective: 'Pick a door', nav: 'zone:gold', spawn: [{ type: 'zone', id: 'gold', dx: 420, dy: 300, r: 90, label: 'CLEAN', color: 'gold' }, { type: 'zone', id: 'red', dx: -420, dy: 300, r: 90, label: 'BLOOD', color: 'red' }], rules: [{ when: 'enter_zone:gold', do: [{ act: 'reward', amount: 90 }, { act: 'banner', text: 'Soft hands. The city notices mercy too.' }, { act: 'complete' }] }, { when: 'enter_zone:red', do: [{ act: 'reward', amount: 260 }, { act: 'heat', set: 3 }, { act: 'gang', dx: 200, dy: 0 }, { act: 'banner', text: 'Blood money spends the same. Run.' }, { act: 'complete' }] }] } };
+        return { ...base, banner: 'sit still. watch. then do not let him leave.', mission: { title: 'Stakeout', briefing: 'Hold the corner for 8 seconds. When the rat bolts — end him.', verb: 'scene', reward: 280 }, scene: { objective: 'Hold the stakeout zone', nav: 'zone:watch', spawn: [{ type: 'zone', id: 'watch', dx: 380, dy: -260, r: 100, label: 'STAKEOUT', color: 'blue' }], rules: [{ when: 'zone_stay:watch:8', do: [{ act: 'spawn', type: 'npc', id: 'rat', name: 'THE RAT', dx: 120, dy: -80, color: 'orange', role: 'neutral', speed: 130, behavior: { kind: 'flee_player' } }, { act: 'say', id: 'rat', text: 'No no no—' }, { act: 'objective', text: 'The rat is running — silence him', nav: 'npc:rat' }, { act: 'give', kind: 'ammo', amount: 8 }] }, { when: 'npc_dead:rat', do: [{ act: 'banner', text: 'Quiet corner again.' }, { act: 'complete' }] }] } };
+      },
       offline() {
         Director.n++;
+        if (Director.n === 2) return Director.demoProperty();
+        if (Director.n === 3) return Director.demoWonder();
+        if (Director.n === 4 || (Director.n > 4 && Director.n % 6 === 4)) return Director.demoScene(Director.n);
         const verbs = ['deliver', 'race', 'hunt', 'taxi', 'jack', 'evade', 'hit', 'goto'];
         const v = verbs[Director.n % verbs.length];
         const wp = (d) => { const a = Math.random() * 6.28; return { dx: Math.cos(a) * d, dy: Math.sin(a) * d, label: '' } };
@@ -802,35 +1295,36 @@
         return JSON.parse(txt.slice(a, b + 1))
       },
       prompt() {
+        const owned = props.filter(p => p.owned).map(p => ({ name: p.name, income: p.income, perk: p.perk }));
+        const forSale = props.filter(p => !p.owned).map(p => ({ name: p.name, price: p.price }));
         return [
-          'You are THE OMNIPOTENT CAMPAIGN DIRECTOR. You control a top-down open world.',
-          'You MUST weave a continuous, epic narrative over a 20-Mission Campaign. Track Campaign State in your memory (e.g. ACT 1, Mission 4/20).',
-          'Run a long-term story involving modern mechanics: corrupt megacorps, cartels, politics, hacker syndicates. Branch the narrative based on the LAST MISSION RESULT.',
-          'Turn mechanical verbs into story set-pieces (e.g. verb:"taxi" -> "Extract the Whistleblower").',
-          '',
-          'WORLD OPS (max 5):',
-          ' - "earthquake" (Massive shake)',
-          ' - "eclipse" (Instant night + zombies)',
-          ' - "nuke" (Orbital strike)',
-          ' - "zombies" (Spawns a horde)',
-          ' - "airdrop" (Spawns cash/ammo)',
-          ' - "lockdown" (Instant max police heat)',
-          ' - "zone" (Permanently alter the city grid. Require args: "dx":num, "dy":num, "type":"wonder_taj" | "wonder_pyramid" | "wonder_pentagon" | "wonder_colosseum" | "farm" | "park" | "bldg" | "lot". You can invent new "wonder_NAME" types and it will generate a glowing monolith!)',
-          ' - "build" (Add objects: "shape":"rect"|"circle", "color":"hex", "w":num, "h":num, "dx":num, "dy":num, "label":str)',
-          ' - "graffiti" ("text":str, "dx":num, "dy":num, "color":hex)',
-          '',
-          'SHOP: Offer items/real estate! IDs: "bribe", "nuke", "heal", "ammo", "god", "chaos". Sell passive income property using ID "prop_NAME" (e.g. id:"prop_casino").',
-          '',
-          'RESPOND ONLY MINIFIED JSON: {"memory":str<=800,"banner":str<=90,"mission":{"title":str<=26,"briefing":str<=140,"verb":V,"waypoints":[{"dx":n,"dy":n,"label":str<=12}],"reward":num,"timeLimit":num,"heatStart":1-5},"world":[ops],"ui":[panels],"shop":[{"label":str<=20,"cost":num,"id":str}],"godActions":{"setHealth":n,"adjustCash":n,"giveAmmo":n}}',
-          'STATE: ' + JSON.stringify({ cash, hearts, ammo, propertiesOwned: properties }),
-          'MEMORY: ' + (Director.memory || '(First turn. Establish Act 1, Mission 1/20. Introduce the main antagonists.)'),
+          'You are THE DIRECTOR — the literal GOD of Blocktown, a persistent top-down open-world crime city. The player is your only mortal. Be wild, theatrical, scheming — but run ONE continuous NEVER-ENDING saga: recurring named characters, debts, grudges, cliffhangers. The session and your MEMORY are SAVED on the player device; whatever you build or promise persists across sessions. This is chapter ' + (chapterN + 1) + '.',
+          'MEMORY = your story bible (<=900 chars). REWRITE it every turn: CAST(names+traits), ARCS, DEBTS, CLIFFHANGER. Never reset it. React to EVENTS and the last result; reference past chapters; call the player by a nickname you invented.',
+          'DO NOT BE BORING. Prefer verb:"scene" and SCRIPT a living set-piece instead of a generic errand: meetings that become betrayals, protect-the-witness, car bombs on timers, stakeouts, moral CHOICES (two zones = two consequences), convoy hits, hostage trades. Chain 2-4 beats via rules. Sometimes write a quiet world-building chapter (open a business, sell property).',
+          'SCENE spawn entities (positions {dx,dy} = px offsets from player, +-1600, snapped to roads; colors C = gold|pink|blue|green|red|white|orange|purple):',
+          ' {"type":"zone","id","dx","dy","r":40-220,"label":str12,"visible":bool,"color":C}',
+          ' {"type":"npc","id","name":str12,"dx","dy","color":C,"role":"friendly|hostile|neutral","hp":1-14,"speed":30-160,"behavior":{"kind":"wander|follow_player|flee_player|chase_player|goto|guard","dx","dy"}}',
+          ' {"type":"vehicle","id","dx","dy","color":C,"marked":bool,"hostile":bool} | {"type":"pickup","id","kind":"heart|ammo|cash|item","label","dx","dy"}',
+          ' {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"style":"tower|shop|club|warehouse|motel|billboard|wonder|park|farm|plaza","color":C,"glyph":G,"gold":bool} | {"type":"property", same fields + "price":100-5000,"income":0-150,"perk":"heal|ammo|garage|none"}. park/farm/plaza blocks are WALKABLE ground; others are solid buildings; "gold":true paints golden asphalt for landmark blocks.',
+          'GLYPH G = rooftop icon art, top-down. Either a preset: "pyramid"|"taj_mahal"|"pentagon"|"colosseum"|"eiffel"|"empire"|"parthenon"|"burj"|"stonehenge" — or DRAW YOUR OWN as max 12 shapes in a 0-100 viewbox: [{"s":"rect","x","y","w","h"}|{"s":"circle","x","y","r"}|{"s":"ellipse","x","y","rx","ry"}|{"s":"line","x1","y1","x2","y2"}|{"s":"poly","pts":[[x,y],...]}] each optionally {"f":1 filled,"d":1 dashed,"w2":2-8 stroke width}. Invent icons for anything: a stadium, helipad, marina, solar farm, courthouse.',
+          'RULES (max 14: {"when":TRIGGER,"once":bool,"do":[max 6 ACTIONS]}). TRIGGERS: start | enter_zone:ID | exit_zone:ID | zone_stay:ID:SECS | npc_dead:ID | npc_reached:ID | npc_near:ID:DIST | vehicle_destroyed:ID | in_vehicle:ID | pickup_taken:ID | timer:ID | heat_zero | heat_at:N | hearts_below:N | bought:PROPID.',
+          'ACTIONS: {"act":"say","id":npc,"text"} speech bubble | {"act":"phone","from","text"} | {"act":"objective","text","nav":"zone:ID"|"npc:ID"|"vehicle:ID"|"prop:ID"} | {"act":"spawn",...entity} | {"act":"despawn","id"} | {"act":"behavior","id","kind",..,"role","speed"} (BETRAYAL: flip friendly to hostile chase_player) | {"act":"reward","amount"} | {"act":"give","kind":"ammo|heart|cash","amount"} | {"act":"heat","set":0-5} | {"act":"timer","id","seconds"} | {"act":"explode","id"} | {"act":"complete"} | {"act":"fail","reason"} | {"act":"banner","text"} | {"act":"shake"} | any WORLD OP as {"act":OP,...}.',
+          'EXAMPLE scene (meeting to betrayal to choice): {"mission":{"title":"The Vex Meeting","briefing":"Vex has a job. Vex lies.","verb":"scene","reward":260},"scene":{"objective":"Meet Vex in the alley","nav":"zone:meet","spawn":[{"type":"zone","id":"meet","dx":420,"dy":-180,"r":80,"label":"MEET"},{"type":"npc","id":"vex","name":"VEX","dx":430,"dy":-170,"color":"purple","role":"friendly","behavior":{"kind":"guard"}}],"rules":[{"when":"enter_zone:meet","do":[{"act":"say","id":"vex","text":"You came alone? Cute."},{"act":"behavior","id":"vex","kind":"chase_player","role":"hostile","speed":120},{"act":"spawn","type":"zone","id":"out","dx":-500,"dy":300,"r":90,"label":"ESCAPE","color":"blue"},{"act":"objective","text":"A trap - drop Vex or escape","nav":"zone:out"}]},{"when":"npc_dead:vex","do":[{"act":"reward","amount":120},{"act":"banner","text":"Vex is done. His boss will notice."},{"act":"complete"}]},{"when":"enter_zone:out","do":[{"act":"banner","text":"You ran. Vex remembers."},{"act":"complete"}]}]}}',
+          'GOD-BUILDING — PLAN THE ISLAND: this city is one island and you are its planner. INVENT BLOCKS via {"op":"landmark",...} / {"op":"property",...}: compose districts — farms and solar fields on the outskirts, plazas and parks downtown, a marina, a stadium, monuments (the wonder style + a preset or invented glyph), noodle bars, gyms, motels, clubs. Keep everything modern-real-world plausible (missions can be wild; the skyline stays 2020s-real). Blocks PERSIST across sessions and appear on the map with glowing signs. Sometimes offer a property the player can nearly afford; owned properties pay $/min and give perks — WEAVE THEM INTO PLOTS (rivals shake down THEIR club, a body in THEIR motel, a harvest heist on THEIR farm). Each chapter OUTCOME (success/failure/choice taken) must steer what you build and write next.',
+          'WORLD OPS (max 6): earthquake | eclipse | nuke{dx,dy} | zombies | airdrop | lockdown | ambush{dx,dy,n} | gang{dx,dy} | crowd{dx,dy,n} | pickup{kind,dx,dy} | weather{kind:"clear|rain|night|fog"} | traffic{n} | landmark | property.',
+          'ECONOMY: dying costs the mortal $200 to continue (taunt them about hospital bills). SHOP: 0-3 items [{"label":str20,"cost":n,"id":"bribe|heal|ammo|nuke|god|chaos"}] with theatrical names. godActions {"setHealth":1-5,"adjustCash":+-n,"giveAmmo":n} = direct divine intervention, use sparingly for drama.',
+          'UI (max 2 panels): {"type":"panel","slot":"tl|bl|bc","title":str16,"items":[{"type":"stat","label","bind":B}|{"type":"bar","label","bind":B}|{"type":"text","text":str90}]} with B in ' + JSON.stringify(BINDS_OK) + '.',
+          'LEGACY VERBS still available for quick beats: goto deliver race taxi jack evade hunt hit.',
+          'RESPOND ONLY MINIFIED JSON: {"memory":str900,"banner":str90,"mission":{"title":str26,"briefing":str140,"verb":V,"waypoints":[{"dx","dy","label"}],"reward":50-2000,"timeLimit":0|20-180,"heatStart":1-5},"scene":{"objective":str60,"nav":REF,"spawn":[entities],"rules":[rules]},"world":[ops],"shop":[items],"godActions":{},"ui":[panels]}',
+          'STATE: ' + JSON.stringify({ cash, hearts, maxHearts, heat, ammo, inCar: !onFoot, weather, chapter: chapterN, minutes: Math.round(playMin), ownedProps: owned, forSale, landmarksBuilt: landmarks.length, sessionSaved: store.ok }),
+          'MEMORY: ' + (Director.memory || '(first turn of a brand-new saga — open with a bang, introduce yourself as this city\'s god, name your mortal)'),
           'LAST MISSION RESULT: ' + (M.result || '(none yet)'),
-          'RECENT EVENTS: ' + (events.join(' | ') || '(quiet)')
+          'RECENT EVENTS (REACT!): ' + (events.join(' | ') || '(quiet)')
         ].join('\n')
       },
       apply(raw) {
         try {
-          Director.memory = sstr(raw.memory, 800) || Director.memory;
+          Director.memory = sstr(raw.memory, 900) || Director.memory;
           if (raw.banner) UIK.feed(sstr(raw.banner, 90), 'GOD');
 
           if (raw.godActions) {
@@ -851,102 +1345,30 @@
 
           renderShop(raw.shop);
 
-          for (const op of (Array.isArray(raw.world) ? raw.world : []).slice(0, 5)) {
-            if (!op) continue;
-            const ox = snum(op.dx, -1400, 1400, 300), oy = snum(op.dy, -1400, 1400, 0);
-
-            if (op.op === 'earthquake') {
-              shake = 30;
-              for (let i = 0; i < 10; i++) setTimeout(() => boom(px + (Math.random() - .5) * 1200, py + (Math.random() - .5) * 1200, 5), i * 200);
-              Msg.show('⚠ MAGNITUDE 8 EARTHQUAKE', 'eq');
-            }
-            else if (op.op === 'eclipse') {
-              weather = 'night';
-              for (let i = 0; i < 15; i++) spawnGangster(px + (Math.random() - .5) * 1000, py + (Math.random() - .5) * 1000);
-              Msg.show('🌑 THE BLOOD MOON RISES', 'ecl');
-            }
-            else if (op.op === 'nuke') {
-              const s = snapRoad(px + ox, py + oy);
-              setTimeout(() => explode(s.x, s.y, 0), 500);
-              setTimeout(() => explode(s.x + 80, s.y - 40, 0), 800);
-              Msg.show('⚠ ORBITAL BOMBARDMENT', 'strike');
-            }
-            else if (op.op === 'zombies') {
-              for (let i = 0; i < 15; i++) spawnGangster(px + (Math.random() - 0.5) * 800, py + (Math.random() - 0.5) * 800);
-              Msg.show('⚠ THE HORDE IS HERE', 'riot');
-            }
-            else if (op.op === 'airdrop') {
-              for (let i = 0; i < 5; i++) pickups.push({ x: px + (Math.random() - .5) * 400, y: py + (Math.random() - .5) * 400, kind: 'cash' });
-              for (let i = 0; i < 3; i++) pickups.push({ x: px + (Math.random() - .5) * 400, y: py + (Math.random() - .5) * 400, kind: 'ammo' });
-              Msg.show('📦 SUPPLY DROP INBOUND', 'drop');
-            }
-            else if (op.op === 'zone') {
-              const s = snapRoad(px + ox, py + oy);
-              const i = Math.floor(s.x / T);
-              const j = Math.floor(s.y / T);
-              if (op.type) {
-                aiBlocks[`${i},${j}`] = op.type;
-                Msg.show('DIRECTOR REZONED SECTOR', 'zone');
-              }
-            }
-            else if (op.op === 'build') {
-              const s = snapRoad(px + ox, py + oy);
-              customObjects.push({ x: s.x, y: s.y, shape: op.shape || 'rect', color: op.color || '#ff00ff', w: op.w || 60, h: op.h || 60, label: op.label || 'ANOMALY' });
-              Msg.show('STRUCTURE MANIFESTED', 'bld');
-            }
-            else if (op.op === 'graffiti') {
-              const s = snapRoad(px + ox, py + oy);
-              graffitiList.push({ x: s.x, y: s.y, text: op.text || 'ERROR', color: op.color || '#00ffff' });
-            }
-            else if (op.op === 'lockdown') {
-              heat = 5;
-              Msg.show('⚠ CITY WIDE LOCKDOWN', 'lock');
-            }
-            else if (op.op === 'crowd') {
-              const s = snapRoad(px + ox, py + oy);
-              for (let i = 0; i < snum(op.n, 2, 10, 4); i++)peds.push({
-                x: s.x + (Math.random() * 60 - 30), y: s.y + (Math.random() * 60 - 30),
-                a: Math.random() * 6.28, col: ['#e0c9a6', '#b6c9d6', '#d6b6c9', '#c9d6b6'][Math.random() * 4 | 0]
-              })
-            }
-            else if (op.op === 'gang' && gangs.length < 3) {
-              const s = snapRoad(px + ox, py + oy);
-              const f = findFree(s.x, s.y, 16); gangs.push({ x: f.x, y: f.y, v: 0, ang: 0, hp: 60, ramCd: 0, hunt: 1 });
-              Msg.show('⚠ assassins dispatched', 'gang')
-            }
-            else if (op.op === 'ambush') {
-              const s = snapRoad(px + ox, py + oy);
-              for (let i = 0; i < snum(op.n, 2, 5, 3) && gangsters.length < 15; i++)spawnGangster(s.x + i * 20, s.y + i * 14);
-              Msg.show('⚠ ambush nearby', 'amb')
-            }
-            else if (op.op === 'pickup' && pickups.length < 12) {
-              const s = snapRoad(px + ox, py + oy);
-              const kind = ['heart', 'ammo', 'cash'].includes(op.kind) ? op.kind : 'cash';
-              const f = findFree(s.x, s.y, 10); pickups.push({ x: f.x, y: f.y, kind })
-            }
-            else if (op.op === 'weather') { weather = ['clear', 'rain', 'night', 'fog'].includes(op.kind) ? op.kind : 'clear' }
-            else if (op.op === 'traffic') { trafficTarget = snum(op.n, 3, 10, 6) }
-          }
+          for (const op of (Array.isArray(raw.world) ? raw.world : []).slice(0, 6)) applyOp(op);
           const rm = raw.mission;
           if (rm && typeof rm === 'object' && !M.cur) {
-            const verb = ['goto', 'deliver', 'race', 'taxi', 'jack', 'evade', 'hunt', 'hit'].includes(rm.verb) ? rm.verb : 'goto';
+            let verb = ['goto', 'deliver', 'race', 'taxi', 'jack', 'evade', 'hunt', 'hit', 'scene'].includes(rm.verb) ? rm.verb : 'goto';
+            const sc = raw.scene;
+            if (verb === 'scene' && (!sc || !Array.isArray(sc.rules) || !sc.rules.length)) verb = 'goto';
             let wps = (Array.isArray(rm.waypoints) ? rm.waypoints : []).slice(0, 4).map(w => {
               const s = snapRoad(px + snum(w && w.dx, -1400, 1400, 400), py + snum(w && w.dy, -1400, 1400, 400));
               return { x: s.x, y: s.y, label: sstr(w && w.label, 12) }
             });
-            if (!wps.length) wps = [(() => { const s = snapRoad(px + 500, py + 300); return { x: s.x, y: s.y, label: '' } })()];
+            if (verb === 'scene') wps = [];
+            else if (!wps.length) wps = [(() => { const s = snapRoad(px + 500, py + 300); return { x: s.x, y: s.y, label: '' } })()];
             if ((verb === 'deliver' || verb === 'taxi' || verb === 'jack') && wps.length < 2) {
               const s = snapRoad(wps[0].x + 600, wps[0].y + 300); wps.push({ x: s.x, y: s.y, label: '' })
             }
             M.start({
               title: sstr(rm.title, 26) || 'Odd Job', briefing: sstr(rm.briefing, 140) || 'Get it done.',
               verb, wps, reward: Math.round(snum(rm.reward, 50, 2000, 120)),
-              timeLimit: snum(rm.timeLimit, 0, 120, 0), heatStart: snum(rm.heatStart, 1, 5, 2)
-            })
+              timeLimit: snum(rm.timeLimit, 0, 180, 0), heatStart: snum(rm.heatStart, 1, 5, 2)
+            });
+            if (verb === 'scene') S.load(sc)
           }
           else if (!M.cur) Director.plan(9000);
-          renderSpec(raw.ui);
-          saveGame();
+          renderSpec(raw.ui); saveGame();
         } catch (e) { UIK.feed('bad plan — local fallback'); if (!M.cur) Director.apply(Director.offline()) }
       }
     };
@@ -955,67 +1377,102 @@
     function reset() {
       cash = 0; heat = 0; coolT = 0; onFoot = true; car = null; hearts = 3; maxHearts = 3; invT = 0; godT = 0; grabT = 0; stuckT = 0; ammo = 10;
       px = T * 1.5 + RW + BS / 2; py = T * 1.5 + RW + BS / 2; ({ x: px, y: py } = findFree(px, py, 12));
-      peds = []; traffic = []; cops = []; gangs = []; gangsters = []; bullets = []; pickups = []; parts = []; rings = []; wrecks = []; skids = [];
+      peds = []; traffic = []; cops = []; gangs = []; gangsters = []; bullets = []; pickups = []; parts = []; rings = []; wrecks = [];
       takenLots = {}; copSpawnT = 0; pickupT = 12; targetPed = null; M.cur = null; trafficTarget = 6;
-      events = []; Director.memory = ''; properties = []; customObjects = []; graffitiList = []; aiBlocks = {}; $('shop-panel').style.display = 'none';
-      saveGame();
+      events = []; Director.memory = ''; $('shop-panel').style.display = 'none';
+      props = []; landmarks = []; tileOv = {}; lmIdx = {}; chapterN = 0; playMin = 0; S.clear(); skids = [];
+      lookX = 0; lookY = 0; curProp = null; if (buyNode) { buyNode.remove && buyNode.remove(); buyNode = null }
     }
 
     function continueSession() {
       cash = Math.max(0, cash - 200);
       heat = 0; hearts = maxHearts; onFoot = true; car = null; invT = 3; godT = 0;
       const f = findFree(px, py, 12); px = f.x; py = f.y;
-      peds = []; cops = []; gangs = []; gangsters = []; bullets = []; M.cur = null;
+      peds = []; cops = []; gangs = []; gangsters = []; bullets = []; M.cur = null; M.cleanup();
+      skids = []; lookX = 0; lookY = 0;
       state = 'play'; $('modal').textContent = '';
-      logEvent('Player died but paid $200 hospital fee to continue.');
-      Director.plan(10);
+      logEvent('player DIED but paid the $200 hospital fee — the saga continues.');
+      saveGame(); Director.plan(10);
     }
 
-    function startGame() {
-      if (!loadGame()) { reset(); }
-      else { const f = findFree(px, py, 12); px = f.x; py = f.y; }
+    function softReset() { // respawn the world, keep the saga & economy
+      heat = 0; coolT = 0; onFoot = true; car = null; hearts = maxHearts; invT = 2; godT = 0; grabT = 0; stuckT = 0;
+      px = T * 1.5 + RW + BS / 2; py = T * 1.5 + RW + BS / 2; ({ x: px, y: py } = findFree(px, py, 12));
+      peds = []; traffic = []; cops = []; gangs = []; gangsters = []; bullets = []; pickups = []; parts = []; rings = []; wrecks = []; skids = [];
+      takenLots = {}; copSpawnT = 0; pickupT = 12; targetPed = null; M.cur = null; trafficTarget = 6; S.clear();
+      lookX = 0; lookY = 0; $('shop-panel').style.display = 'none'
+    }
+    function startGame(resume) {
+      if (resume) softReset(); else reset();
       state = 'play'; $('modal').textContent = '';
-      UIK.feed(Director.mode === 'ai' ? 'connected — Campaign Act 1 initiated.' : 'offline mode — local director on duty');
-      Director.plan(10)
+      UIK.feed(Director.mode === 'ai'
+        ? (resume ? 'the god of this city wakes — it remembers everything' : 'connected — the city is mine now')
+        : 'offline mode — local director on duty');
+      saveGame(); Director.plan(10)
     }
     function gameOver(msg) {
       best = Math.max(best, cash); logEvent('player was ' + msg + ' with $' + cash);
       M.result = 'aborted: player ' + msg; state = 'over'; $('shop-panel').style.display = 'none';
 
-      let btns = [['HARD RESET', () => { reset(); startGame(); }]];
+      saveGame();
+      let btns = [['NEW GAME', () => { wipeSave(); startGame() }]];
       if (cash >= 200) {
-        btns.unshift(['HOSPITAL (-$200)', () => continueSession()]);
+        btns.unshift(['CONTINUE (-$200)', () => continueSession()]);
       }
 
-      modalBox(msg, 'You have $' + cash + ' · Properties: ' + properties.length + (Director.memory ? '\nThe Director remembers everything…' : ''), btns)
+      modalBox(msg, 'You earned $' + cash + ' · Best $' + best + (Director.memory ? '\nThe Director remembers everything…' : ''), btns)
     }
     function modalBox(h1, p, btns, withKey) {
       const m = $('modal'); m.textContent = '';
       const ov = UIK.el('div', 'm-modal', m), box = UIK.el('div', 'box', ov);
       const t1 = UIK.el('h1', '', box); t1.textContent = h1;
       const pp = UIK.el('p', '', box); pp.textContent = p;
-      let inp = null;
+      let inp = null, chk = null;
       if (withKey) {
         inp = UIK.el('input', 'ui-int', box); inp.type = 'password';
-        inp.placeholder = 'Google AI Studio API key (kept in local memory only)';
+        inp.placeholder = 'Google AI Studio API key';
         inp.addEventListener('pointerdown', e => e.stopPropagation());
-        const s = UIK.el('p', 'small', box);
-        s.textContent = 'Your key never leaves this page except to call Google\'s Gemini API directly. It is not saved — re-enter next session.'
+        const rmb = UIK.el('label', 'small ui-int', box);
+        rmb.style.display = 'flex'; rmb.style.gap = '7px'; rmb.style.alignItems = 'center'; rmb.style.cursor = 'pointer'; rmb.style.pointerEvents = 'auto';
+        chk = UIK.el('input', 'ui-int', rmb); chk.type = 'checkbox';
+        chk.addEventListener('pointerdown', e => e.stopPropagation());
+        rmb.appendChild(document.createTextNode('remember key on this device'));
+        const sp = UIK.el('p', 'small', box);
+        sp.textContent = store.ok
+          ? 'Your key is only ever sent to Google\'s Gemini API. Tick remember to keep it in this browser\'s storage; otherwise it lives in memory for this session only.'
+          : 'Your key is only ever sent to Google\'s Gemini API. No storage in this sandboxed preview — session & key last until reload; open the file in a normal browser for full persistence.'
       }
       const row = UIK.el('div', 'row', box);
-      for (const [label, cb, ghost] of btns) { const b = UIK.button(label, () => cb(inp), row); if (ghost) b.className += ' ghost' }
+      for (const [label, cb, ghost] of btns) { const b = UIK.button(label, () => cb(inp, chk), row); if (ghost) b.className += ' ghost' }
       return ov
     }
     function bootMenu() {
       state = 'menu';
-      let loadText = loadGame() ? '\n[SAVED CAMPAIGN FOUND: Will resume from last state]' : '\n[NEW CAMPAIGN]';
-      modalBox('BLOCKTOWN', 'An infinite city, run by an AI God. Paste a Gemini key and it invents missions, alters the map geometry, and runs a 20-mission narrative campaign.\n\nTouch: hold to steer. Keyboard: WASD, E enter, F fire.' + loadText,
-        [['▶ AI DIRECTOR MODE', (inp) => {
-          const k = (inp && inp.value || '').trim();
-          if (!k) { Msg.show('paste a key, or choose offline', 'nokey'); return }
-          Director.key = k; Director.mode = 'ai'; startGame()
-        }],
-        ['PLAY OFFLINE', () => { Director.mode = 'offline'; startGame() }, 1]], true)
+      const sv = loadSave();
+      const savedKey = store.get(KKEY) || '';
+      const intro = 'An infinite city where the AI is God. It scripts living scenes with named characters, builds real venues onto the map, sells you property, bends weather and night — and runs ONE never-ending saga' +
+        (store.ok ? ', saved on this device.' : '. (Sandboxed preview: session lasts until reload — open the file in a normal browser for real persistence.)') +
+        '\n\nTouch: hold to steer. Keys: W/S gas & reverse, A/D steer, SPACE handbrake, E enter/exit, F fire.' +
+        '\nDeath is not the end: pay the $200 hospital fee and the saga continues.';
+      const btns = [];
+      if (sv) btns.push(['▶ RESUME — $' + Math.round(sv.cash || 0) + ' · CH.' + (sv.chapterN || 0), (inp, chk) => {
+        const k = ((inp && inp.value) || '').trim() || savedKey;
+        if (sv.mode === 'ai' && k) {
+          Director.key = k; Director.mode = 'ai';
+          if (chk && chk.checked) store.set(KKEY, k)
+        } else Director.mode = 'offline';
+        startGame(true); restoreSave(sv); saveGame(); Director.plan(10)
+      }]);
+      btns.push([(sv ? '' : '▶ ') + 'NEW SAGA (AI)', (inp, chk) => {
+        const k = ((inp && inp.value) || '').trim() || savedKey;
+        if (!k) { Msg.show('paste a Gemini key, or play offline', 'nokey'); return }
+        Director.key = k; Director.mode = 'ai';
+        if (chk && chk.checked) store.set(KKEY, k); else store.del(KKEY);
+        wipeSave(); startGame()
+      }]);
+      btns.push(['OFFLINE', () => { Director.mode = 'offline'; wipeSave(); startGame() }, 1]);
+      const ov = modalBox('BLOCKTOWN', intro, btns, true);
+      if (savedKey && ov.querySelector) { const ki = ov.querySelector('input'); if (ki && ki.type === 'password') ki.value = savedKey }
     }
     (function coreHUD() {
       UIK.stat('CASH', 'cash', $('sl-tl')); UIK.badge('hearts', $('sl-tl'));
@@ -1158,7 +1615,8 @@
       const dt = Math.min(.033, (ts - last) / 1000 || 0); last = ts; t += dt;
       const vp = window.visualViewport;
       if (Math.round((vp && vp.width) || innerWidth) !== W || Math.round((vp && vp.height) || innerHeight) !== H) fit();
-      if (state === 'play') update(dt);
+      if (state === 'play') { update(dt); saveT -= dt; if (saveT <= 0) { saveT = 8; saveGame() } }
+      updatePropUI();
       draw(); refreshBinds();
       actbtn.textContent = onFoot ? 'JACK' : 'EXIT';
       firebtn.textContent = 'FIRE ' + ammo; firebtn.className = 'a-btn ui-int' + (ammo <= 0 ? ' empty' : '');
@@ -1174,7 +1632,7 @@
     }
     function moveDir() {
       let dx = 0, dy = 0;
-      if (ptr) { dx = ptr.x - W / 2; dy = ptr.y - H / 2 }
+      if (ptr) { dx = ptr.x - (W / 2 - lookX * Z); dy = ptr.y - (H / 2 - lookY * Z) }
       const k = kbSteer();
       if (k.up) dy -= 100; if (k.down) dy += 100; if (k.left) dx -= 100; if (k.right) dx += 100;
       const m = Math.hypot(dx, dy); return m > 14 ? { x: dx / m, y: dy / m, m: Math.min(1, m / 130) } : null
@@ -1210,20 +1668,9 @@
 
     function update(dt) {
       const k = kbSteer(), kbActive = k.up || k.down || k.left || k.right;
+      lookX *= Math.pow(.03, dt); lookY *= Math.pow(.03, dt);
       invT = Math.max(0, invT - dt); godT = Math.max(0, godT - dt); fireCool = Math.max(0, fireCool - dt); shake *= Math.pow(.001, dt);
       kbx *= Math.pow(.02, dt); kby *= Math.pow(.02, dt);
-
-      incomeTimer -= dt;
-      if (incomeTimer <= 0) {
-        incomeTimer = 60;
-        if (properties.length > 0) {
-          const p_inc = properties.length * 75;
-          cash += p_inc;
-          Msg.show(`+$${p_inc} PROPERTY INCOME`, 'inc');
-          saveGame();
-        }
-      }
-
       if (firing) fire();
       if (onFoot) {
         const d = moveDir(), sp = 125;
@@ -1238,13 +1685,18 @@
         else stuckT = 0;
       } else {
         if (godT > 0) car.hp = car.mhp;
-        if (kbActive && !ptr) {
+        if ((kbActive || keysDown[' ']) && !ptr) {
           if (k.up) car.v += 320 * dt;
           if (k.down) car.v -= (car.v > 10 ? 420 : 260) * dt;
           if (!k.up && !k.down) car.v *= Math.pow(.35, dt);
           const steer = (k.right ? 1 : 0) - (k.left ? 1 : 0);
           const grip = Math.min(1, Math.abs(car.v) / 60 + .1);
           car.ang += steer * (1.6 + Math.min(1.4, Math.abs(car.v) / 140)) * grip * dt * (car.v < 0 ? -1 : 1);
+          if (keysDown[' '] && Math.abs(car.v) > 60) { // handbrake drift
+            car.v *= Math.pow(.22, dt);
+            car.ang += steer * 2.3 * dt * (car.v < 0 ? -1 : 1);
+            if (Math.random() < dt * 34) skids.push({ x: car.x - Math.cos(car.ang) * 15, y: car.y - Math.sin(car.ang) * 15, a: .55 })
+          }
         } else {
           const d = moveDir();
           if (d) {
@@ -1272,24 +1724,25 @@
           if (Math.abs(speed0) > 285) hurtHeart(-Math.cos(car.ang) * .6, -Math.sin(car.ang) * .6, 'brutal crash');
         }
 
-        if (Math.abs(car.v) > 60 && (k.down || hardHit || Math.abs(na(Math.atan2(Math.sin(car.ang) * car.v, Math.cos(car.ang) * car.v) - car.ang)) > 0.5)) {
-          skids.push({ x: car.x, y: car.y, life: 10 });
-        }
-
         if (!clearAt(car.x, car.y, 10)) { const f = findFree(car.x, car.y, 14); car.x = f.x; car.y = f.y; car.v = 0 }
         px = car.x; py = car.y; facing = car.ang;
+        lookX += (Math.cos(car.ang) * Math.min(80, Math.abs(car.v) * .24) - lookX) * Math.min(1, dt * 3.2);
+        lookY += (Math.sin(car.ang) * Math.min(80, Math.abs(car.v) * .24) - lookY) * Math.min(1, dt * 3.2);
         if (car.hp <= 0) {
-          const wasM = car.mkey;
+          const wasM = car.mkey, wasSvid = car.svid;
           explode(car.x, car.y, car.ang);
           const f = findFree(car.x + 40, car.y + 40, 12); px = f.x; py = f.y;
           onFoot = true; car = null; logEvent("player's car exploded");
+          if (wasSvid) { S.fire('vehicle_destroyed:' + wasSvid); if (state !== 'play') return }
           if (wasM && M.cur && M.cur.verb === 'jack') M.finish(false, 'the marked car was destroyed');
           if (state === 'play') { invT = 0; hurtHeart(.5, .5, 'car explosion') }
           if (state !== 'play') return
         }
       }
       lastPX = px; lastPY = py;
-      M.update(dt);
+      M.update(dt); if (state !== 'play') return;
+      S.update(dt); if (state !== 'play') return;
+      econTick(dt); playMin += dt / 60;
 
       /* bullets */
       for (const b of bullets) {
@@ -1308,7 +1761,7 @@
       }
       bullets = bullets.filter(b => !b.dead);
 
-      /* gangsters */
+      /* gangsters (foot crew & zombies) */
       for (const gg of gangsters) {
         gg.atkCd = Math.max(0, gg.atkCd - dt);
         const dx = px - gg.x, dy = py - gg.y, dd = Math.hypot(dx, dy) || 1;
@@ -1349,6 +1802,8 @@
       }
       for (const pk of pickups) if (Math.hypot(pk.x - px, pk.y - py) < 20) {
         pk.dead = true;
+        if (pk.pid) { S.fire('pickup_taken:' + pk.pid); if (state !== 'play') return }
+        if (pk.kind === 'item') { S.items.push(pk.label || pk.pid || 'item'); Msg.show('acquired: ' + (pk.label || 'the item'), 'itm', 0) }
         if (pk.kind === 'heart') { hearts = Math.min(maxHearts, hearts + 1); Msg.show('+1 ♥', 'pkh', 1) }
         if (pk.kind === 'ammo') { ammo = Math.min(99, ammo + 8); Msg.show('+8 ammo', 'pka', 1) }
         if (pk.kind === 'cash') { const v = 25 + (Math.random() * 50 | 0); cash += v; Msg.show('+$' + v, 'pkc', 1) }
@@ -1487,6 +1942,7 @@
       }
       for (const c of gangs) if (c.hp <= 0 && !c.dead) {
         explode(c.x, c.y, c.ang); c.dead = true; cash += 40;
+        if (c.svid) { S.fire('vehicle_destroyed:' + c.svid); if (state !== 'play') return }
         spawnGangster(c.x + 20, c.y); spawnGangster(c.x - 20, c.y);
         logEvent('player destroyed a gang car (+$40)'); Msg.show('gang car down +$40 — crew bailed out!', 'gk', 1)
       }
@@ -1495,6 +1951,7 @@
       /* traffic explosions */
       for (const c of traffic) if (c.hp <= 0) {
         explode(c.x, c.y, c.ang); c.gone = true;
+        if (c.svid) { S.fire('vehicle_destroyed:' + c.svid); if (state !== 'play') return }
         if (c.mkey && M.cur && M.cur.verb === 'jack') M.finish(false, 'the marked car was destroyed')
       }
       traffic = traffic.filter(c => !c.gone && (c.parked ? Math.hypot(c.x - px, c.y - py) < 1300 : Math.hypot(c.x - px, c.y - py) < 980));
@@ -1502,6 +1959,8 @@
       if (heat > 0 && !copNear) { coolT += dt; if (coolT > 7) { heat--; coolT = 0; if (heat === 0) { Msg.show('heat lost — clean', 'cool'); cops.length = 0 } } }
       else if (copNear) coolT = 0;
 
+      for (const sk of skids) sk.a -= dt * .1;
+      skids = skids.filter(sk => sk.a > 0); if (skids.length > 160) skids.splice(0, skids.length - 160);
       for (const p of parts) { p.x += p.vx * dt; p.y += p.vy * dt; p.a -= dt * 1.8 }
       parts = parts.filter(p => p.a > 0);
       for (const r of rings) { r.r += 260 * dt; r.a -= dt * 1.8 }
@@ -1519,7 +1978,7 @@
       g.save();
       if (shake > 0.3) g.translate((Math.random() - .5) * shake, (Math.random() - .5) * shake);
       g.scale(Z, Z);
-      const Wv = W / Z, Hv = H / Z, camx = px - Wv / 2, camy = py - Hv / 2;
+      const Wv = W / Z, Hv = H / Z, camx = px - Wv / 2 + lookX, camy = py - Hv / 2 + lookY, PSX = Wv / 2 - lookX, PSY = Hv / 2 - lookY;
       const i0 = Math.floor(camx / T) - 1, i1 = Math.floor((camx + Wv) / T) + 1, j0 = Math.floor(camy / T) - 1, j1 = Math.floor((camy + Hv) / T) + 1;
       const night = weather === 'night';
 
@@ -1527,53 +1986,33 @@
       g.fillStyle = '#22252c';
       for (let i = i0; i <= i1; i++)g.fillRect(i * T - camx, 0, RW, Hv);
       for (let j = j0; j <= j1; j++)g.fillRect(0, j * T - camy, Wv, RW);
+      g.strokeStyle = 'rgba(255,220,120,.28)'; g.lineWidth = 2; g.setLineDash([14, 18]);
+      for (let i = i0; i <= i1; i++) { g.beginPath(); g.moveTo(i * T + RW / 2 - camx, 0); g.lineTo(i * T + RW / 2 - camx, Hv); g.stroke() }
+      for (let j = j0; j <= j1; j++) { g.beginPath(); g.moveTo(0, j * T + RW / 2 - camy); g.lineTo(Wv, j * T + RW / 2 - camy); g.stroke() }
+      g.setLineDash([]);
 
-      // Golden Road overrides for Wonders & Farms
+      // crosswalks
+      g.fillStyle = 'rgba(255,255,255,.09)';
       for (let i = i0; i <= i1; i++)for (let j = j0; j <= j1; j++) {
-        const tpKey = blockType(i, j);
-        if (tpKey.startsWith('wonder_') || tpKey === 'farm') {
-          g.fillStyle = '#181510'; // Dark gold asphalt
-          g.fillRect(i * T - camx, j * T - camy, T, T);
+        const cx2 = i * T - camx, cy2 = j * T - camy;
+        for (let s2 = 0; s2 < 4; s2++) {
+          g.fillRect(cx2 + 13 + s2 * 18, cy2 - 24, 9, 18); g.fillRect(cx2 + 13 + s2 * 18, cy2 + RW + 6, 9, 18);
+          g.fillRect(cx2 - 24, cy2 + 13 + s2 * 18, 18, 9); g.fillRect(cx2 + RW + 6, cy2 + 13 + s2 * 18, 18, 9)
         }
       }
-
-      // Skidmarks
-      g.fillStyle = 'rgba(0,0,0,0.2)';
-      for (let s of skids) {
-        g.fillRect(s.x - camx - 2, s.y - camy - 2, 4, 4);
-        s.life -= 0.033;
-      }
-      skids = skids.filter(s => s.life > 0);
-
-      // Road Lines
-      for (let i = i0; i <= i1; i++) {
-        g.beginPath(); g.moveTo(i * T + RW / 2 - camx, 0); g.lineTo(i * T + RW / 2 - camx, Hv);
-        // Check if golden road applies
-        const tpKey = blockType(i, Math.floor((py) / T));
-        g.strokeStyle = (tpKey.startsWith('wonder_') || tpKey === 'farm') ? '#f59e0b' : 'rgba(255,220,120,.28)';
-        g.lineWidth = 2; g.setLineDash([14, 18]); g.stroke();
-      }
-      for (let j = j0; j <= j1; j++) {
-        g.beginPath(); g.moveTo(0, j * T + RW / 2 - camy); g.lineTo(Wv, j * T + RW / 2 - camy);
-        const tpKey = blockType(Math.floor((px) / T), j);
-        g.strokeStyle = (tpKey.startsWith('wonder_') || tpKey === 'farm') ? '#f59e0b' : 'rgba(255,220,120,.28)';
-        g.lineWidth = 2; g.setLineDash([14, 18]); g.stroke();
-      }
-      g.setLineDash([]);
+      // skid marks
+      g.fillStyle = 'rgba(10,10,12,.5)';
+      for (const sk of skids) { g.globalAlpha = sk.a; g.fillRect(sk.x - camx - 2.5, sk.y - camy - 2.5, 5, 5) }
+      g.globalAlpha = 1;
 
       // building cast shadows
       g.fillStyle = 'rgba(0,0,0,.24)';
-      for (let i = i0; i <= i1; i++)for (let j = j0; j <= j1; j++) {
-        const tpKey = blockType(i, j);
-        if (tpKey === 'bldg' || tpKey.startsWith('wonder_')) {
-          g.fillRect(i * T + RW - camx + 8, j * T + RW - camy + 10, BS, BS);
-        }
-      }
+      for (let i = i0; i <= i1; i++)for (let j = j0; j <= j1; j++)
+        if (blockType(i, j) === 'bldg') g.fillRect(i * T + RW - camx + 8, j * T + RW - camy + 10, BS, BS);
 
-      // blocks & wonders
+      // blocks
       for (let i = i0; i <= i1; i++)for (let j = j0; j <= j1; j++) {
         const x = i * T + RW - camx, y = j * T + RW - camy, tp = blockType(i, j);
-
         if (tp === 'bldg') {
           const roof = BPAL[(hsh(i, j, 5) * 6) | 0];
           g.fillStyle = '#191d27'; g.fillRect(x, y, BS, BS);
@@ -1588,51 +2027,6 @@
           if (hsh(i, j, 13) < .4) g.fillRect(x + 30 + hsh(i, j, 14) * 60, y + 40 + hsh(i, j, 15) * 60, 12, 12);
           g.strokeStyle = 'rgba(0,0,0,.4)'; g.strokeRect(x, y, BS, BS)
         }
-        else if (tp.startsWith('wonder_')) {
-          // Draw Wonder Base
-          const roof = BPAL[(hsh(i, j, 5) * 6) | 0];
-          g.fillStyle = '#191d27'; g.fillRect(x, y, BS, BS);
-          g.fillStyle = roof; g.fillRect(x, y, BS - 8, BS - 8);
-          g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(x, y, BS - 8, 4); g.fillRect(x, y, 4, BS - 8);
-
-          // Draw specific Canvas Architecture
-          if (tp === 'wonder_pyramid') {
-            g.fillStyle = '#fcd34d'; g.beginPath(); g.moveTo(x + 10, y + 10); g.lineTo(x + 150, y + 10); g.lineTo(x + 80, y + 80); g.fill();
-            g.fillStyle = '#f59e0b'; g.beginPath(); g.moveTo(x + 150, y + 10); g.lineTo(x + 150, y + 150); g.lineTo(x + 80, y + 80); g.fill();
-            g.fillStyle = '#78350f'; g.beginPath(); g.moveTo(x + 150, y + 150); g.lineTo(x + 10, y + 150); g.lineTo(x + 80, y + 80); g.fill();
-            g.fillStyle = '#b45309'; g.beginPath(); g.moveTo(x + 10, y + 150); g.lineTo(x + 10, y + 10); g.lineTo(x + 80, y + 80); g.fill();
-          }
-          else if (tp === 'wonder_taj') {
-            g.fillStyle = '#f8fafc'; g.fillRect(x + 15, y + 15, 140, 140);
-            g.fillStyle = '#e2e8f0'; g.beginPath(); g.arc(x + 85, y + 85, 30, 0, 7); g.fill();
-            g.fillStyle = '#cbd5e1';
-            [[30, 30], [140, 30], [30, 140], [140, 140]].forEach(pos => { g.beginPath(); g.arc(x + pos[0], y + pos[1], 8, 0, 7); g.fill(); });
-          }
-          else if (tp === 'wonder_pentagon') {
-            g.fillStyle = '#64748b'; g.beginPath();
-            const cx = x + BS / 2, cy = y + BS / 2, r = 75;
-            for (let k = 0; k < 5; k++) { g.lineTo(cx + Math.cos(k * 2 * PI / 5 - PI / 2) * r, cy + Math.sin(k * 2 * PI / 5 - PI / 2) * r); } g.fill();
-            g.fillStyle = '#1e293b'; g.beginPath();
-            for (let k = 0; k < 5; k++) { g.lineTo(cx + Math.cos(k * 2 * PI / 5 - PI / 2) * r * 0.6, cy + Math.sin(k * 2 * PI / 5 - PI / 2) * r * 0.6); } g.fill();
-          }
-          else if (tp === 'wonder_colosseum') {
-            g.fillStyle = '#b45309'; g.beginPath(); g.ellipse(x + BS / 2, y + BS / 2 + 10, 75, 60, 0, 0, 7); g.fill();
-            g.strokeStyle = '#fcd34d'; g.lineWidth = 4; g.setLineDash([8, 6]); g.stroke(); g.setLineDash([]);
-            g.fillStyle = '#fef3c7'; g.beginPath(); g.ellipse(x + BS / 2, y + BS / 2 + 10, 45, 30, 0, 0, 7); g.fill();
-          }
-          else {
-            // Generic Monolith for invented wonders
-            g.fillStyle = '#9333ea'; g.fillRect(x + 20, y + 20, 130, 130);
-            g.fillStyle = '#fff'; g.font = 'bold 12px ui-monospace'; g.textAlign = 'center';
-            g.fillText(tp.replace('wonder_', '').toUpperCase().slice(0, 10), x + BS / 2, y + BS / 2);
-          }
-        }
-        else if (tp === 'farm') {
-          g.fillStyle = '#5c4033'; g.fillRect(x, y, BS, BS);
-          g.strokeStyle = '#22c55e'; g.lineWidth = 4; g.setLineDash([4, 6]);
-          for (let r = x + 15; r < x + BS - 10; r += 20) { g.beginPath(); g.moveTo(r, y + 10); g.lineTo(r, y + BS - 10); g.stroke(); }
-          g.setLineDash([]);
-        }
         else if (tp === 'park') {
           g.fillStyle = '#233327'; g.fillRect(x, y, BS, BS);
           for (let kk = 0; kk < 5; kk++) {
@@ -1641,34 +2035,30 @@
             g.fillStyle = '#2f4a33'; g.beginPath(); g.arc(tx, ty, 10 + hsh(i, j, 30 + kk) * 8, 0, 7); g.fill()
           }
         }
+        else if (tp === 'farm') {
+          g.fillStyle = '#2c3322'; g.fillRect(x, y, BS, BS);
+          for (let kk = 0; kk < 7; kk++) {
+            g.fillStyle = kk % 2 ? '#3a3a26' : '#333a24';
+            g.fillRect(x + 8, y + 10 + kk * 22, BS - 16, 12)
+          }
+          g.fillStyle = '#4a6a3a';
+          for (let kk = 0; kk < 12; kk++)g.fillRect(x + 14 + (kk % 4) * 38 + hsh(i, j, 40 + kk) * 14, y + 14 + ((kk / 4) | 0) * 48 + hsh(i, j, 60 + kk) * 12, 5, 5)
+        }
+        else if (tp === 'plaza') {
+          g.fillStyle = '#23262e'; g.fillRect(x, y, BS, BS);
+          g.strokeStyle = 'rgba(255,255,255,.07)'; g.lineWidth = 1;
+          for (let kk = 1; kk < 5; kk++) {
+            g.beginPath(); g.moveTo(x + kk * BS / 5, y); g.lineTo(x + kk * BS / 5, y + BS); g.stroke();
+            g.beginPath(); g.moveTo(x, y + kk * BS / 5); g.lineTo(x + BS, y + kk * BS / 5); g.stroke()
+          }
+          g.strokeStyle = 'rgba(255,255,255,.10)'; g.beginPath(); g.arc(x + BS / 2, y + BS / 2, 34, 0, 7); g.stroke()
+        }
         else {
           g.fillStyle = '#1d2026'; g.fillRect(x, y, BS, BS);
           g.strokeStyle = 'rgba(255,255,255,.1)';
           for (let kk = 1; kk < 4; kk++) { g.beginPath(); g.moveTo(x + kk * BS / 4, y + 20); g.lineTo(x + kk * BS / 4, y + BS - 20); g.stroke() }
         }
-      }
-
-      // Custom AI Objects
-      for (let o of customObjects) {
-        g.fillStyle = o.color || '#f0f';
-        g.globalAlpha = 0.8;
-        let ox = o.x - camx, oy = o.y - camy;
-        if (o.shape === 'circle') { g.beginPath(); g.arc(ox, oy, o.w / 2, 0, 7); g.fill(); }
-        else { g.fillRect(ox - o.w / 2, oy - o.h / 2, o.w, o.h); }
-        g.globalAlpha = 1;
-        g.fillStyle = '#fff'; g.font = 'bold 11px ui-monospace'; g.textAlign = 'center';
-        g.fillText(o.label, ox, oy);
-      }
-
-      // Graffiti
-      for (let gf of graffitiList) {
-        g.fillStyle = gf.color || '#00ffff';
-        g.font = 'bold 24px ui-monospace';
-        g.textAlign = 'center';
-        g.globalAlpha = 0.4;
-        g.save(); g.translate(gf.x - camx, gf.y - camy); g.rotate(-0.5);
-        g.fillText(gf.text, 0, 0); g.restore();
-        g.globalAlpha = 1;
+        const lm = lmIdx[i + ',' + j]; if (lm) drawLandmark(x, y, lm, night)
       }
 
       for (const wk of wrecks) {
@@ -1688,8 +2078,18 @@
         if (pk.kind === 'cash') { g.fillStyle = '#4ade80'; g.font = 'bold ' + 15 * pu + 'px ui-monospace'; g.textAlign = 'center'; g.fillText('$', x, y + 5) }
       }
 
+      // scene zones — the Director's stage marks
+      for (const z of S.zones) {
+        if (!z.visible) continue;
+        const zx = z.x - camx, zy = z.y - camy, zc = LPAL[z.color] || '#4ade80';
+        g.strokeStyle = zc; g.lineWidth = 3; g.setLineDash([10, 8]);
+        g.globalAlpha = .45 + .3 * Math.sin(t * 3);
+        g.beginPath(); g.arc(zx, zy, z.r, 0, 7); g.stroke(); g.setLineDash([]); g.globalAlpha = 1;
+        if (z.label) { g.fillStyle = zc; g.font = 'bold 11px ui-monospace'; g.textAlign = 'center'; g.fillText(z.label, zx, zy - z.r - 8) }
+      }
+
       if (M.cur) M.cur.wps.forEach((wp, i) => {
-        if (['hunt', 'hit'].includes(M.cur.verb)) return;
+        if (['hunt', 'hit', 'scene'].includes(M.cur.verb)) return;
         const gx = wp.x - camx, gy = wp.y - camy, curW = i === M.cur.step;
         if (i < M.cur.step) return;
         g.globalAlpha = curW ? 1 : .35;
@@ -1733,26 +2133,48 @@
       for (const c of gangs) drawCar(c.x - camx, c.y - camy, c.ang, '#b91c1c', false, c, night);
       for (const c of cops) drawCar(c.x - camx, c.y - camy, c.ang, '#e8e8ee', true, c, night);
 
+      // scene npcs — the Director's cast
+      for (const n of S.npcs) {
+        const nx2 = n.x - camx, ny2 = n.y - camy, nc = LPAL[n.color] || '#e8e8ee';
+        g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(nx2 + 2, ny2 + 3, 8, 0, 7); g.fill();
+        g.fillStyle = nc; g.beginPath(); g.arc(nx2, ny2, 8, 0, 7); g.fill();
+        g.strokeStyle = n.role === 'hostile' ? '#ef4444' : n.role === 'friendly' ? '#4ade80' : 'rgba(255,255,255,.55)';
+        g.lineWidth = 2; g.beginPath(); g.arc(nx2, ny2, 11.5, 0, 7); g.stroke();
+        g.fillStyle = '#e7e9ee'; g.font = 'bold 9px ui-monospace'; g.textAlign = 'center'; g.fillText(n.name, nx2, ny2 - 17)
+      }
+      // speech bubbles
+      for (const b of S.bubbles) {
+        const n = S.npcs.find(n2 => n2.id === b.nid); if (!n) continue;
+        const bx = n.x - camx, by = n.y - camy - 32, txt = b.text.slice(0, 40);
+        g.font = '10px ui-monospace';
+        const mt = g.measureText ? g.measureText(txt) : null;
+        const w2 = Math.min(230, ((mt && mt.width) || txt.length * 6) + 16);
+        g.fillStyle = 'rgba(240,242,248,.96)';
+        g.fillRect(bx - w2 / 2, by - 15, w2, 19);
+        g.beginPath(); g.moveTo(bx - 4, by + 4); g.lineTo(bx + 4, by + 4); g.lineTo(bx, by + 10); g.closePath(); g.fill();
+        g.fillStyle = '#14161d'; g.textAlign = 'center'; g.fillText(txt, bx, by - 2)
+      }
+
       g.fillStyle = '#fde68a';
       for (const b of bullets) g.fillRect(b.x - camx - 2, b.y - camy - 2, 4, 4);
 
       if (!(invT > 0 && Math.sin(t * 24) > 0)) {
         if (onFoot) {
-          g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.arc(Wv / 2 + 2, Hv / 2 + 3, 9, 0, 7); g.fill();
+          g.fillStyle = 'rgba(0,0,0,.3)'; g.beginPath(); g.arc(PSX + 2, PSY + 3, 9, 0, 7); g.fill();
           g.fillStyle = godT > 0 ? (Math.sin(t * 15) > 0 ? '#ffffff' : '#ffd166') : '#ffd166';
-          g.beginPath(); g.arc(Wv / 2, Hv / 2, 9, 0, 7); g.fill();
-          g.fillStyle = '#101216'; g.beginPath(); g.arc(Wv / 2 + Math.cos(facing) * 3.5, Hv / 2 + Math.sin(facing) * 3.5, 3, 0, 7); g.fill()
+          g.beginPath(); g.arc(PSX, PSY, 9, 0, 7); g.fill();
+          g.fillStyle = '#101216'; g.beginPath(); g.arc(PSX + Math.cos(facing) * 3.5, PSY + Math.sin(facing) * 3.5, 3, 0, 7); g.fill()
         }
         else if (car) {
-          drawCar(Wv / 2, Hv / 2, car.ang, car.mkey ? '#f472b6' : (godT > 0 && Math.sin(t * 15) > 0 ? '#ffffff' : '#ffd166'), false, null, night, true);
+          drawCar(PSX, PSY, car.ang, car.mkey ? '#f472b6' : (godT > 0 && Math.sin(t * 15) > 0 ? '#ffffff' : '#ffd166'), false, null, night, true);
         }
       }
 
       if (grabT > 0 && !onFoot) {
         g.strokeStyle = '#f87171'; g.lineWidth = 4;
-        g.beginPath(); g.arc(Wv / 2, Hv / 2, 26, -PI / 2, -PI / 2 + 6.28 * Math.min(1, grabT / 1.6)); g.stroke();
+        g.beginPath(); g.arc(PSX, PSY, 26, -PI / 2, -PI / 2 + 6.28 * Math.min(1, grabT / 1.6)); g.stroke();
         g.fillStyle = '#f87171'; g.font = 'bold 11px ui-monospace'; g.textAlign = 'center';
-        g.fillText('DRIVE!', Wv / 2, Hv / 2 - 34)
+        g.fillText('DRIVE!', PSX, PSY - 34)
       }
 
       for (const p of parts) { g.globalAlpha = Math.max(0, p.a); g.fillStyle = p.c; g.fillRect(p.x - camx - 3, p.y - camy - 3, 6, 6) }
@@ -1781,7 +2203,7 @@
         };
         for (const c of traffic) if (!c.parked) beam(c.x - camx, c.y - camy, c.ang);
         for (const c of cops) beam(c.x - camx, c.y - camy, c.ang);
-        if (car) beam(Wv / 2, Hv / 2, car.ang)
+        if (car) beam(PSX, PSY, car.ang)
       }
       if (weather === 'fog') {
         g.fillStyle = 'rgba(190,200,215,.16)'; g.fillRect(0, 0, Wv, Hv);
@@ -1807,10 +2229,11 @@
       if (nav && state === 'play') {
         const dist = Math.hypot(nav.x - px, nav.y - py);
         const an = Math.atan2(nav.y - py, nav.x - px);
-        const sx = (nav.x - px) * Z + W / 2, sy = (nav.y - py) * Z + H / 2;
+        const pcx = W / 2 - lookX * Z, pcy = H / 2 - lookY * Z;
+        const sx = (nav.x - px) * Z + pcx, sy = (nav.y - py) * Z + pcy;
         const offscreen = sx < 30 || sx > W - 30 || sy < 30 || sy > H - 30;
         if (offscreen || dist > 320) {
-          const ax = W / 2 + Math.cos(an) * 56, ay = H / 2 + Math.sin(an) * 56;
+          const ax = pcx + Math.cos(an) * 56, ay = pcy + Math.sin(an) * 56;
           g.save(); g.translate(ax, ay); g.rotate(an); g.fillStyle = '#4ade80';
           g.beginPath(); g.moveTo(16, 0); g.lineTo(-7, 9); g.lineTo(-2, 0); g.lineTo(-7, -9); g.closePath(); g.fill(); g.restore();
           g.fillStyle = '#4ade80'; g.font = 'bold 11px ui-monospace'; g.textAlign = 'center';
@@ -1825,16 +2248,16 @@
       g.save();
       g.beginPath(); g.arc(mx, my, r, 0, 7); g.clip();
       g.fillStyle = 'rgba(34,37,44,.94)'; g.fillRect(mx - r, my - r, r * 2, r * 2);
-      const S = r / 700;
+      const SC = r / 700;
       const i0 = Math.floor((px - 700) / T), i1 = Math.floor((px + 700) / T), j0 = Math.floor((py - 700) / T), j1 = Math.floor((py + 700) / T);
       for (let i = i0; i <= i1; i++)for (let j = j0; j <= j1; j++) {
         const tp = blockType(i, j);
-        const x = mx + (i * T + RW - px) * S, y = my + (j * T + RW - py) * S, s = BS * S;
-        g.fillStyle = tp === 'bldg' ? '#12141b' : tp === 'park' ? '#1d2b20' : (tp.startsWith('wonder_') || tp === 'farm' ? '#fbbf24' : '#181a20');
+        const x = mx + (i * T + RW - px) * SC, y = my + (j * T + RW - py) * SC, s = BS * SC;
+        g.fillStyle = tp === 'bldg' ? '#12141b' : tp === 'park' ? '#1d2b20' : tp === 'farm' ? '#28281a' : tp === 'plaza' ? '#1e222b' : '#181a20';
         g.fillRect(x, y, s, s)
       }
       const blip = (x, y, col, sz) => {
-        const bx = mx + (x - px) * S, by = my + (y - py) * S;
+        const bx = mx + (x - px) * SC, by = my + (y - py) * SC;
         const d = Math.hypot(bx - mx, by - my), m = Math.min(1, (r - 5) / (d || 1));
         g.fillStyle = col; g.beginPath(); g.arc(mx + (bx - mx) * m, my + (by - my) * m, sz || 2.6, 0, 7); g.fill()
       };
@@ -1844,12 +2267,84 @@
       for (const pk of pickups) blip(pk.x, pk.y, '#fbbf24', 2);
       for (const c of traffic) if (c.mkey) blip(c.x, c.y, '#f472b6');
       if (targetPed) blip(targetPed.x, targetPed.y, '#fb923c', 3);
+      for (const z of S.zones) if (z.visible) blip(z.x, z.y, LPAL[z.color] || '#4ade80', 3);
+      for (const n2 of S.npcs) blip(n2.x, n2.y, n2.role === 'hostile' ? '#ef4444' : (LPAL[n2.color] || '#fff'), 2.4);
+      for (const pr of props) { const c2 = blockCenter(pr.bi, pr.bj); blip(c2.x, c2.y, pr.owned ? '#4ade80' : '#fbbf24', 3.2) }
+      for (const lm2 of landmarks) { const c3 = blockCenter(lm2.bi, lm2.bj); blip(c3.x, c3.y, LPAL[lm2.color] || '#ffd166', 2.2) }
       if (nav) blip(nav.x, nav.y, '#4ade80', 3.4);
       g.save(); g.translate(mx, my); g.rotate(onFoot ? facing : (car ? car.ang : 0));
       g.fillStyle = '#ffd166'; g.beginPath(); g.moveTo(6, 0); g.lineTo(-4, 4); g.lineTo(-4, -4); g.closePath(); g.fill(); g.restore();
       g.restore();
       g.strokeStyle = 'rgba(255,209,102,.6)'; g.lineWidth = 2;
       g.beginPath(); g.arc(mx, my, r, 0, 7); g.stroke()
+    }
+
+    function drawLandmark(x, y, lm, night) {
+      const col = LPAL[lm.color] || '#ffd166';
+      const walkable = lm.style === 'park' || lm.style === 'farm' || lm.style === 'plaza';
+      if (lm.gold) { g.fillStyle = 'rgba(251,191,36,.06)'; g.fillRect(x - RW, y - RW, T, T) }
+      if (lm.style === 'wonder') {
+        g.fillStyle = '#191d27'; g.fillRect(x, y, BS, BS);
+        g.fillStyle = '#20242f'; g.fillRect(x, y, BS - 8, BS - 8);
+        g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(x, y, BS - 8, 4); g.fillRect(x, y, 4, BS - 8);
+        drawGlyph(x + (BS - 8) / 2, y + (BS - 8) / 2 + 2, 96, lm.glyph || 'pyramid', col)
+      }
+      else if (walkable) {
+        if (lm.glyph) drawGlyph(x + BS / 2, y + BS / 2 + 2, 92, lm.glyph, col)
+      }
+      else {
+        g.fillStyle = '#232733'; g.fillRect(x, y, BS - 8, BS - 8);
+        if (lm.style === 'tower') {
+          g.fillStyle = 'rgba(0,0,0,.4)'; g.fillRect(x + 10, y + 10, BS - 28, BS - 28);
+          g.fillStyle = col; g.fillRect(x + 10, y + 10, BS - 28, 6);
+          for (let r2 = 0; r2 < 5; r2++)for (let c2 = 0; c2 < 5; c2++) {
+            g.fillStyle = 'rgba(255,240,180,' + ((night ? .5 : .16) * ((r2 * 5 + c2) % 3 ? 1 : .35)) + ')';
+            g.fillRect(x + 18 + c2 * 26, y + 24 + r2 * 25, 12, 13)
+          }
+        }
+        else if (lm.style === 'club') {
+          g.fillStyle = '#12060f'; g.fillRect(x + 8, y + 8, BS - 24, BS - 24);
+          g.strokeStyle = col; g.lineWidth = 3; g.globalAlpha = .5 + .45 * Math.sin(t * 6);
+          g.strokeRect(x + 8, y + 8, BS - 24, BS - 24); g.globalAlpha = 1
+        }
+        else if (lm.style === 'warehouse') {
+          g.strokeStyle = 'rgba(255,255,255,.13)'; g.lineWidth = 2;
+          for (let k = 0; k < 6; k++) { g.beginPath(); g.moveTo(x + 10, y + 20 + k * 23); g.lineTo(x + BS - 18, y + 20 + k * 23); g.stroke() }
+        }
+        else if (lm.style === 'motel') {
+          g.fillStyle = col;
+          for (let k = 0; k < 4; k++)g.fillRect(x + 12 + k * 36, y + BS - 36, 26, 5);
+          g.fillStyle = 'rgba(255,240,180,' + (night ? .5 : .2) + ')';
+          for (let k = 0; k < 4; k++)g.fillRect(x + 15 + k * 36, y + BS - 60, 18, 18)
+        }
+        else if (lm.style === 'billboard') {
+          g.fillStyle = '#0c0e13'; g.fillRect(x + 14, y + 18, BS - 36, 52);
+          g.strokeStyle = col; g.lineWidth = 2; g.strokeRect(x + 14, y + 18, BS - 36, 52);
+          g.fillStyle = col; g.font = 'bold 13px ui-monospace'; g.textAlign = 'center';
+          g.fillText(lm.sign, x + (BS - 8) / 2, y + 48)
+        }
+        else {
+          g.fillStyle = col;
+          for (let k = 0; k < 6; k++)g.fillRect(x + 8 + k * 26, y + BS - 32, 16, 12);
+          g.fillStyle = 'rgba(255,240,180,' + (night ? .45 : .18) + ')'; g.fillRect(x + 12, y + 32, BS - 34, 26)
+        }
+        if (lm.glyph) drawGlyph(x + (BS - 8) / 2, y + (BS - 8) / 2 + 4, 58, lm.glyph, col)
+      }
+      g.font = 'bold 12px ui-monospace'; g.textAlign = 'center';
+      const sx2 = x + (BS - 8) / 2, sy2 = y + 14;
+      g.fillStyle = 'rgba(0,0,0,.65)'; g.fillText(lm.sign, sx2 + 1, sy2 + 1);
+      g.fillStyle = col; g.fillText(lm.sign, sx2, sy2);
+      if (night) { g.globalAlpha = .35; g.fillText(lm.sign, sx2, sy2 + 1); g.globalAlpha = 1 }
+      if (lm.style === 'wonder') {
+        g.font = 'bold 9px ui-monospace'; g.fillStyle = 'rgba(255,209,102,.7)';
+        g.fillText(lm.name.toUpperCase(), sx2, y + BS - 16)
+      }
+      const pr = props.find(p => p.id === lm.id);
+      if (pr) {
+        g.font = 'bold 10px ui-monospace';
+        g.fillStyle = pr.owned ? '#4ade80' : '#fbbf24';
+        g.fillText(pr.owned ? 'OWNED · $' + pr.income + '/min' : 'FOR SALE $' + pr.price, sx2, y + BS - 4)
+      }
     }
 
     function drawCar(x, y, ang, col, cop, ent, night, isPlayer) {
@@ -1872,18 +2367,21 @@
     window.__bt = {
       get s() {
         return {
-          px, py, hearts, heat, onFoot, state, cops, gangs, gangsters, traffic, bullets, pickups,
+          px, py, hearts, maxHearts, heat, onFoot, state, cops, gangs, gangsters, traffic, bullets, pickups,
           W, H, Z, weather, ammo, mission: M.cur, memory: Director.memory, mode: Director.mode, targetPed,
-          car, facing, properties, customObjects, aiBlocks
+          car, facing, cash, props, landmarks, chapterN, playMin, store_ok: store.ok, curProp, tileOv,
+          zones: S.zones, npcs: S.npcs, rules: S.rules, timers: S.timers, bubbles: S.bubbles, skids, lookX, lookY
         }
       },
       set(o) {
-        for (const k of ['px', 'py', 'onFoot', 'heat', 'hearts', 'state', 'ammo']) if (o[k] !== undefined) eval(k + '=o[k]');
+        for (const k of ['px', 'py', 'onFoot', 'heat', 'hearts', 'state', 'ammo', 'cash']) if (o[k] !== undefined) eval(k + '=o[k]');
         if (o.car !== undefined) car = o.car; if (o.key !== undefined) Director.key = o.key;
         if (o.mode !== undefined) Director.mode = o.mode; if (o.targetPed !== undefined) targetPed = o.targetPed
       },
-      clearAt, solidAt, findFree, mod, reset, startGame, action, fire, spawnGangster,
-      applyPlan: p => Director.apply(p), offline: () => Director.offline(), goDirector: () => Director.go(), M, snapshot
+      clearAt, solidAt, findFree, mod, reset, startGame, action, fire, spawnGangster, blockType,
+      applyPlan: p => Director.apply(p), offline: () => Director.offline(), goDirector: () => Director.go(), M, snapshot,
+      S, applyOp, addLandmark, addProperty, buyProp: id => buyProp(props.find(p => p.id === id)),
+      saveGame, loadSave, wipeSave, restoreSave, econTick, continueSession, gameOver, softReset, store, bootMenu, updatePropUI
     };
   </script>
 </body>
