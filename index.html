@@ -79,13 +79,21 @@
     }
 
     .route {
-      display: inline-block;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
       border: 1.5px solid var(--amber);
       color: var(--amber);
-      border-radius: 999px;
-      padding: 3px 12px;
+      border-radius: 50%;
+      font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+      font-weight: 400;
       font-size: 12px;
-      letter-spacing: .18em
+      line-height: 1;
+      letter-spacing: 0;
+      text-align: center
     }
 
     h1 {
@@ -231,8 +239,8 @@
 
 <body>
   <header>
-    <span class="route">GAMERAL</span>
-    <h1>FREE <span>GAMES</span></h1>
+    <span class="route">G</span>
+    <h1>Gameral <span>GAMING</span></h1>
     <p class="sub">No downloads, no ads, no accounts — each one is the way games used to be made: <b>just for fun</b>.
     </p>
   </header>
@@ -293,10 +301,11 @@
   </header> -->
     <!-- <main> -->
     <a class="stub" href="blocktown/index.html"><span class="code" style="background:#a16207">BT-11</span>
+      <img src="blocktown/icon.png" alt="Blocktown" style="width:80px;border-radius:16px;margin-bottom:6px">
+
       <h2>Blocktown ★</h2>
       <p>AI runs an open-world city. Jack cars, run courier gigs, earn heat, outrun cops.</p>
-      <div class="ctrl">hold to steer · button to jack · WASD+E and F to fire</div>
-      <img src="blocktown/icon.png" alt="Blocktown" style="width:80px;border-radius:16px;margin-top:6px">
+      <div class="ctrl">hold to steer · WASD or (arrow-keys), E and F to fire</div>
     </a>
     <a class="stub" href="everdeep/index.html"><span class="code" style="background:#365314">ED-12</span>
       <h2>Everdeep</h2>
