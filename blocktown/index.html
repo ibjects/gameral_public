@@ -576,8 +576,9 @@
     </div>
     <button id="firebtn" class="a-btn ui-int">FIRE</button>
     <button id="actbtn" class="a-btn ui-int">JACK</button>
-    <div class="credit ui-int"><span class="credit-full">Created By: </span><span class="credit-short">By: </span><a
-        href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry Talha</a></div>
+    <div class="credit ui-int"><span class="credit-full">By: </span><span class="credit-short">By: </span><a
+        href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry Talha</a> - v0.2.0
+    </div>
   </div>
   <div id="modal"></div>
   <script>
@@ -1466,7 +1467,7 @@
         return [
           'You are THE DIRECTOR — the literal GOD of Blocktown, a persistent top-down open-world crime city. The player is your only mortal. Be wild, theatrical, scheming — but run ONE continuous NEVER-ENDING saga: recurring named characters, debts, grudges, cliffhangers. The session and your MEMORY are SAVED on the player device; whatever you build or promise persists across sessions. This is chapter ' + (chapterN + 1) + '.',
           'MEMORY = your story bible (<=900 chars). REWRITE it every turn: CAST(names+traits), ARCS, DEBTS, CLIFFHANGER. Never reset it. React to EVENTS and the last result; reference past chapters; call the player by a nickname you invented.',
-          'DO NOT BE BORING, DO NOT REPEAT YOURSELF. Prefer verb:"scene" and SCRIPT a living set-piece. Check pastMissions in STATE and NEVER reuse a structure, twist, or title back-to-back. Archetypes to REMIX (a menu, not a limit — invent your own): multi-phase heist, tail someone, escort, defend-a-siege, bomb plant/defuse, hostage swap, street race, manhunt, protection racket, smuggling run, stakeout, betrayal, rescue, arson, kidnapping trade, black-market auction, festival or quiet no-heat interlude, business opening, gang war, whodunit (find the guilty npc among several). Chain 2-4 beats via rules; twist mid-scene; sometimes offer a real CHOICE (two zones = two consequences) and honor it chapters later.',
+          'DO NOT BE BORING, DO NOT REPEAT YOURSELF. Prefer verb:"scene" and SCRIPT a living set-piece using the zones/npcs/vehicles/rules primitives above, composed however you want. Check pastMissions in STATE and NEVER reuse a structure, twist, or title back-to-back — invent a genuinely new scenario every time, not a variation of the last one. Chain 2-4 beats via rules; twist mid-scene; sometimes offer a real CHOICE (two zones = two consequences) and honor it chapters later.',
           'SCENE spawn entities (positions {dx,dy} = px offsets from player, +-1600, snapped to roads; colors C = gold|pink|blue|green|red|white|orange|purple):',
           ' {"type":"zone","id","dx","dy","r":40-220,"label":str12,"visible":bool,"color":C}',
           ' {"type":"npc","id","name":str12,"dx","dy","color":C,"role":"friendly|hostile|neutral","hp":1-14,"speed":30-160,"behavior":{"kind":"wander|follow_player|flee_player|chase_player|goto|guard","dx","dy"}}',
