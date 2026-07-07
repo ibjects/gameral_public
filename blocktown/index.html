@@ -634,7 +634,7 @@
     <button id="firebtn" class="a-btn ui-int">FIRE</button>
     <button id="actbtn" class="a-btn ui-int">JACK</button>
     <div class="credit ui-int"><span class="credit-full">By: </span><span class="credit-short">By: </span><a
-        href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.2.0
+        href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.2.1
     </div>
   </div>
   <div id="modal"></div>
@@ -2620,11 +2620,11 @@
           for (let k = 0; k < 4; k++)g.fillRect(x + 15 + k * 36, y + BS - 60, 18, 18)
         }
         else if (lm.style === 'custom' && !walkable) { // an AI-composed building
-        g.fillStyle = lm.roof ? LPAL[lm.roof] : '#1b2029'; g.fillRect(x + 6, y + 6, BS - 20, BS - 20);
-        g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(x + 6, y + 6, BS - 20, 4); g.fillRect(x + 6, y + 6, 4, BS - 20);
-        if (lm.glyph) drawGlyph(x + (BS - 8) / 2, y + (BS - 8) / 2 + 4, BS - 54, lm.glyph, col)
-      }
-      else if (lm.style === 'billboard') {
+          g.fillStyle = lm.roof ? LPAL[lm.roof] : '#1b2029'; g.fillRect(x + 6, y + 6, BS - 20, BS - 20);
+          g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(x + 6, y + 6, BS - 20, 4); g.fillRect(x + 6, y + 6, 4, BS - 20);
+          if (lm.glyph) drawGlyph(x + (BS - 8) / 2, y + (BS - 8) / 2 + 4, BS - 54, lm.glyph, col)
+        }
+        else if (lm.style === 'billboard') {
           g.fillStyle = '#0c0e13'; g.fillRect(x + 14, y + 18, BS - 36, 52);
           g.strokeStyle = col; g.lineWidth = 2; g.strokeRect(x + 14, y + 18, BS - 36, 52);
           g.fillStyle = col; g.font = 'bold 13px ui-monospace'; g.textAlign = 'center';
