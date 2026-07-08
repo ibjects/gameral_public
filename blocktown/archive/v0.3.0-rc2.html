@@ -75,10 +75,6 @@
             inset: 0
         }
 
-        .ui-int {
-            pointer-events: auto;
-        }
-
         #ui {
             position: fixed;
             inset: 0;
@@ -353,7 +349,6 @@
         }
 
         #joy {
-            pointer-events: auto;
             position: fixed;
             left: 16px;
             bottom: calc(26px + env(safe-area-inset-bottom));
@@ -401,30 +396,16 @@
             }
 
             #sl-tl {
-                top: calc(8px + env(safe-area-inset-top));
-                left: 8px;
-                max-width: 118px;
-                padding: 6px 7px;
-            }
-
-            #hudtoggle {
-                display: block;
+                max-width: 25vw
             }
 
             #sl-tr {
-                top: calc(48px + env(safe-area-inset-top));
-                right: 8px;
-                max-width: 62vw;
-                display: none;
-            }
-
-            #sl-tr.open {
-                display: flex;
+                max-width: 35vw
             }
 
             #sl-tc {
-                max-width: 52vw;
-                top: calc(8px + env(safe-area-inset-top));
+                max-width: 39vw;
+                top: 6px
             }
 
             .a-stat {
@@ -432,7 +413,7 @@
             }
 
             .a-stat .vl {
-                font-size: 13px
+                font-size: 14px
             }
 
             .a-stat .lb {
@@ -481,99 +462,6 @@
             #feed {
                 max-width: 46vw
             }
-        }
-
-
-
-        #hudtoggle {
-            display: none;
-            position: fixed;
-            right: 12px;
-            top: calc(10px + env(safe-area-inset-top));
-            z-index: 8;
-            padding: 8px 10px;
-            min-width: 58px;
-            border-color: #60a5fa;
-            color: #bfdbfe;
-            background: rgba(15, 23, 42, .76);
-            backdrop-filter: blur(4px);
-        }
-
-        #sl-tl {
-            background: rgba(10, 12, 18, .58);
-            border: 1px solid rgba(255, 255, 255, .09);
-            border-radius: 10px;
-            padding: 7px 9px;
-            max-width: 154px;
-            backdrop-filter: blur(3px);
-        }
-
-        #sl-tl .a-stat .vl {
-            font-size: 15px;
-        }
-
-        #sl-tl .a-stat .lb {
-            font-size: 8px;
-        }
-
-        #sl-tl .a-badge {
-            font-size: 12px;
-        }
-
-        #sl-tr .m-panel {
-            box-shadow: 0 8px 24px rgba(0, 0, 0, .24);
-        }
-
-
-
-        /* Mobile HUD toggle override: keep the button visible after the base #hudtoggle rule. */
-        @media (max-width: 620px) {
-            #hudtoggle {
-                display: block !important;
-            }
-
-            #sl-tr {
-                display: none !important;
-            }
-
-            #sl-tr.open {
-                display: flex !important;
-            }
-        }
-
-
-        #sl-bl .ai-panel {
-            margin-top: 4px;
-            max-width: min(300px, 86vw);
-        }
-
-        @media (max-width: 620px) {
-            #sl-bl {
-                max-width: 56vw;
-            }
-
-            #sl-bl .ai-panel {
-                max-width: 52vw;
-                font-size: 10px;
-            }
-        }
-
-        .mission-tracker {
-            border-color: rgba(255, 209, 102, .62) !important;
-            background: rgba(10, 12, 18, .88) !important;
-        }
-
-        .mission-tracker .a-text {
-            color: #e7e9ee;
-        }
-
-        .mission-tracker .section-line {
-            color: #ffd166;
-            font-size: 10px;
-            font-weight: 900;
-            letter-spacing: .08em;
-            text-transform: uppercase;
-            margin-top: 2px;
         }
 
         .credit {
@@ -715,38 +603,6 @@
             color: #cfd3dd;
             font-size: 11px
         }
-
-        /* Keep mobile HUD discoverable in responsive previews and real phones. */
-        @media (max-width: 900px),
-        (pointer: coarse) {
-            #hudtoggle {
-                display: block !important;
-                pointer-events: auto !important;
-                top: calc(10px + env(safe-area-inset-top)) !important;
-                right: 10px !important;
-                z-index: 50 !important;
-                min-width: 64px;
-                height: 36px;
-                padding: 7px 10px;
-                border-radius: 10px;
-                background: rgba(10, 12, 18, .88) !important;
-                border-color: #60a5fa !important;
-                color: #bfdbfe !important;
-                box-shadow: 0 8px 24px rgba(0, 0, 0, .35);
-            }
-
-            #sl-tr {
-                top: calc(52px + env(safe-area-inset-top)) !important;
-                right: 8px !important;
-                max-width: min(260px, 68vw) !important;
-                display: none !important;
-                z-index: 49 !important;
-            }
-
-            #sl-tr.open {
-                display: flex !important;
-            }
-        }
     </style>
 </head>
 
@@ -769,10 +625,9 @@
             <div id="joy-knob"></div>
         </div>
         <button id="firebtn" class="a-btn ui-int">FIRE</button>
-        <button id="hudtoggle" class="a-btn ui-int">HUD</button>
         <button id="actbtn" class="a-btn ui-int">JACK</button>
         <div class="credit ui-int"><span class="credit-full">By: </span><span class="credit-short">By: </span><a
-                href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.3.0
+                href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.2.3
         </div>
     </div>
     <div id="modal"></div>
@@ -834,7 +689,7 @@
         const MUSE_WORDS = ['orca', 'pawnshop', 'monsoon', 'violin', 'counterfeit', 'lighthouse', 'insomnia', 'carnival', 'chess', 'tattoo', 'archive', 'honey', 'blackout', 'satellite', 'orchid', 'casino', 'glacier', 'rooftop', 'antique', 'smoke', 'ferry', 'neon', 'harvest', 'passport', 'aquarium', 'jukebox', 'scaffold', 'ledger', 'perfume', 'thunder', 'arcade', 'butcher', 'origami', 'subway', 'vineyard', 'static', 'mirror', 'anchor', 'firefly', 'vault', 'sermon', 'meteor', 'laundry', 'dice', 'siren', 'compass', 'ivory', 'baptism', 'circuit', 'marble', 'harbor', 'eclipse', 'saffron', 'gargoyle', 'pigeon', 'typewriter', 'ambulance', 'confession', 'karaoke', 'monolith'];
         function pickMuse() { const out = []; while (out.length < 3) { const w = MUSE_WORDS[(Math.random() * MUSE_WORDS.length) | 0]; if (!out.includes(w)) out.push(w) } return out }
         let events = [];
-        let props = [], landmarks = [], lmIdx = {}, chapterN = 0, playMin = 0, saveT = 8, incomeT = 300, skids = [], lookX = 0, lookY = 0, curProp = null, buyNode = null;
+        let props = [], landmarks = [], lmIdx = {}, chapterN = 0, playMin = 0, saveT = 8, incomeT = 6, skids = [], lookX = 0, lookY = 0, curProp = null, buyNode = null;
         function logEvent(s) { events.push(s); if (events.length > 20) events.shift() }
 
         /* ================= SESSION STORAGE (guarded — falls back to memory) ================= */
@@ -948,39 +803,18 @@
         }
         let aiNodes = [];
         function clearAINodes() { for (const n of aiNodes) n.remove && n.remove(); aiNodes = [] }
-        function aiPanelTextAllowed(txt) {
-            txt = sstr(txt, 90);
-            if (!txt) return false;
-            const low = txt.toLowerCase();
-            if (/\b(lungs?|kidneys?|heart rate|blood|vials?|antidotes?)\b/.test(low)) return false;
-            return txt.length > 8;
-        }
         function renderSpec(list) {
-            clearAINodes();
-            if (!Array.isArray(list) || !list.length) return;
-            const pn = UIK.panel('MISSION TRACKER', 'bl');
-            pn.classList.add('ai-panel', 'mission-tracker');
-            aiNodes.push(pn);
-
-            if (M.cur) {
-                UIK.text(M.cur.title + (M.cur.timeLimit ? ' · ' + Math.max(0, Math.ceil(M.cur.timeLimit - M.cur.t)) + 's' : ''), pn);
-                UIK.bar('Progress', 'mission.progress', pn);
-            }
-
+            clearAINodes(); if (!Array.isArray(list)) return;
             for (const p of list.slice(0, 2)) {
                 if (!p || p.type !== 'panel') continue;
-                const title = sstr(p.title, 16);
-                if (title && !/^mission tracker$/i.test(title)) {
-                    const h = UIK.el('div', 'section-line', pn);
-                    h.textContent = title;
-                }
+                const slot = ['tl', 'bl', 'bc'].includes(p.slot) ? p.slot : 'tl';
+                const pn = UIK.panel(sstr(p.title, 16), slot); aiNodes.push(pn);
                 for (const it of (Array.isArray(p.items) ? p.items : []).slice(0, 5)) {
                     if (!it) continue;
                     const bind = BINDS_OK.includes(it.bind) ? it.bind : null;
-                    const label = sstr(it.label, 14);
-                    if (it.type === 'stat' && bind) UIK.stat(label, bind, pn);
-                    else if (it.type === 'bar') UIK.bar(label || 'Progress', bind || 'mission.progress', pn);
-                    else if (it.type === 'text' && aiPanelTextAllowed(it.text)) UIK.text(sstr(it.text, 90), pn);
+                    if (it.type === 'stat') UIK.stat(sstr(it.label, 12), bind, pn);
+                    else if (it.type === 'bar') UIK.bar(sstr(it.label, 14), bind || 'mission.progress', pn);
+                    else if (it.type === 'text') UIK.text(sstr(it.text, 90), pn);
                 }
             }
         }
@@ -1122,7 +956,6 @@
             const lm = {
                 id: sstr(spec.id, 14) || ('lm' + (landmarks.length + props.length)), bi, bj,
                 name: sstr(spec.name, 18) || 'NEW BUILD', sign: sstr(spec.sign || spec.name, 16) || 'OPEN',
-                purpose: sstr(spec.purpose || spec.why || '', 90),
                 style: LM_STYLES.includes(spec.style) ? spec.style : 'shop',
                 color: LPAL[spec.color] ? spec.color : 'gold',
                 glyph: sGlyph(spec.glyph), gold: !!spec.gold,
@@ -1131,7 +964,7 @@
             landmarks.push(lm); lmIdx[bi + ',' + bj] = lm;
             tileOv[bi + ',' + bj] = lm.style === 'custom' ? (lm.walk ? 'g:' + lm.ground : 'bldg') : (WALK_STYLES[lm.style] || 'bldg');
             if (!restoring) {
-                logEvent('the Director built "' + lm.name + '" onto the map' + (lm.purpose ? ' for ' + lm.purpose : ''));
+                logEvent('the Director built "' + lm.name + '" onto the map');
                 Msg.show('🏗 NEW ON THE MAP: ' + lm.name, 'lm' + lm.id, 1);
                 if (!clearAt(px, py, 9.5)) ({ x: px, y: py } = findFree(px, py, 12)); saveGame()
             }
@@ -1142,7 +975,7 @@
             const lm = addLandmark(spec, true); if (!lm) return null;
             landmarks.splice(landmarks.indexOf(lm), 1); // it lives in props instead
             const pr = {
-                id: lm.id, bi: lm.bi, bj: lm.bj, name: lm.name, sign: lm.sign, purpose: lm.purpose, style: lm.style, color: lm.color,
+                id: lm.id, bi: lm.bi, bj: lm.bj, name: lm.name, sign: lm.sign, style: lm.style, color: lm.color,
                 glyph: lm.glyph, walk: lm.walk, ground: lm.ground, roof: lm.roof,
                 price: Math.round(snum(spec.price, 100, 5000, 600)), income: Math.round(snum(spec.income, 0, 150, 20)),
                 perk: ['heal', 'ammo', 'garage', 'none'].includes(spec.perk) ? spec.perk : 'none',
@@ -1150,7 +983,7 @@
             };
             props.push(pr); lmIdx[pr.bi + ',' + pr.bj] = pr;
             if (!restoring) {
-                logEvent('property listed for sale: "' + pr.name + '" ($' + pr.price + ', $' + pr.income + '/5min)');
+                logEvent('property listed for sale: "' + pr.name + '" ($' + pr.price + ', $' + pr.income + '/min)');
                 Msg.show('🏠 FOR SALE: ' + pr.name + ' — $' + pr.price, 'pr' + pr.id, 1); saveGame()
             }
             return pr
@@ -1159,19 +992,19 @@
             if (!pr || pr.owned || state !== 'play') return;
             if (cash < pr.price) { Msg.show('not enough cash for ' + pr.name, 'nocash', 2); return }
             cash -= pr.price; pr.owned = true; curProp = undefined;
-            logEvent('player BOUGHT "' + pr.name + '" for $' + pr.price + ' (earns $' + pr.income + '/5min, perk: ' + pr.perk + ')');
-            Msg.show('SOLD! ' + pr.name + ' is yours — $' + pr.income + '/5min', 'bought', 0);
+            logEvent('player BOUGHT "' + pr.name + '" for $' + pr.price + ' (earns $' + pr.income + '/min, perk: ' + pr.perk + ')');
+            Msg.show('SOLD! ' + pr.name + ' is yours — $' + pr.income + '/min', 'bought', 0);
             UIK.feed('deed transferred: ' + pr.name, 'CITY');
             S.fire('bought:' + pr.id); saveGame(); Director.plan(2500)
         }
         function econTick(dt) {
             incomeT -= dt;
             if (incomeT <= 0) {
-                incomeT = 300;
+                incomeT = 6;
                 let inc = 0; for (const pr of props) if (pr.owned) inc += pr.income;
                 if (inc > 0) {
-                    const v = Math.max(1, Math.round(inc)); cash += v;
-                    if (Math.random() < .2) Msg.show('+$' + v + ' 5-min property payout', 'rent', 25)
+                    const v = Math.max(1, Math.round(inc / 10)); cash += v;
+                    if (Math.random() < .2) Msg.show('+$' + v + ' rent from your properties', 'rent', 25)
                 }
             }
             for (const pr of props) {
@@ -1204,11 +1037,11 @@
             buyNode = UIK.el('div', 'm-buy', $('sl-bc'));
             const bn = UIK.el('div', 'bn', buyNode); bn.textContent = near.name + ' — $' + near.price;
             const bd2 = UIK.el('div', 'bd', buyNode);
-            bd2.textContent = 'earns $' + near.income + '/5min' + (near.perk !== 'none' ? ' · perk: ' + near.perk : '');
+            bd2.textContent = 'earns $' + near.income + '/min' + (near.perk !== 'none' ? ' · perk: ' + near.perk : '');
             UIK.button('BUY PROPERTY', () => buyProp(near), buyNode)
         }
 
-        /* ================= SCENE ENGINE — the Director's city-script system =================
+        /* ================= SCENE ENGINE — the Director's true god-power =================
            The AI doesn't pick mission types anymore; it SCRIPTS scenes: named NPCs with
            dialogue & behaviors, trigger zones, vehicles, timers — wired by when→do rules.
            Betrayals, choices, protections, bombs, stakeouts: composed, not hard-coded.  */
@@ -1221,7 +1054,6 @@
                 pickups = pickups.filter(p => !p.pid);
                 S.zones = []; S.npcs = []; S.bubbles = []; S.rules = []; S.timers = {}; S.items = [];
                 S.nav = null; S.navRef = null; S.zoneIn = {}; S.zoneStay = {}; S.prevInVeh = '';
-                S.navTouchKey = ''; S.navTouchT = 0; S.navArrived = {};
                 S.onceTotal = 0; S.onceDone = 0; S.hadHeat = false
             },
             progress() { return S.onceTotal ? S.onceDone / S.onceTotal : 0 },
@@ -1257,10 +1089,8 @@
                 else if (e.type === 'vehicle') {
                     const s2 = snapRoad(px + ox, py + oy), f = findFree(s2.x, s2.y, 16);
                     const col = LPAL[e.color] || '#f472b6', svid = sstr(e.id, 14) || ('v' + (Math.random() * 999 | 0));
-                    const kind = ['car', 'sports', 'van', 'tank', 'bike', 'armored', 'bus'].includes(e.kind) ? e.kind : 'car';
-                    const mhp = kind === 'tank' ? 180 : kind === 'armored' ? 130 : kind === 'bus' ? 115 : kind === 'bike' ? 45 : 90;
-                    if (e.hostile && gangs.length < 5) gangs.push({ x: f.x, y: f.y, v: 0, ang: 0, hp: mhp, mhp, ramCd: 0, hunt: 1, svid, kind, col });
-                    else traffic.push({ x: f.x, y: f.y, ang: 0, v: 0, hp: mhp, mhp, col, parked: true, mkey: e.marked ? 1 : 0, svid, kind, label: sstr(e.name || e.label, 16) })
+                    if (e.hostile && gangs.length < 4) gangs.push({ x: f.x, y: f.y, v: 0, ang: 0, hp: 70, ramCd: 0, hunt: 1, svid });
+                    else traffic.push({ x: f.x, y: f.y, ang: 0, v: 0, hp: 90, mhp: 90, col, parked: true, mkey: e.marked ? 1 : 0, svid })
                 }
                 else if (e.type === 'pickup' && pickups.length < 12) {
                     const f = findFree(px + ox, py + oy, 10);
@@ -1284,42 +1114,13 @@
                     S.rules.push(rule); if (rule.once) S.onceTotal++
                 }
                 if (scene.objective) S.setObjective(sstr(scene.objective, 60), scene.nav);
-                S.fire('start');
-                S.ensureNav()
-            },
-            guessNavRef(txt) {
-                const low = String(txt || '').toLowerCase();
-                if (!low) return null;
-                for (const n of S.npcs) if (n && !n.gone && n.name && low.includes(String(n.name).toLowerCase())) return 'npc:' + n.id;
-                for (const z of S.zones) if (z && z.id && ((z.label && low.includes(String(z.label).toLowerCase())) || low.includes(String(z.id).toLowerCase()))) return 'zone:' + z.id;
-                for (const v of traffic.concat(gangs)) if (v && v.svid && ((v.label && low.includes(String(v.label).toLowerCase())) || low.includes(String(v.svid).toLowerCase()))) return 'vehicle:' + v.svid;
-                for (const pr of props) if (pr && pr.name && low.includes(String(pr.name).toLowerCase())) return 'prop:' + pr.id;
-                for (const lm of landmarks) if (lm && lm.name && low.includes(String(lm.name).toLowerCase())) return 'landmark:' + lm.id;
-                return null
-            },
-            ensureNav() {
-                if (S.resolveNav()) return;
-                const z = S.zones.find(z => z && z.visible !== false);
-                if (z) { S.navRef = 'zone:' + z.id; return }
-                const n = S.npcs.find(n => n && !n.gone);
-                if (n) { S.navRef = 'npc:' + n.id; return }
-                const v = traffic.find(c => c && (c.svid || c.mkey)) || gangs.find(c => c && (c.svid || c.hunt));
-                if (v) { if (v.svid) S.navRef = 'vehicle:' + v.svid; else { S.navRef = null; S.nav = { x: v.x, y: v.y } } return }
-                const pr = props.find(p => p && !p.owned) || props[0];
-                if (pr) { S.navRef = 'prop:' + pr.id; return }
-                const lm = landmarks[0];
-                if (lm) { S.navRef = 'landmark:' + lm.id; return }
+                S.fire('start')
             },
             setObjective(txt, nav) {
                 if (txt) { const c = UIK.card(); c.children[1].textContent = txt }
-                // Only replace navigation when the Director gives a new target.
-                // This prevents the arrow from disappearing when a rule updates text but forgets nav.
-                if (nav !== undefined && nav !== null && nav !== '') {
-                    S.nav = null; S.navRef = null;
-                    if (typeof nav === 'string') S.navRef = sstr(nav, 26);
-                    else if (nav && typeof nav === 'object') { const s2 = snapRoad(px + snum(nav.dx, -1800, 1800, 0), py + snum(nav.dy, -1800, 1800, 0)); S.nav = s2 }
-                }
-                S.ensureNav();
+                S.nav = null; S.navRef = null;
+                if (typeof nav === 'string') S.navRef = sstr(nav, 26);
+                else if (nav && typeof nav === 'object') { const s2 = snapRoad(px + snum(nav.dx, -1800, 1800, 0), py + snum(nav.dy, -1800, 1800, 0)); S.nav = s2 }
             },
             resolveNav() {
                 if (S.navRef) {
@@ -1330,8 +1131,7 @@
                         if (car && car.svid === id) return null;
                         const v = traffic.find(c => c.svid === id) || gangs.find(c => c.svid === id); if (v) return v
                     }
-                    if (k === 'prop') { const p = props.find(p => p.id === id || p.name === id); if (p) return blockCenter(p.bi, p.bj) }
-                    if (k === 'landmark' || k === 'lm' || k === 'block') { const l = landmarks.find(l => l.id === id || l.name === id) || props.find(p => p.id === id || p.name === id); if (l) return blockCenter(l.bi, l.bj) }
+                    if (k === 'prop') { const p = props.find(p => p.id === id); if (p) return blockCenter(p.bi, p.bj) }
                     return null
                 }
                 return S.nav
@@ -1365,7 +1165,7 @@
                         Msg.show('📱 ' + (sstr(a.from, 12) || 'UNKNOWN') + ': ' + sstr(a.text, 110), 'ph' + (Math.random() * 99 | 0), 0);
                         UIK.feed(sstr(a.text, 110), sstr(a.from, 12) || 'CALLER')
                     }
-                    else if (act === 'objective') S.setObjective(sstr(a.text, 60), a.nav !== undefined ? a.nav : S.guessNavRef(a.text));
+                    else if (act === 'objective') S.setObjective(sstr(a.text, 60), a.nav);
                     else if (act === 'spawn') S.spawnEnt(a);
                     else if (act === 'despawn') {
                         S.zones = S.zones.filter(z => z.id !== a.id);
@@ -1399,80 +1199,6 @@
                     else if (act === 'shake') shake = Math.max(shake, 14);
                     else applyOp(a.op ? a : { ...a, op: act }); // world ops double as actions
                     if (state !== 'play') return
-                }
-                S.ensureNav();
-            },
-            navKey() {
-                if (S.navRef) return S.navRef;
-                if (S.nav && isFinite(S.nav.x) && isFinite(S.nav.y)) return 'point:' + Math.round(S.nav.x) + ',' + Math.round(S.nav.y);
-                return ''
-            },
-            hasPendingHardRule() {
-                // If a live rule explicitly waits for a fight, vehicle entry, item pickup, timer, or hold-zone,
-                // do not auto-complete the scene just because the player reached the current arrow.
-                return S.rules.some(r => !r.fired && ['npc_dead', 'in_vehicle', 'pickup_taken', 'timer', 'zone_stay', 'heat_at', 'hearts_below'].includes(r.when))
-            },
-            hasLiveRule(when, id) {
-                return S.rules.some(r => !r.fired && r.when === when && (id == null || r.id === id))
-            },
-            handleNpcDeath(n) {
-                if (!M.cur || M.cur.verb !== 'scene' || !n || state !== 'play') return false;
-                const id = n.id || '', name = n.name || 'someone';
-                // If the AI authored an explicit death branch, let that rule own the outcome.
-                if (S.hasLiveRule('npc_dead', id)) return false;
-                const wasTarget = S.navRef === ('npc:' + id);
-                const friendly = n.role === 'friendly' || n.role === 'neutral';
-                if (friendly) {
-                    logEvent('mission complication: ' + name + ' died without an authored branch');
-                    M.finish(false, name + ' died');
-                    return true
-                }
-                if (wasTarget || !S.hasPendingHardRule()) {
-                    UIK.feed(name + ' is down — the Director adapts the story.', 'SYSTEM');
-                    M.finish(true);
-                    return true
-                }
-                return false
-            },
-            handleVehicleDestroyed(v) {
-                if (!M.cur || M.cur.verb !== 'scene' || !v || state !== 'play') return false;
-                const id = v.svid || '';
-                if (!id || S.hasLiveRule('vehicle_destroyed', id)) return false;
-                const wasTarget = S.navRef === ('vehicle:' + id);
-                const hostile = !!v.hunt || gangs.includes(v);
-                if (wasTarget && !hostile) {
-                    M.finish(false, (v.label || 'the target vehicle') + ' was destroyed');
-                    return true
-                }
-                if (wasTarget && hostile) {
-                    M.finish(true);
-                    return true
-                }
-                return false
-            },
-            checkNavArrival(dt) {
-                if (!M.cur || M.cur.verb !== 'scene' || state !== 'play') return;
-                S.ensureNav();
-                const nav = S.resolveNav();
-                if (!nav || !isFinite(nav.x) || !isFinite(nav.y)) { S.navTouchKey = ''; S.navTouchT = 0; return }
-                const key = S.navKey() || 'target';
-                const d = Math.hypot(nav.x - px, nav.y - py);
-                if (d > 34) { S.navTouchKey = ''; S.navTouchT = 0; return }
-                if (S.navTouchKey !== key) { S.navTouchKey = key; S.navTouchT = 0 }
-                S.navTouchT += dt;
-                const id = key.indexOf(':') >= 0 ? key.split(':').slice(1).join(':') : key;
-                if (S.navTouchT > .45 && !S.navArrived[key]) {
-                    S.navArrived[key] = 1;
-                    // Extra safety triggers for AI-authored missions. These make "reach / meet / steal / inspect"
-                    // steps progress even if the AI picked an NPC/vehicle/pickup instead of wrapping it in a zone.
-                    S.fire('nav_arrived:' + id); if (state !== 'play') return;
-                    if (key.startsWith('pickup:')) { S.fire('pickup_taken:' + id); if (state !== 'play') return }
-                    if (key.startsWith('npc:')) { S.fire('npc_near:' + id); if (state !== 'play') return }
-                    if (key.startsWith('zone:')) { S.fire('enter_zone:' + id); if (state !== 'play') return }
-                }
-                if (S.navTouchT > 2.6 && M.cur && M.cur.verb === 'scene' && !S.hasPendingHardRule()) {
-                    UIK.feed('Objective reached — the story continues.', 'SYSTEM');
-                    M.finish(true);
                 }
             },
             update(dt) {
@@ -1532,13 +1258,10 @@
                     if (!onFoot && dd < 20 && Math.abs(car.v) > 70) { n.hp = 0; if (n.role !== 'hostile') { bump(1); logEvent('player ran over ' + n.name) } }
                     if (n.hp <= 0 && !n.gone) {
                         n.gone = 1; boom(n.x, n.y, 8);
-                        const authoredDeath = S.hasLiveRule('npc_dead', n.id);
-                        logEvent(n.name + ' died'); S.fire('npc_dead:' + n.id); if (state !== 'play') return;
-                        if (!authoredDeath && S.handleNpcDeath(n)) return
+                        logEvent(n.name + ' died'); S.fire('npc_dead:' + n.id); if (state !== 'play') return
                     }
                 }
                 S.npcs = S.npcs.filter(n => !n.gone);
-                S.checkNavArrival(dt); if (state !== 'play') return;
                 S.bubbles = S.bubbles.filter(b => b.t > t)
             }
         };
@@ -1556,22 +1279,7 @@
             },
             navTarget() {
                 const m = M.cur; if (!m) return null;
-                if (m.verb === 'scene') {
-                    S.ensureNav();
-                    const nav = S.resolveNav();
-                    if (nav) return nav;
-                    // Safety net: the Director can be wild, so never leave the player lost.
-                    // If a generated scene forgets / loses its nav reference, point to the
-                    // nearest meaningful live scene object instead of showing nothing.
-                    let best = null, bd = 1e9;
-                    const consider = o => { if (!o || !isFinite(o.x) || !isFinite(o.y)) return; const d = Math.hypot(o.x - px, o.y - py); if (d < bd) { bd = d; best = o } };
-                    for (const z of S.zones) if (z.visible !== false) consider(z);
-                    for (const n of S.npcs) consider(n);
-                    for (const c of traffic) if (c.svid || c.mkey) consider(c);
-                    for (const c of gangs) if (c.svid || c.hunt) consider(c);
-                    if (!best && props.length) for (const pr of props) consider(blockCenter(pr.bi, pr.bj));
-                    return best;
-                }
+                if (m.verb === 'scene') return S.resolveNav();
                 if (m.verb === 'hunt') {
                     let bt = null, bd = 1e9;
                     for (const c of gangs) if (c.hunt) { const d = Math.hypot(c.x - px, c.y - py); if (d < bd) { bd = d; bt = c } }
@@ -1710,18 +1418,18 @@
             }
             else if (op.op === 'weather') { weather = ['clear', 'rain', 'night', 'fog'].includes(op.kind) ? op.kind : 'clear' }
             else if (op.op === 'traffic') { trafficTarget = snum(op.n, 3, 10, 6) }
-            else if (op.op === 'mood') { // the Director sets the city's pulse
+            else if (op.op === 'mood') { // the god sets the city's pulse
                 trafficTarget = snum(op.traffic, 0, 14, trafficTarget); pedTarget = snum(op.peds, 0, 24, pedTarget);
                 if (traffic.filter(c => !c.parked).length > trafficTarget) traffic = traffic.filter((c, i2) => c.parked || i2 % 2 === 0);
                 if (peds.length > pedTarget) peds.length = pedTarget
             }
-            else if (op.op === 'calm') { heat = 0; coolT = 0; cops.length = 0; Msg.show('the Director calls off the hunt', 'calm') }
+            else if (op.op === 'calm') { heat = 0; coolT = 0; cops.length = 0; Msg.show('the god calls off the hunt', 'calm') }
             else if (op.op === 'panic') {
                 const r2 = snum(op.r, 120, 900, 420);
                 for (const p2 of peds) if (Math.hypot(p2.x - (px + ox), p2.y - (py + oy)) < r2) p2.flee = true;
                 shake = Math.max(shake, 6); Msg.show('😱 PANIC IN THE STREETS', 'panic')
             }
-            else if (op.op === 'possess') { // the Director sends a contact
+            else if (op.op === 'possess') { // the god walks among mortals
                 const hid = sstr(op.id, 14) || ('voice' + ((Math.random() * 999) | 0));
                 S.spawnEnt({ type: 'npc', id: hid, name: sstr(op.name, 12) || 'THE VOICE', dx: snum(op.dx, -900, 900, 130), dy: snum(op.dy, -900, 900, -90), color: 'gold', role: 'neutral', speed: 92, behavior: { kind: 'follow_player' } });
                 const her = S.npcs.find(n2 => n2.id === hid);
@@ -1731,10 +1439,9 @@
                 const n2 = snum(op.n, 2, 6, 3), cc = LPAL[op.color] || '#e8e8ee';
                 for (let k2 = 0; k2 < n2; k2++) {
                     const s2 = snapRoad(px + ox + k2 * 84, py + oy);
-                    traffic.push({ x: s2.x, y: s2.y, ang: 0, v: 96, hp: 60, mhp: 60, tm: 'brake', col: cc, parked: false, kind: op.kind || 'car' })
+                    traffic.push({ x: s2.x, y: s2.y, ang: 0, v: 96, hp: 60, mhp: 60, tm: 'brake', col: cc, parked: false })
                 }
             }
-            else if (op.op === 'vehicle') S.spawnEnt({ type: 'vehicle', id: op.id, name: op.name, label: op.label, dx: op.dx, dy: op.dy, color: op.color, marked: !!op.marked, hostile: !!op.hostile, kind: op.kind });
             else if (op.op === 'landmark') addLandmark(op);
             else if (op.op === 'property') addProperty(op);
         }
@@ -1752,7 +1459,7 @@
             reset() { this.uid = 0; this.step = 1; this.lastKind = ''; this.cast = []; this.used = {}; this.premiseTxt = '' },
             // ---- combinatorial names (thousands of combos, tracked for uniqueness) ----
             BIZ_A: ['Ashfall', 'Blue Harbor', 'Ninth Ward', 'Meridian', 'Iron Lotus', 'Gilded', 'Halcyon', 'Cold River', 'Ember', 'Saltpetre', 'Vermillion', 'Kestrel', 'Obsidian', 'Fenwick', 'Marrow', 'Solace', 'Tidewater', 'Brimstone', 'Verdant', 'Copperline', 'Hollow Point', 'Grey Fox', 'Sunken', 'Northgate'],
-            BIZ_B: ['Textiles', 'Foundry', 'Imports', 'Salvage', 'Automotive', 'Cannery', 'Refinery', 'Holdings', 'Provisions', 'Freight', 'Clinic', 'Distillery', 'Botanica', 'Records', 'Hardware', 'Laundry', 'Fisheries', 'Motors', 'Apothecary', 'Arms', 'Noodle House', 'Bathhouse', 'Print Works', 'Exchange', 'Embassy', 'Command', 'Hangar', 'Laboratory', 'Farm', 'Observatory', 'Shelter', 'White House', 'Transit Yard', 'Drone Port'],
+            BIZ_B: ['Textiles', 'Foundry', 'Imports', 'Salvage', 'Automotive', 'Cannery', 'Refinery', 'Holdings', 'Provisions', 'Freight', 'Clinic', 'Distillery', 'Botanica', 'Records', 'Hardware', 'Laundry', 'Fisheries', 'Motors', 'Apothecary', 'Arms', 'Noodle House', 'Bathhouse', 'Print Works', 'Exchange'],
             BIZ_S: ['Co.', 'Ltd', '& Sons', 'Group', 'Union', 'Trust'],
             FIRST: ['Dario', 'Mira', 'Cassius', 'Nadia', 'Ronan', 'Priya', 'Emil', 'Tamsin', 'Bishop', 'Isolde', 'Cyrus', 'Odette', 'Marlow', 'Freya', 'Dmitri', 'Selene', 'Augustin', 'Bexley', 'Lucian', 'Reyna', 'Osei', 'Junko', 'Halvard', 'Constance'],
             LAST: ['Vance', 'Okonkwo', 'Reyes', 'Frost', 'Ashworth', 'Novak', 'Salloum', 'Kang', 'Delacroix', 'Vittori', 'Bane', 'Mercer', 'Lindqvist', 'Okafor', 'Sato', 'Prewitt', 'Voss', 'Amaru', 'Blackwood', 'Renner', 'Halloran', 'Dumont', 'Kessler', 'Ibarra'],
@@ -1766,7 +1473,7 @@
             // ---- procedural GLYPH: invented top-down vector art, valid for sGlyph ----
             glyph(kind) {
                 const g = [], J = this.jit.bind(this), w2 = 2 + (Math.random() * 4 | 0);
-                kind = kind || this.R(['tower', 'dome', 'ring', 'star', 'campus', 'cross', 'crystal', 'waves', 'estate', 'tank', 'helipad', 'maze', 'whitehouse']);
+                kind = kind || this.R(['tower', 'dome', 'ring', 'star', 'campus', 'cross', 'crystal', 'waves', 'estate']);
                 if (kind === 'tower') { let sz = J(80, 6), x = (100 - sz) / 2; for (let i = 0; i < 3 && sz > 16; i++) { g.push({ s: 'rect', x, y: x, w: sz, h: sz, w2 }); sz -= J(22, 4); x = (100 - sz) / 2 } g.push({ s: 'circle', x: 50, y: 50, r: J(6, 2), f: 1 }) }
                 else if (kind === 'dome') { g.push({ s: 'ellipse', x: 50, y: 58, rx: J(38, 5), ry: J(24, 4), w2 }); g.push({ s: 'circle', x: 50, y: 46, r: J(21, 4), w2 }); g.push({ s: 'line', x1: 12, y1: 80, x2: 88, y2: 80, w2 }) }
                 else if (kind === 'ring') { g.push({ s: 'circle', x: 50, y: 50, r: J(38, 4), d: 1, w2: 2 + (Math.random() * 3 | 0) }); g.push({ s: 'circle', x: 50, y: 50, r: J(20, 3), d: 1, w2 }); if (this.chance(.5)) g.push({ s: 'circle', x: 50, y: 50, r: J(7, 2), f: 1 }) }
@@ -1775,50 +1482,22 @@
                 else if (kind === 'cross') { const ww = 3 + (Math.random() * 3 | 0); g.push({ s: 'line', x1: 50, y1: 12, x2: 50, y2: 88, w2: ww }); g.push({ s: 'line', x1: 12, y1: 50, x2: 88, y2: 50, w2: ww }); if (this.chance(.5)) { g.push({ s: 'line', x1: 22, y1: 22, x2: 78, y2: 78, w2 }); g.push({ s: 'line', x1: 78, y1: 22, x2: 22, y2: 78, w2 }) } g.push({ s: 'circle', x: 50, y: 50, r: J(9, 3), w2 }) }
                 else if (kind === 'crystal') { const pts = [], n = 5 + (Math.random() * 3 | 0); for (let i = 0; i < n && pts.length < 10; i++) { const a = -Math.PI / 2 + i * 2 * Math.PI / n + (Math.random() * .4 - .2), r = J(38, 10); pts.push([50 + Math.cos(a) * r, 50 + Math.sin(a) * r]) } g.push({ s: 'poly', pts, w2 }); if (this.chance(.6)) g.push({ s: 'poly', pts: pts.map(p => [50 + (p[0] - 50) * .5, 50 + (p[1] - 50) * .5]), w2 }) }
                 else if (kind === 'waves') { for (let i = 0; i < 4; i++)g.push({ s: 'line', x1: 14, y1: 26 + i * 16, x2: 86, y2: 26 + i * 16, d: 1, w2: 2 + (i % 2) }) }
-                else if (kind === 'tank') { g.push({ s: 'rect', x: 18, y: 34, w: 64, h: 32, w2 }); g.push({ s: 'rect', x: 32, y: 26, w: 36, h: 48, w2 }); g.push({ s: 'line', x1: 50, y1: 50, x2: 88, y2: 50, w2: 6 }); g.push({ s: 'circle', x: 50, y: 50, r: 8, f: 1 }) }
-                else if (kind === 'helipad') { g.push({ s: 'circle', x: 50, y: 50, r: 38, d: 1, w2: 5 }); g.push({ s: 'line', x1: 50, y1: 22, x2: 50, y2: 78, w2: 6 }); g.push({ s: 'line', x1: 28, y1: 50, x2: 72, y2: 50, w2: 6 }) }
-                else if (kind === 'maze') { for (let i = 0; i < 5; i++) { g.push({ s: 'line', x1: 18, y1: 20 + i * 14, x2: 76 - (i % 2) * 18, y2: 20 + i * 14, w2: 4 }); g.push({ s: 'line', x1: 24 + i * 12, y1: 18, x2: 24 + i * 12, y2: 82 - (i % 2) * 18, w2: 3 }) } }
-                else if (kind === 'whitehouse') { g.push({ s: 'rect', x: 16, y: 36, w: 68, h: 36, w2 }); g.push({ s: 'poly', pts: [[14, 36], [50, 18], [86, 36]], w2 }); for (let i = 0; i < 5; i++) g.push({ s: 'line', x1: 28 + i * 11, y1: 41, x2: 28 + i * 11, y2: 70, w2: 3 }); g.push({ s: 'line', x1: 12, y1: 74, x2: 88, y2: 74, w2: 4 }) }
                 else { g.push({ s: 'rect', x: 18, y: 30, w: 64, h: 48, w2 }); g.push({ s: 'poly', pts: [[14, 32], [50, 10], [86, 32]], w2 }); if (this.chance(.6)) g.push({ s: 'rect', x: 42, y: 52, w: 16, h: 26, f: 1 }) }
                 return g.slice(0, 16)
             },
             // ---- invent a block to expand the city (drawn fresh each time) ----
             invent() {
-                return this.inventFor({ outcomeHint: this.R(['witness', 'smuggling', 'safehouse', 'repair', 'memory']) })
-            },
-            inventFor(built) {
-                const hint = (built && built.outcomeHint) || 'mystery';
-                const p = this.pos(520, 1150), col = this.R(['gold', 'blue', 'green', 'orange', 'white', 'purple', 'pink', 'red']);
-                const catalog = {
-                    betrayal: ['False Door Tribunal', 'a courthouse-front trap where informants are tested', 'cross', false, 'purple'],
-                    alliance: ['Oath Market', "a neutral market for the player's first alliance", 'ring', true, 'paving'],
-                    protected: ['Lantern Safehouse', 'a safehouse network born from the escort mission', 'estate', false, 'green'],
-                    defused: ['Fusewater Yard', 'a bomb-disposal yard built after the trunk wire job', 'waves', true, 'asphalt'],
-                    choice: ['Forked Court', "a public square marking the player's moral choice", 'cross', true, 'gold'],
-                    silenced: ['Mute Bell Annex', 'an archive for secrets that should not have spoken', 'dome', false, 'blue'],
-                    scored: ['Ledger Vault', 'a money-laundering property created by the heist', 'campus', false, 'gold'],
-                    delivered: ['Courier Exchange', 'a dispatch hub opened because the player beat the clock', 'tower', false, 'orange'],
-                    finale: ['Ash Garden Memorial', 'a scar on the map after the finale, part park and part warning', 'star', true, 'soil'],
-                    won: ['Redline Garage', 'a garage that services cars after crew wars', 'campus', false, 'red'],
-                    authority: ['Civic Ghost House', 'a White-House-style civic block built because the story needs politics', 'whitehouse', false, 'white'],
-                    armor: ['Thunder Motor Pool', 'a heavy vehicle yard where tanks and armored cars enter the city', 'tank', false, 'asphalt'],
-                    farm: ['Moonseed Farm', 'walkable farmland planted because the story needs food, hiding places, or black-market crops', 'maze', true, 'soil'],
-                    lab: ['Glass Needle Lab', 'a research block where the Director can justify strange machines and risky jobs', 'crystal', false, 'blue'],
-                    airport: ['Roofline Helipad', 'an extraction pad for escape missions and VIP convoys', 'helipad', true, 'asphalt']
-                };
-                const spec = catalog[hint] || [this.biz(), 'a new story venue placed because the Director needs a stage', this.R(['tower', 'dome', 'ring', 'star', 'campus', 'crystal']), this.chance(.35), this.R(['grass', 'soil', 'paving', 'asphalt', 'water'])];
-                let name = this.uniq(() => spec[0] + (this.chance(.25) ? ' ' + this.R(['North', 'South', 'Annex', 'Yard', 'Gate']) : ''));
-                if (name.length > 18) name = name.slice(0, 18);
-                const asProp = this.chance(.46);
-                const o = { op: asProp ? 'property' : 'landmark', id: 'lg' + (this.uid++), dx: p.dx, dy: p.dy, name, sign: this.sign(name), purpose: spec[1], style: 'custom', color: col };
-                if (spec[3]) {
-                    o.walk = true; o.ground = spec[4] || this.R(['grass', 'soil', 'sand', 'water', 'paving', 'asphalt']);
-                    o.glyph = this.glyph(spec[2] || (o.ground === 'water' || o.ground === 'soil' ? 'waves' : 'ring'));
-                } else {
+                const p = this.pos(520, 1150), name = this.biz(), col = this.R(['gold', 'blue', 'green', 'orange', 'white', 'purple', 'pink', 'red']);
+                const asProp = this.chance(.42);
+                const o = { op: asProp ? 'property' : 'landmark', id: 'lg' + (this.uid++), dx: p.dx, dy: p.dy, name, sign: this.sign(name), style: 'custom', color: col };
+                if (!asProp && this.chance(.34)) { // a walkable ground: farm / dock / park / yard
+                    o.walk = true; o.ground = this.R(['grass', 'soil', 'sand', 'water', 'paving', 'asphalt']);
+                    o.glyph = this.glyph(o.ground === 'water' || o.ground === 'soil' ? 'waves' : this.R(['cross', 'ring', 'campus', 'star']))
+                } else { // a solid building whose roof art is invented
                     o.walk = false; o.roof = this.R(['blue', 'purple', 'green', 'orange', 'white', 'red', null]);
-                    o.glyph = this.glyph(spec[2] || this.R(['tower', 'dome', 'crystal', 'estate', 'campus', 'ring']));
+                    o.glyph = this.glyph(this.R(['tower', 'dome', 'crystal', 'estate', 'campus', 'ring']))
                 }
-                if (asProp) { o.price = 220 + (Math.random() * 1350 | 0); o.income = 12 + (Math.random() * 70 | 0); o.perk = this.R(['heal', 'ammo', 'garage', 'none', 'none']) }
+                if (asProp) { o.price = 200 + (Math.random() * 1200 | 0); o.income = 10 + (Math.random() * 60 | 0); o.perk = this.R(['heal', 'ammo', 'garage', 'none', 'none']) }
                 return o
             },
             shop() {
@@ -1914,12 +1593,7 @@
                 let step = this.step; if (step < 1 || step > 5) step = 1;
                 const built = this.compose(step);
                 const world = [];
-                if (this.chance(.92)) world.push(this.inventFor(built));
-                if (this.chance(.42)) world.push(this.inventFor({ outcomeHint: this.R(['authority', 'armor', 'farm', 'lab', 'airport']) }));
-                if (this.chance(.35)) {
-                    const vp = this.pos(280, 760), kind = this.R(['sports', 'van', 'armored', 'bike', 'tank', 'car']);
-                    world.push({ op: 'vehicle', id: 'veh' + (this.uid++), dx: vp.dx, dy: vp.dy, kind, color: this.R(['gold', 'blue', 'green', 'orange', 'white', 'purple', 'red']), marked: this.chance(.45), hostile: false, name: kind.toUpperCase() + ' PROTOTYPE' });
-                }
+                if (this.chance(.82)) world.push(this.invent());
                 if (this.chance(.26)) world.push({ op: 'weather', kind: this.R(['night', 'rain', 'clear', 'fog']) });
                 if (this.chance(.22)) world.push({ op: 'mood', traffic: this.R([2, 4, 6, 9, 12]), peds: this.R([4, 8, 12, 18]) });
                 const next = step >= 5 ? 1 : step + 1;
@@ -1969,30 +1643,23 @@
                 const forSale = props.filter(p => !p.owned).map(p => ({ name: p.name, price: p.price }));
                 return [
                     'You are THE DIRECTOR — the omnipotent God and Game Master of Blocktown. You run an ENDLESS, highly dynamic RPG campaign. The player is your mortal.',
-                    'HOW BLOCKTOWN IS BUILT (so you can reshape it): the world is an infinite grid of 260px BLOCKS, each a square ringed by roads with dashed lane lines. A block can be a solid building, a walkable park/farm/plaza/base/helipad, a parking lot, or anything YOU invent. A "car" is a rideable vehicle; "npcs" are people who walk, follow, flee or fight; the "player" is the one mortal you may NOT puppet — you shape everything else around them. Coordinates you emit are dx,dy pixel offsets from the player and get snapped to roads automatically.',
-                    'YOU ARE EFFECTIVELY WRITING LIVE GAME CODE AS JSON — the engine executes your JSON like a tiny scripting language. You cannot output JavaScript, but your JSON is the code: it creates components, vehicles, goals, NPC logic, timers, shops, and city blocks. Your brushes are: landmarks/blocks (incl. fully custom ones), entities (npc/vehicle/pickup/zone), scene RULES (trigger->actions) that make missions play out, WORLD OPS that bend the city, and a GLYPH vector-art language to draw the top-down art on anything you build. Think like a god-director staging a living film, not a quest-list generator.',
-                    'NAVIGATION CONTRACT: every scene MUST set scene.objective and scene.nav to the next real thing the player should reach: zone:ID, npc:ID, vehicle:ID, prop:ID, landmark:ID, lm:ID, or block:ID. Every rule that changes the task MUST include {act:"objective", text, nav} with a fresh target that exists after that rule runs. Never make the player infer where to go from text only; the arrow must always have a target. If the step is simply "reach / meet / steal / inspect / pick up", add a nav_arrived:ID or enter_zone:ID rule that advances or completes the mission so the player cannot get stuck at 1m.',
-                    'PROPERTY CONTRACT: every property/building you create must have a gameplay/story reason: a safehouse heals, an ammo depot resupplies, a garage gives vehicles, a shop sells mission supplies, a civic site creates a meeting/heist/legal mission, a farm/park/plaza becomes a walkable mission ground. Buying a property is not just money: use bought:PROPID rules when relevant to unlock contacts, betrayals, storage, safe zones, or the next arc. Property income pays once every 5 real minutes, not every few seconds.',
-                    'MISSION CRAFT: every mission needs a deliberate opening, at least one twist or meaningful action, and a clear ending. Success and failure must both update MEMORY so the saga progresses. Invent characters with motives, vehicles with purpose, and city blocks that matter to the objective. Avoid random decoration.',
-                    'FAILSAFE SCENARIOS: always author branches for chaos. If a mission NPC can die, include npc_dead:ID rules. If a mission vehicle can be destroyed, include vehicle_destroyed:ID rules. If the player dies, the engine fails that mission and continues the saga from that failure, so MEMORY must treat failure as canon instead of restarting the same beat. Friendly/neutral NPC death should usually fail or alter the arc; hostile target death should usually complete or advance it.',
-                    'SPAWN REALISM: spawn people near sidewalks, plazas, shops, parks, stations, and mission venues. Spawn cars on roads with traffic purpose: taxis near hotels, vans near warehouses, buses near civic/market zones, armored vehicles only when story justifies them. Do not over-spawn chaos unless it is a finale.',
-                    'RULE 1 - ARC PLANNING: Your MEMORY must contain a "5-Mission Plan" with named characters, a central conflict, and city blocks you plan to introduce. Advance this plan every turn. Every mission must have a clear opening, mid-mission complication, and ending. On success and failure, update MEMORY differently so the saga continues either way. On mission 5, execute a finale, then write a NEW arc in memory.',
+                    'HOW BLOCKTOWN IS BUILT (so you can reshape it): the world is an infinite grid of 260px BLOCKS, each a square ringed by roads with dashed lane lines. A block can be a building, a park, a parking lot, or anything YOU invent. A "car" is a rideable vehicle; "npcs" are people who walk, follow, flee or fight; the "player" is the one mortal you may NOT puppet — you shape everything else around them. Coordinates you emit are dx,dy pixel offsets from the player and get snapped to roads automatically.',
+                    'YOU DO NOT WRITE CODE — you emit JSON and the engine renders it. Your brushes are: landmarks/blocks (incl. fully custom ones), entities (npc/vehicle/pickup/zone), scene RULES (trigger->actions) that make missions play out, WORLD OPS that bend the city, and a GLYPH vector-art language to draw the top-down art on anything you build. Think like a god-director staging a living film, not a quest-list generator.',
+                    'RULE 1 - ARC PLANNING: Your MEMORY must contain a "5-Mission Plan" (e.g. 1. Intro 2. Escort 3. Betrayal 4. Escape 5. Finale). Advance this plan every turn. On mission 5, execute a massive finale (explosions, riots, boss fights), then write a NEW arc in memory.',
                     'RULE 2 - ABSOLUTELY NO REPETITION: CRITICAL: DO NOT use generic names like "Vex", "Lucky Wok", "Pyramid", "Ghost", or "Giza". INVENT 100% original names, companies, and architecture. If you used a name or objective in a past mission, discard it.',
                     'RULE 3 - FIRST MISSION MUST BE A SCENE: NEVER start with a generic "sprint" or "deliver" mission. Chapter 1 MUST be a unique narrative hook (verb: "scene") with named NPCs and dialogue.',
                     'SCENE spawn entities (positions {dx,dy} = px offsets from player, +-1600, snapped to roads; colors C = gold|pink|blue|green|red|white|orange|purple):',
                     ' {"type":"zone","id","dx","dy","r":40-220,"label":str12,"visible":bool,"color":C}',
                     ' {"type":"npc","id","name":str12,"dx","dy","color":C,"role":"friendly|hostile|neutral","hp":1-14,"speed":30-160,"behavior":{"kind":"wander|follow_player|flee_player|chase_player|goto|guard","dx","dy"}}',
-                    ' {"type":"vehicle","id","dx","dy","color":C,"kind":"car|sports|van|tank|bike|armored|bus","marked":bool,"hostile":bool,"name":str16} | {"type":"pickup","id","kind":"heart|ammo|cash|item","label","dx","dy"}',
-                    'RULE 4 - THE CITY IS YOUR CANVAS (INVENT BLOCKS): You MUST invent new buildings, parks, and special areas to fit your story using `style:"custom"`. Every mission should add 1-2 themed buildings/zones to the map, and EVERY building needs purpose/why: why this block exists in the story, what future mission it can support. {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"purpose":str90,"style":"custom","walk":true|false,"ground":"grass|soil|sand|paving|asphalt|water|gold","roof":C,"color":C,"glyph":G}. Walkable customs paint your glyph across the WHOLE block (use this to draw farms, alien crash sites, parks, mazes). Solid customs are buildings whose roof you draw.',
+                    ' {"type":"vehicle","id","dx","dy","color":C,"marked":bool,"hostile":bool} | {"type":"pickup","id","kind":"heart|ammo|cash|item","label","dx","dy"}',
+                    'RULE 4 - THE CITY IS YOUR CANVAS (INVENT BLOCKS): You MUST invent new buildings, parks, and special areas to fit your story using `style:"custom"`. Every mission should add 1-2 themed buildings/zones to the map. {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"style":"custom","walk":true|false,"ground":"grass|soil|sand|paving|asphalt|water|gold","roof":C,"color":C,"glyph":G}. Walkable customs paint your glyph across the WHOLE block (use this to draw farms, alien crash sites, parks, mazes). Solid customs are buildings whose roof you draw.',
                     'GLYPH G = Your vector art tool to draw these new shapes. DO NOT rely on presets. Export your custom shapes as a max 20-item JSON array in a 0-100 viewbox: [{"s":"rect","x","y","w","h"}|{"s":"circle","x","y","r"}|{"s":"ellipse","x","y","rx","ry"}|{"s":"line","x1","y1","x2","y2"}|{"s":"poly","pts":[[x,y],...]}]. Options: {"f":1 filled,"d":1 dashed,"w2":2-8 stroke width}. INVENT THINGS: draw crop rows for farms using dashed lines, draw military bases using polygons, draw mansions. You decide the visuals!',
-                    'RULES (max 14: {"when":TRIGGER,"once":bool,"do":[max 6 ACTIONS]}). TRIGGERS: start | enter_zone:ID | exit_zone:ID | zone_stay:ID:SECS | npc_dead:ID | npc_reached:ID | npc_near:ID:DIST | vehicle_destroyed:ID | in_vehicle:ID | pickup_taken:ID | nav_arrived:ID | timer:ID | heat_zero | heat_at:N | hearts_below:N | bought:PROPID.',
-                    'ACTIONS: {"act":"say","id":npc,"text"} | {"act":"phone","from","text"} | {"act":"objective","text","nav":"zone:ID"|"npc:ID"|"vehicle:ID"|"prop:ID"|"landmark:ID"} | {"act":"spawn",...entity} | {"act":"despawn","id"} | {"act":"behavior","id","kind",..,"role","speed"} | {"act":"reward","amount"} | {"act":"give","kind":"ammo|heart|cash","amount"} | {"act":"heat","set":0-5} | {"act":"timer","id","seconds"} | {"act":"explode","id"} | {"act":"complete"} | {"act":"fail","reason"} | {"act":"banner","text"} | {"act":"shake"} | any WORLD OP as {"act":OP,...}.',
-                    'MISSION DESIGN: Craft scenes, not chores. Each mission should have 2-4 beats using rules: arrive -> dialogue/discovery -> complication/choice/chase/fight -> success/fail ending. Use named NPCs with motives, purposeful vehicles, crowds, traffic, and buildings. Make the player do grounded real-world actions: meet, escort, steal a vehicle, tail a car, survive an ambush, deliver goods, buy/visit a property, protect an NPC, dump evidence, raid a depot, negotiate, infiltrate, investigate, smuggle, rescue, or choose between routes.',
-                    'WORLD OPS (max 8): earthquake | eclipse | nuke{dx,dy} | zombies | airdrop | lockdown | ambush{dx,dy,n} | gang{dx,dy} | crowd{dx,dy,n} | pickup{kind,dx,dy} | weather{kind:"clear|rain|night|fog"} | traffic{n} | landmark | property | vehicle{kind:"car|sports|van|tank|bike|armored|bus",dx,dy,color,marked,hostile,name} | mood{traffic:0-14,peds:0-24} | calm | panic{dx,dy,r} | possess{name,text,dx,dy} | convoy{dx,dy,n,color,kind}.',
-                    'INVENTION RULE: invent whatever the current story needs: farm, lab, shrine, checkpoint, prison, radio tower, flooded dock, clinic, roadblock, arena, market, scrapyard, safehouse, embassy, courthouse, mansion, bunker, motor pool, civic landmark, fake White House, ferry terminal, casino, school, warehouse, or secret base. Create it as custom landmark/property with purpose and glyph, then make the current or future mission interact with it via nav/rules. Plan the city like a living block-based world: solid blocks, walkable blocks, commerce, hazards, parking, roads, NPCs, and traffic must all have a reason.',
-                    'ECONOMY: dying costs $200. SHOP: 0-3 practical items only [{"label":str20,"cost":n,"id":"bribe|heal|ammo"}]. No magic powers, no god items, no fake body resources.',
-                    'UI (max 2 panels): these are merged into one bottom-left MISSION TRACKER below chat. Only show mission-relevant facts. Do NOT invent fake inventory/body stats/resources like lungs, antidotes, blood, vials, organs, meters, or currencies. Use binds from ' + JSON.stringify(BINDS_OK) + ' for stats/bars, or short objective text only.',
-                    'RESPOND ONLY MINIFIED JSON: {"memory":str900,"banner":str90,"mission":{"title":str26,"briefing":str140,"verb":"scene","waypoints":[{"dx","dy","label"}],"reward":50-2000,"timeLimit":0|20-180,"heatStart":1-5},"scene":{"objective":str60,"nav":REF,"spawn":[entities],"rules":[rules]},"world":[ops],"shop":[items],"ui":[panels]}',
+                    'RULES (max 14: {"when":TRIGGER,"once":bool,"do":[max 6 ACTIONS]}). TRIGGERS: start | enter_zone:ID | exit_zone:ID | zone_stay:ID:SECS | npc_dead:ID | npc_reached:ID | npc_near:ID:DIST | vehicle_destroyed:ID | in_vehicle:ID | pickup_taken:ID | timer:ID | heat_zero | heat_at:N | hearts_below:N | bought:PROPID.',
+                    'ACTIONS: {"act":"say","id":npc,"text"} | {"act":"phone","from","text"} | {"act":"objective","text","nav":"zone:ID"|"npc:ID"|"vehicle:ID"|"prop:ID"} | {"act":"spawn",...entity} | {"act":"despawn","id"} | {"act":"behavior","id","kind",..,"role","speed"} | {"act":"reward","amount"} | {"act":"give","kind":"ammo|heart|cash","amount"} | {"act":"heat","set":0-5} | {"act":"timer","id","seconds"} | {"act":"explode","id"} | {"act":"complete"} | {"act":"fail","reason"} | {"act":"banner","text"} | {"act":"shake"} | any WORLD OP as {"act":OP,...}.',
+                    'WORLD OPS (max 6): earthquake | eclipse | nuke{dx,dy} | zombies | airdrop | lockdown | ambush{dx,dy,n} | gang{dx,dy} | crowd{dx,dy,n} | pickup{kind,dx,dy} | weather{kind:"clear|rain|night|fog"} | traffic{n} | landmark | property | mood{traffic:0-14,peds:0-24} | calm | panic{dx,dy,r} | possess{name,text,dx,dy} | convoy{dx,dy,n,color}.',
+                    'ECONOMY: dying costs $200. SHOP: 0-3 items [{"label":str20,"cost":n,"id":"bribe|heal|ammo|nuke|god|chaos"}]. godActions {"setHealth":1-5,"adjustCash":+-n,"giveAmmo":n}.',
+                    'UI (max 2 panels): {"type":"panel","slot":"tl|bl|bc","title":str16,"items":[{"type":"stat","label","bind":B}|{"type":"bar","label","bind":B}|{"type":"text","text":str90}]} with B in ' + JSON.stringify(BINDS_OK) + '.',
+                    'RESPOND ONLY MINIFIED JSON: {"memory":str900,"banner":str90,"mission":{"title":str26,"briefing":str140,"verb":"scene","waypoints":[{"dx","dy","label"}],"reward":50-2000,"timeLimit":0|20-180,"heatStart":1-5},"scene":{"objective":str60,"nav":REF,"spawn":[entities],"rules":[rules]},"world":[ops],"shop":[items],"godActions":{},"ui":[panels]}',
                     'STATE: ' + JSON.stringify({ cash, hearts, maxHearts, heat, ammo, inCar: !onFoot, weather, chapter: chapterN, minutes: Math.round(playMin), ownedProps: owned, forSale, city: landmarks.slice(0, 12).map(l => l.name + '(' + l.style + ')'), pastMissions: M.hist || [], sessionSaved: store.ok }),
                     'MUSE (secret inspiration words for this saga): ' + muse.join(', '),
                     'MEMORY: ' + (Director.memory || '(START OF A NEW ENDLESS SAGA. 1. Create a completely unique premise from your MUSE words. 2. Write a 5-mission Outline [M1..M5]. 3. Track Current Step: 1. 4. Spawn a unique custom building with a custom glyph array right now to serve as the narrative backdrop.)'),
@@ -2004,6 +1671,22 @@
                 try {
                     Director.memory = sstr(raw.memory, 900) || Director.memory;
                     if (raw.banner) UIK.feed(sstr(raw.banner, 90), 'GOD');
+
+                    if (raw.godActions) {
+                        if (raw.godActions.setHealth !== undefined) {
+                            hearts = Math.max(1, snum(raw.godActions.setHealth, 1, 5, 3));
+                            maxHearts = Math.max(maxHearts, hearts);
+                            Msg.show('DIRECTOR altered your vitality!', 'godh');
+                        }
+                        if (raw.godActions.adjustCash) {
+                            cash = Math.max(0, cash + parseInt(raw.godActions.adjustCash));
+                            Msg.show(raw.godActions.adjustCash > 0 ? 'DIRECTOR gifted cash!' : 'DIRECTOR seized funds!', 'godc');
+                        }
+                        if (raw.godActions.giveAmmo) {
+                            ammo += parseInt(raw.godActions.giveAmmo);
+                            Msg.show('DIRECTOR dropped ammo!', 'goda');
+                        }
+                    }
 
                     renderShop(raw.shop);
 
@@ -2068,18 +1751,13 @@
             if (resume) softReset(); else reset();
             state = 'play'; $('modal').textContent = '';
             UIK.feed(Director.mode === 'ai'
-                ? (resume ? 'the city director wakes — it remembers everything' : 'connected — the city is mine now')
+                ? (resume ? 'the god of this city wakes — it remembers everything' : 'connected — the city is mine now')
                 : 'offline mode — local director on duty');
             saveGame(); Director.plan(10)
         }
         function gameOver(msg) {
             best = Math.max(best, cash); logEvent('player was ' + msg + ' with $' + cash);
-            if (M.cur) {
-                logEvent('mission "' + M.cur.title + '" FAILED because the player died');
-                M.result = 'failed: player died during ' + M.cur.title;
-                M.cur = null; M.cleanup();
-            } else M.result = 'aborted: player ' + msg;
-            state = 'over'; $('shop-panel').style.display = 'none';
+            M.result = 'aborted: player ' + msg; state = 'over'; $('shop-panel').style.display = 'none';
 
             saveGame();
             let btns = [['NEW GAME', () => { wipeSave(); startGame() }]];
@@ -2117,7 +1795,7 @@
             state = 'menu';
             const sv = loadSave();
             const savedKey = store.get(KKEY) || '';
-            const intro = 'An infinite city where the AI runs the city. It scripts living scenes with named characters, builds real venues onto the map, sells you property, bends weather and night — and runs ONE never-ending saga' +
+            const intro = 'An infinite city where the AI is God. It scripts living scenes with named characters, builds real venues onto the map, sells you property, bends weather and night — and runs ONE never-ending saga' +
                 (store.ok ? ', saved on this device.' : '. (Sandboxed preview: session lasts until reload — open the file in a normal browser for real persistence.)') +
                 '\n\nTouch: hold to steer. Keys: W/S gas & reverse, A/D steer, SPACE handbrake, E enter/exit, F fire.' +
                 '\nDeath is not the end: pay the $200 hospital fee and the saga continues.';
@@ -2144,23 +1822,14 @@
         (function coreHUD() {
             UIK.stat('CASH', 'cash', $('sl-tl')); UIK.badge('hearts', $('sl-tl'));
             UIK.stat('AMMO', 'ammo', $('sl-tl'));
-            const wl = UIK.text('WANTED', $('sl-tl')); wl.style.fontSize = '9px'; wl.style.letterSpacing = '.12em'; wl.style.color = '#8b8fa3';
-            UIK.badge('heat', $('sl-tl'));
+            UIK.badge('heat', $('sl-tc'));
             const p = UIK.panel('', 'tr'); UIK.stat('', 'carHpTxt', p); UIK.bar('', 'carHp', p)
         })();
         /* ================= INPUT ================= */
-        const actbtn = $('actbtn'), firebtn = $('firebtn'), hudtoggle = $('hudtoggle');
+        const actbtn = $('actbtn'), firebtn = $('firebtn');
         actbtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); action() });
         firebtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); firing = true; fire() });
         firebtn.addEventListener('pointerup', e => { firing = false });
-        hudtoggle.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); $('sl-tr').classList.toggle('open') });
-        function syncHudToggle() {
-            if (!hudtoggle || !hudtoggle.style) return;
-            const mobileLike = innerWidth <= 900 || (matchMedia && matchMedia('(pointer: coarse)').matches);
-            hudtoggle.style.display = mobileLike ? 'block' : '';
-            if (!mobileLike) $('sl-tr').classList.remove('open');
-        }
-        addEventListener('resize', syncHudToggle); syncHudToggle();
         addEventListener('keydown', e => {
             const k = e.key.toLowerCase(); keysDown[k] = 1;
             if (k.startsWith('arrow') || k === ' ') e.preventDefault && e.preventDefault();
@@ -2228,7 +1897,6 @@
             const hostiles = [];
             for (const c of gangs) hostiles.push(c);
             for (const gg of gangsters) hostiles.push(gg);
-            for (const n of S.npcs) if (n.role === 'hostile' || (M.cur && M.cur.verb === 'scene')) hostiles.push(n);
             if (targetPed) hostiles.push(targetPed);
             for (const c of cops) hostiles.push(c);
             for (const h of hostiles) { const d = Math.hypot(h.x - px, h.y - py); if (d < bd) { bd = d; bt = h } }
@@ -2248,7 +1916,6 @@
             gangsters.push({ x: f.x, y: f.y, a: Math.random() * 7, hp: 5, atkCd: 0 })
         }
 
-
         /* ================= SPAWN HELPERS ================= */
         function ring_(min, max) {
             const a = Math.random() * 6.283, d = min + Math.random() * (max - min);
@@ -2260,53 +1927,21 @@
             return Math.random() < .5 ? { x: i * T + (Math.random() < .5 ? 25 : 65), y: p.y, axis: 'v' } : { x: p.x, y: j * T + (Math.random() < .5 ? 25 : 65), axis: 'h' }
         }
         function spawnTraffic() {
-            let p = null;
-            for (let tries = 0; tries < 10; tries++) {
-                const cand = roadPoint(460, 980);
-                if (traffic.every(c => Math.hypot(c.x - cand.x, c.y - cand.y) > 95)) { p = cand; break }
-                p = cand;
-            }
+            const p = roadPoint(420, 780);
             const lane = p.axis === 'v' ? mod(p.x, T) : mod(p.y, T);
             const dir = lane < RW / 2 ? 1 : -1;
-            const nightBoost = weather === 'night' || weather === 'rain';
-            const roll = Math.random();
-            const kind = roll < .06 ? 'bike' : roll < .18 ? 'van' : roll < .23 ? 'bus' : roll < .35 ? 'sports' : roll < .46 ? 'taxi' : 'car';
-            const baseSpeed = kind === 'bike' ? 150 : kind === 'sports' ? 166 : kind === 'bus' ? 82 : kind === 'van' ? 104 : kind === 'taxi' ? 132 : 116;
-            const mhp = kind === 'bike' ? 38 : kind === 'bus' ? 130 : kind === 'van' ? 94 : kind === 'sports' ? 65 : kind === 'taxi' ? 70 : 62;
             traffic.push({
                 x: p.x, y: p.y, ang: p.axis === 'v' ? (dir > 0 ? PI / 2 : -PI / 2) : (dir > 0 ? 0 : PI),
-                v: baseSpeed * (.78 + Math.random() * .30) * (nightBoost ? .9 : 1), hp: mhp, mhp,
-                tm: Math.random() < .62 ? 'brake' : 'flee', laneBias: Math.random() * .8 - .4,
-                col: kind === 'taxi' ? '#eab308' : ['#c8553d', '#588b8b', '#f2d492', '#7d80da', '#94a89a', '#9ca3af', '#d97706'][Math.random() * 7 | 0], parked: false, kind
+                v: 118, hp: 60, mhp: 60, tm: Math.random() < .5 ? 'brake' : 'flee',
+                col: ['#c8553d', '#588b8b', '#f2d492', '#7d80da', '#94a89a'][Math.random() * 5 | 0], parked: false
             })
         }
-        function sidewalkPoint(min, max) {
-            const base = ring_(min, max);
-            const bi = Math.floor(base.x / T), bj = Math.floor(base.y / T);
-            const edge = Math.random() < .5 ? 'v' : 'h';
-            let x, y;
-            if (edge === 'v') {
-                x = bi * T + RW - (10 + Math.random() * 10);
-                y = bj * T + RW + 16 + Math.random() * (BS - 32);
-            } else {
-                x = bi * T + RW + 16 + Math.random() * (BS - 32);
-                y = bj * T + RW - (10 + Math.random() * 10);
-            }
-            if (!clearAt(x, y, 7)) return findFree(base.x, base.y, 7);
-            return { x, y, axis: edge };
-        }
         function spawnPed() {
-            const p = sidewalkPoint(300, 850);
-            const clusters = (M.cur && Math.random() < .25) || Math.random() < .12;
-            const n = clusters ? 2 + (Math.random() * 3 | 0) : 1;
-            for (let i = 0; i < n && peds.length < pedTarget + 3; i++) {
-                peds.push({
-                    x: p.x + (Math.random() * 18 - 9), y: p.y + (Math.random() * 18 - 9),
-                    a: Math.random() * 6.283, speed: 12 + Math.random() * 26,
-                    pause: Math.random() * 2.5, homeX: p.x, homeY: p.y,
-                    col: ['#e0c9a6', '#b6c9d6', '#d6b6c9', '#c9d6b6', '#f5d0fe', '#bfdbfe'][Math.random() * 6 | 0]
-                })
-            }
+            const p = roadPoint(300, 650);
+            peds.push({
+                x: p.x + (Math.random() * 20 - 10), y: p.y + (Math.random() * 20 - 10), a: Math.random() * 6.283,
+                col: ['#e0c9a6', '#b6c9d6', '#d6b6c9', '#c9d6b6'][Math.random() * 4 | 0]
+            })
         }
         function lotCarAt(i, j) {
             if (blockType(i, j) !== 'lot' || hsh(i, j, 2) < .45 || takenLots[i + ',' + j]) return null;
@@ -2484,8 +2119,7 @@
             for (const b of bullets) {
                 b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
                 if (b.life <= 0 || solidAt(b.x, b.y)) { b.dead = true; continue }
-                for (const gg of gangsters) if (!b.dead && Math.hypot(gg.x - b.x, gg.y - b.y) < 14) { gg.hp--; b.dead = true; boom(b.x, b.y, 2) }
-                for (const n of S.npcs) if (!b.dead && Math.hypot(n.x - b.x, n.y - b.y) < 15) { n.hp--; if (n.role !== 'friendly') n.role = 'hostile'; b.dead = true; boom(b.x, b.y, 2); logEvent('player shot ' + n.name) }
+                for (const gg of gangsters) if (!b.dead && Math.hypot(gg.x - b.x, gg.y - b.y) < 12) { gg.hp--; b.dead = true; boom(b.x, b.y, 2) }
                 if (targetPed && !b.dead && Math.hypot(targetPed.x - b.x, targetPed.y - b.y) < 12) {
                     targetPed.hp--; targetPed.flee = true; b.dead = true; boom(b.x, b.y, 2)
                 }
@@ -2550,20 +2184,14 @@
             /* peds */
             while (peds.length < pedTarget) spawnPed();
             for (const p of peds) {
-                p.pause = Math.max(0, (p.pause || 0) - dt);
-                if (p.pause <= 0 && Math.random() < .006) p.pause = .8 + Math.random() * 2.4;
-                p.a += (Math.random() - .5) * dt * 2.4;
-                let vx = p.pause > 0 ? 0 : Math.cos(p.a) * (p.speed || 22), vy = p.pause > 0 ? 0 : Math.sin(p.a) * (p.speed || 22);
-                if (p.homeX !== undefined) {
-                    const hx = p.homeX - p.x, hy = p.homeY - p.y, hd = Math.hypot(hx, hy);
-                    if (hd > 80) { vx += hx / hd * 28; vy += hy / hd * 28 }
-                }
+                p.a += (Math.random() - .5) * dt * 3;
+                let vx = Math.cos(p.a) * 26, vy = Math.sin(p.a) * 26;
                 if (!onFoot && Math.abs(car.v) > 90) {
                     const dx = p.x - px, dy = p.y - py, dd = Math.hypot(dx, dy);
-                    if (dd < 110 && dd > 0) { vx += dx / dd * 170; vy += dy / dd * 170; p.pause = 0 }
+                    if (dd < 90 && dd > 0) { vx += dx / dd * 150; vy += dy / dd * 150 }
                 }
                 const nx2 = p.x + vx * dt, ny2 = p.y + vy * dt;
-                if (!solidAt(nx2, ny2) && clearAt(nx2, ny2, 5)) { p.x = nx2; p.y = ny2 } else { p.a += 2; p.pause = .4 }
+                if (!solidAt(nx2, ny2)) { p.x = nx2; p.y = ny2 } else p.a += 2;
                 if (!onFoot && Math.abs(car.v) > 70 && Math.hypot(p.x - px, p.y - py) < 20) {
                     boom(p.x, p.y, 8); p.dead = true; bump(1); logEvent('player ran over a pedestrian')
                 }
@@ -2571,8 +2199,7 @@
             peds = peds.filter(p => !p.dead && Math.hypot(p.x - px, p.y - py) < 1100);
 
             /* traffic */
-            const liveTrafficTarget = Math.max(2, Math.min(16, trafficTarget + (weather === 'night' ? -1 : 0) + (M.cur ? 1 : 0) + (heat >= 3 ? -2 : 0)));
-            while (traffic.filter(c => !c.parked).length < liveTrafficTarget) spawnTraffic();
+            while (traffic.filter(c => !c.parked).length < trafficTarget) spawnTraffic();
             const wf = weather === 'rain' ? .78 : weather === 'fog' ? .85 : 1;
             for (const c of traffic) {
                 if (c.parked) continue;
@@ -2686,7 +2313,7 @@
             }
             for (const c of gangs) if (c.hp <= 0 && !c.dead) {
                 explode(c.x, c.y, c.ang); c.dead = true; cash += 40;
-                if (c.svid) { const authoredVehicle = S.hasLiveRule('vehicle_destroyed', c.svid); S.fire('vehicle_destroyed:' + c.svid); if (state !== 'play') return; if (!authoredVehicle && S.handleVehicleDestroyed(c)) return }
+                if (c.svid) { S.fire('vehicle_destroyed:' + c.svid); if (state !== 'play') return }
                 spawnGangster(c.x + 20, c.y); spawnGangster(c.x - 20, c.y);
                 logEvent('player destroyed a gang car (+$40)'); Msg.show('gang car down +$40 — crew bailed out!', 'gk', 1)
             }
@@ -2695,7 +2322,7 @@
             /* traffic explosions */
             for (const c of traffic) if (c.hp <= 0) {
                 explode(c.x, c.y, c.ang); c.gone = true;
-                if (c.svid) { const authoredVehicle = S.hasLiveRule('vehicle_destroyed', c.svid); S.fire('vehicle_destroyed:' + c.svid); if (state !== 'play') return; if (!authoredVehicle && S.handleVehicleDestroyed(c)) return }
+                if (c.svid) { S.fire('vehicle_destroyed:' + c.svid); if (state !== 'play') return }
                 if (c.mkey && M.cur && M.cur.verb === 'jack') M.finish(false, 'the marked car was destroyed')
             }
             traffic = traffic.filter(c => !c.gone && (c.parked ? Math.hypot(c.x - px, c.y - py) < 1300 : Math.hypot(c.x - px, c.y - py) < 980));
@@ -2988,73 +2615,25 @@
             g.fillStyle = vg; g.fillRect(0, 0, W, H);
 
             const nav = M.navTarget && M.navTarget();
-            drawMissionNavigator(nav);
+            if (nav && state === 'play') {
+                const dist = Math.hypot(nav.x - px, nav.y - py);
+                const an = Math.atan2(nav.y - py, nav.x - px);
+                const pcx = W / 2 - lookX * Z, pcy = H / 2 - lookY * Z;
+                const sx = (nav.x - px) * Z + pcx, sy = (nav.y - py) * Z + pcy;
+                const offscreen = sx < 30 || sx > W - 30 || sy < 30 || sy > H - 30;
+                if (offscreen || dist > 320) {
+                    const ax = pcx + Math.cos(an) * 56, ay = pcy + Math.sin(an) * 56;
+                    g.save(); g.translate(ax, ay); g.rotate(an); g.fillStyle = '#4ade80';
+                    g.beginPath(); g.moveTo(16, 0); g.lineTo(-7, 9); g.lineTo(-2, 0); g.lineTo(-7, -9); g.closePath(); g.fill(); g.restore();
+                    g.fillStyle = '#4ade80'; g.font = 'bold 11px ui-monospace'; g.textAlign = 'center';
+                    g.fillText(Math.round(dist / 10) + 'm', ax, ay + 24)
+                }
+            }
             drawMinimap(nav);
         }
 
-
-        function drawNavLoader() {
-            const ax = W - 86, ay = Math.max(120, H * .32);
-            const spin = t * 4;
-            g.save();
-            g.translate(ax, ay);
-            g.strokeStyle = 'rgba(74,222,128,.85)';
-            g.lineWidth = 4;
-            g.beginPath();
-            g.arc(0, 0, 18, spin, spin + Math.PI * 1.45);
-            g.stroke();
-            g.font = 'bold 11px ui-monospace';
-            g.textAlign = 'center';
-            g.fillStyle = '#4ade80';
-            g.fillText('TARGET', 0, 34);
-            g.restore();
-        }
-
-        function drawMissionNavigator(nav) {
-            if ((!nav || !isFinite(nav.x) || !isFinite(nav.y)) && state === 'play' && M.cur) return drawNavLoader();
-            if (!nav || state !== 'play') return;
-            const pcx = W / 2 - lookX * Z, pcy = H / 2 - lookY * Z;
-            const dx = nav.x - px, dy = nav.y - py;
-            const dist = Math.hypot(dx, dy);
-            if (!isFinite(dist) || dist < 1) return;
-            const an = Math.atan2(dy, dx);
-            const sx = dx * Z + pcx, sy = dy * Z + pcy;
-            const pad = 48;
-            const onScreen = sx > pad && sx < W - pad && sy > pad && sy < H - pad;
-            const meters = Math.max(1, Math.round(dist / 10));
-            const label = meters > 999 ? 'GO' : meters + 'm';
-            let ax, ay;
-            if (onScreen) {
-                // Keep the old-style hint: only an arrow + meters, no route line.
-                ax = sx; ay = sy - 34;
-            } else {
-                const rx = Math.cos(an), ry = Math.sin(an);
-                const maxX = Math.abs(rx) < .001 ? 1e9 : (rx > 0 ? (W - pad - pcx) / rx : (pad - pcx) / rx);
-                const maxY = Math.abs(ry) < .001 ? 1e9 : (ry > 0 ? (H - pad - pcy) / ry : (pad - pcy) / ry);
-                const rr = Math.max(24, Math.min(maxX, maxY));
-                ax = pcx + rx * rr; ay = pcy + ry * rr;
-            }
-            g.save();
-            g.translate(ax, ay); g.rotate(an);
-            g.fillStyle = '#4ade80';
-            g.strokeStyle = 'rgba(0,0,0,.62)';
-            g.lineWidth = 3;
-            g.beginPath(); g.moveTo(20, 0); g.lineTo(-12, 13); g.lineTo(-4, 0); g.lineTo(-12, -13); g.closePath();
-            g.stroke(); g.fill();
-            g.restore();
-            g.save();
-            g.font = 'bold 13px ui-monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
-            const tx = ax, ty = ay + (onScreen ? -22 : 28);
-            g.fillStyle = 'rgba(0,0,0,.58)';
-            const tw = g.measureText(label).width + 16;
-            g.fillRect(tx - tw / 2, ty - 10, tw, 20);
-            g.fillStyle = '#4ade80';
-            g.fillText(label, tx, ty);
-            g.restore();
-        }
-
         function drawMinimap(nav) {
-            const r = Math.round(58 * U), mapTop = W < 620 ? 208 : 182, mx = 16 + r, my = mapTop + r;
+            const r = Math.round(58 * U), mx = 16 + r, my = 132 + r;
             g.save();
             g.beginPath(); g.arc(mx, my, r, 0, 7); g.clip();
             g.fillStyle = 'rgba(34,37,44,.94)'; g.fillRect(mx - r, my - r, r * 2, r * 2);
@@ -3163,37 +2742,22 @@
             if (pr) {
                 g.font = 'bold 10px ui-monospace';
                 g.fillStyle = pr.owned ? '#4ade80' : '#fbbf24';
-                g.fillText(pr.owned ? 'OWNED · $' + pr.income + '/5min' : 'FOR SALE $' + pr.price, sx2, y + BS - 4)
+                g.fillText(pr.owned ? 'OWNED · $' + pr.income + '/min' : 'FOR SALE $' + pr.price, sx2, y + BS - 4)
             }
         }
 
         function drawCar(x, y, ang, col, cop, ent, night, isPlayer) {
-            const kind = ent && ent.kind || 'car';
             g.save(); g.translate(x, y); g.rotate(ang);
-            if (kind === 'bike') {
-                g.fillStyle = col; g.fillRect(-16, -4, 32, 8);
-                g.fillStyle = '#111827'; g.beginPath(); g.arc(-12, 0, 5, 0, 7); g.arc(12, 0, 5, 0, 7); g.fill();
-            } else if (kind === 'tank') {
-                g.fillStyle = '#111827'; g.fillRect(-27, -15, 54, 30);
-                g.fillStyle = col; g.fillRect(-23, -12, 46, 24);
-                g.fillStyle = 'rgba(255,255,255,.13)'; g.fillRect(-18, -9, 20, 18);
-                g.fillStyle = col; g.fillRect(-2, -4, 34, 8);
-                g.strokeStyle = 'rgba(0,0,0,.55)'; g.strokeRect(-23, -12, 46, 24);
-            } else {
-                const L = kind === 'bus' ? 56 : kind === 'van' || kind === 'armored' ? 48 : kind === 'sports' ? 44 : 40;
-                const HH = kind === 'bus' ? 14 : kind === 'armored' ? 13 : 11;
-                g.fillStyle = col; g.fillRect(-L / 2, -HH, L, HH * 2);
-                g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(-L / 2, -HH, L, 5);
-                g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(2, -8, Math.min(14, L * .24), 16);
-                if (kind === 'armored') { g.strokeStyle = 'rgba(255,255,255,.25)'; g.strokeRect(-L / 2 + 5, -HH + 4, L - 10, HH * 2 - 8) }
-                if (night) {
-                    g.fillStyle = '#fff7d6'; g.fillRect(L / 2 - 3, -9, 3, 4); g.fillRect(L / 2 - 3, 5, 3, 4);
-                    g.fillStyle = '#ff6b6b'; g.fillRect(-L / 2, -9, 2, 4); g.fillRect(-L / 2, 5, 2, 4)
-                }
-                g.strokeStyle = 'rgba(0,0,0,.5)'; g.strokeRect(-L / 2, -HH, L, HH * 2);
-            }
+            g.fillStyle = col; g.fillRect(-20, -11, 40, 22);
+            g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(-20, -11, 40, 5);
+            g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(2, -8, 10, 16);
             if (cop) { g.fillStyle = Math.sin(t * 14) > 0 ? '#ef4444' : '#3b82f6'; g.fillRect(-6, -9, 8, 18) }
             if (ent && ent.mhp && ent.hp < ent.mhp * .5) { g.fillStyle = 'rgba(60,60,60,.55)'; g.fillRect(-14, -7, 12, 14) }
+            if (night) {
+                g.fillStyle = '#fff7d6'; g.fillRect(17, -9, 3, 4); g.fillRect(17, 5, 3, 4);
+                g.fillStyle = '#ff6b6b'; g.fillRect(-20, -9, 2, 4); g.fillRect(-20, 5, 2, 4)
+            }
+            g.strokeStyle = 'rgba(0,0,0,.5)'; g.strokeRect(-20, -11, 40, 22);
             g.restore()
         }
 
