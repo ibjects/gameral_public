@@ -348,28 +348,6 @@
             opacity: .4
         }
 
-        #powbtn {
-            position: fixed;
-            right: 104px;
-            bottom: 72px;
-            width: 66px;
-            height: 66px;
-            border-radius: 50%;
-            z-index: 6;
-            font-size: 9.5px;
-            border-color: #60a5fa;
-            color: #93c5fd;
-            background: rgba(96, 165, 250, .12)
-        }
-
-        #powbtn:active {
-            background: rgba(96, 165, 250, .3)
-        }
-
-        #powbtn.empty {
-            opacity: .38
-        }
-
         #joy {
             position: fixed;
             left: 16px;
@@ -647,7 +625,6 @@
             <div id="joy-knob"></div>
         </div>
         <button id="firebtn" class="a-btn ui-int">FIRE</button>
-        <button id="powbtn" class="a-btn ui-int">POWER</button>
         <button id="actbtn" class="a-btn ui-int">JACK</button>
         <div class="credit ui-int"><span class="credit-full">By: </span><span class="credit-short">By: </span><a
                 href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.2.3
@@ -708,7 +685,6 @@
         let car = null, peds = [], traffic = [], cops = [], gangs = [], gangsters = [], bullets = [], pickups = [],
             parts = [], rings = [], wrecks = [], takenLots = {}, copSpawnT = 0, grabT = 0, pickupT = 12, shake = 0, targetPed = null;
         let weather = 'clear', keysDown = {}, ptr = null, trafficTarget = 6, pedTarget = 13;
-        let abilities = {}, powerCool = 0, powerLabel = ''; // AI-granted mechanics: pulse, dash, shield, repair, magnet
         let muse = [];
         const MUSE_WORDS = ['orca', 'pawnshop', 'monsoon', 'violin', 'counterfeit', 'lighthouse', 'insomnia', 'carnival', 'chess', 'tattoo', 'archive', 'honey', 'blackout', 'satellite', 'orchid', 'casino', 'glacier', 'rooftop', 'antique', 'smoke', 'ferry', 'neon', 'harvest', 'passport', 'aquarium', 'jukebox', 'scaffold', 'ledger', 'perfume', 'thunder', 'arcade', 'butcher', 'origami', 'subway', 'vineyard', 'static', 'mirror', 'anchor', 'firefly', 'vault', 'sermon', 'meteor', 'laundry', 'dice', 'siren', 'compass', 'ivory', 'baptism', 'circuit', 'marble', 'harbor', 'eclipse', 'saffron', 'gargoyle', 'pigeon', 'typewriter', 'ambulance', 'confession', 'karaoke', 'monolith'];
         function pickMuse() { const out = []; while (out.length < 3) { const w = MUSE_WORDS[(Math.random() * MUSE_WORDS.length) | 0]; if (!out.includes(w)) out.push(w) } return out }
@@ -726,7 +702,7 @@
         function saveGame() {
             try {
                 store.set(SKEY, JSON.stringify({
-                    v: 6, cash: Math.round(cash), best, ammo, hearts, maxHearts, weather, chapterN, abilities, powerLabel,
+                    v: 6, cash: Math.round(cash), best, ammo, hearts, maxHearts, weather, chapterN,
                     playMin: Math.round(playMin * 10) / 10, mem: Director.memory, mode: Director.mode,
                     events: events.slice(-10), props, landmarks, muse
                 }))
@@ -738,8 +714,6 @@
             cash = snum(sv.cash, 0, 1e9, 0); best = snum(sv.best, 0, 1e9, 0); ammo = snum(sv.ammo, 0, 999, 10);
             maxHearts = snum(sv.maxHearts, 3, 5, 3); hearts = maxHearts;
             weather = ['clear', 'rain', 'night', 'fog'].includes(sv.weather) ? sv.weather : 'clear';
-            abilities = (sv.abilities && typeof sv.abilities === 'object') ? sv.abilities : {};
-            powerLabel = sstr(sv.powerLabel || Object.keys(abilities).find(k => abilities[k]) || '', 18);
             chapterN = snum(sv.chapterN, 0, 1e6, 0); playMin = snum(sv.playMin, 0, 1e6, 0);
             Director.memory = sstr(sv.mem, 900);
             muse = Array.isArray(sv.muse) && sv.muse.length ? sv.muse.slice(0, 3).map(w => sstr(w, 14)) : (muse.length ? muse : pickMuse());
@@ -808,7 +782,6 @@
             return {
                 cash: '$' + cash, hearts: '♥'.repeat(Math.max(0, hearts)) + '♡'.repeat(Math.max(0, maxHearts - hearts)),
                 heat: '★'.repeat(heat) + '☆'.repeat(5 - heat), ammo: '⦿ ' + ammo,
-                power: powerLabel || Object.keys(abilities).filter(k => abilities[k]).join('+').toUpperCase() || '—',
                 carHp: car ? Math.max(0, car.hp) / 100 : 0, carHpTxt: car ? ('CAR ' + Math.max(0, car.hp | 0) + '%') : 'ON FOOT',
                 chapter: 'CH.' + chapterN,
                 mission: {
@@ -845,7 +818,7 @@
                 }
             }
         }
-        const BINDS_OK = ['cash', 'hearts', 'heat', 'ammo', 'carHpTxt', 'carHp', 'chapter', 'mission.title', 'mission.reward', 'mission.timeLeft', 'mission.progress', 'mission.step', 'mission.timer', 'power'];
+        const BINDS_OK = ['cash', 'hearts', 'heat', 'ammo', 'carHpTxt', 'carHp', 'chapter', 'mission.title', 'mission.reward', 'mission.timeLeft', 'mission.progress', 'mission.step', 'mission.timer'];
         function sstr(v, n) { return String(v == null ? '' : v).replace(/\s+/g, ' ').slice(0, n) }
         function snum(v, a, b, d) { v = +v; return isFinite(v) ? Math.max(a, Math.min(b, v)) : d }
 
@@ -983,7 +956,6 @@
             const lm = {
                 id: sstr(spec.id, 14) || ('lm' + (landmarks.length + props.length)), bi, bj,
                 name: sstr(spec.name, 18) || 'NEW BUILD', sign: sstr(spec.sign || spec.name, 16) || 'OPEN',
-                purpose: sstr(spec.purpose || spec.why || '', 90),
                 style: LM_STYLES.includes(spec.style) ? spec.style : 'shop',
                 color: LPAL[spec.color] ? spec.color : 'gold',
                 glyph: sGlyph(spec.glyph), gold: !!spec.gold,
@@ -992,7 +964,7 @@
             landmarks.push(lm); lmIdx[bi + ',' + bj] = lm;
             tileOv[bi + ',' + bj] = lm.style === 'custom' ? (lm.walk ? 'g:' + lm.ground : 'bldg') : (WALK_STYLES[lm.style] || 'bldg');
             if (!restoring) {
-                logEvent('the Director built "' + lm.name + '" onto the map' + (lm.purpose ? ' for ' + lm.purpose : ''));
+                logEvent('the Director built "' + lm.name + '" onto the map');
                 Msg.show('🏗 NEW ON THE MAP: ' + lm.name, 'lm' + lm.id, 1);
                 if (!clearAt(px, py, 9.5)) ({ x: px, y: py } = findFree(px, py, 12)); saveGame()
             }
@@ -1003,8 +975,7 @@
             const lm = addLandmark(spec, true); if (!lm) return null;
             landmarks.splice(landmarks.indexOf(lm), 1); // it lives in props instead
             const pr = {
-                id: lm.id, bi: lm.bi, bj: lm.bj, name: lm.name, sign: lm.sign, purpose: lm.purpose, style: lm.style, color: lm.color,
-                glyph: lm.glyph, walk: lm.walk, ground: lm.ground, roof: lm.roof,
+                id: lm.id, bi: lm.bi, bj: lm.bj, name: lm.name, sign: lm.sign, style: lm.style, color: lm.color,
                 price: Math.round(snum(spec.price, 100, 5000, 600)), income: Math.round(snum(spec.income, 0, 150, 20)),
                 perk: ['heal', 'ammo', 'garage', 'none'].includes(spec.perk) ? spec.perk : 'none',
                 owned: !!spec.owned, visitCd: 0, healT: 0
@@ -1214,7 +1185,6 @@
                         else if (a.kind === 'heart') hearts = Math.min(maxHearts, hearts + 1);
                         else if (a.kind === 'cash') cash += Math.round(snum(a.amount, 1, 800, 50))
                     }
-                    else if (act === 'ability') grantAbility(a.id, a.label || a.name);
                     else if (act === 'heat') { heat = snum(a.set, 0, 5, heat); coolT = 0; if (heat === 0) cops.length = 0 }
                     else if (act === 'timer') { S.timers[sstr(a.id, 14) || 'tmr'] = snum(a.seconds, 2, 240, 30) }
                     else if (act === 'explode') {
@@ -1476,192 +1446,11 @@
         }
 
         /* ================= DIRECTOR ================= */
-        // ================= LOCAL GOD — the offline brain =================
-        // No LLM here. A procedural director that plans arcs, invents buildings with
-        // freshly-generated vector art, composes scenes, and never repeats names.
-        const LG = {
-            uid: 0, step: 1, lastKind: '', cast: [], used: {}, premiseTxt: '',
-            R(a) { return a[(Math.random() * a.length) | 0] },
-            chance(p) { return Math.random() < p },
-            jit(v, j) { return Math.round(v + (Math.random() * 2 - 1) * j) },
-            pos(minD, maxD) { const a = Math.random() * 6.283, d = minD + Math.random() * (maxD - minD); return { dx: Math.round(Math.cos(a) * d), dy: Math.round(Math.sin(a) * d) } },
-            reset() { this.uid = 0; this.step = 1; this.lastKind = ''; this.cast = []; this.used = {}; this.premiseTxt = '' },
-            // ---- combinatorial names (thousands of combos, tracked for uniqueness) ----
-            BIZ_A: ['Ashfall', 'Blue Harbor', 'Ninth Ward', 'Meridian', 'Iron Lotus', 'Gilded', 'Halcyon', 'Cold River', 'Ember', 'Saltpetre', 'Vermillion', 'Kestrel', 'Obsidian', 'Fenwick', 'Marrow', 'Solace', 'Tidewater', 'Brimstone', 'Verdant', 'Copperline', 'Hollow Point', 'Grey Fox', 'Sunken', 'Northgate'],
-            BIZ_B: ['Textiles', 'Foundry', 'Imports', 'Salvage', 'Automotive', 'Cannery', 'Refinery', 'Holdings', 'Provisions', 'Freight', 'Clinic', 'Distillery', 'Botanica', 'Records', 'Hardware', 'Laundry', 'Fisheries', 'Motors', 'Apothecary', 'Arms', 'Noodle House', 'Bathhouse', 'Print Works', 'Exchange'],
-            BIZ_S: ['Co.', 'Ltd', '& Sons', 'Group', 'Union', 'Trust'],
-            FIRST: ['Dario', 'Mira', 'Cassius', 'Nadia', 'Ronan', 'Priya', 'Emil', 'Tamsin', 'Bishop', 'Isolde', 'Cyrus', 'Odette', 'Marlow', 'Freya', 'Dmitri', 'Selene', 'Augustin', 'Bexley', 'Lucian', 'Reyna', 'Osei', 'Junko', 'Halvard', 'Constance'],
-            LAST: ['Vance', 'Okonkwo', 'Reyes', 'Frost', 'Ashworth', 'Novak', 'Salloum', 'Kang', 'Delacroix', 'Vittori', 'Bane', 'Mercer', 'Lindqvist', 'Okafor', 'Sato', 'Prewitt', 'Voss', 'Amaru', 'Blackwood', 'Renner', 'Halloran', 'Dumont', 'Kessler', 'Ibarra'],
-            ADJ: ['Quiet', 'Crooked', 'Velvet', 'Broken', 'Golden', 'Pale', 'Hungry', 'Silent', 'Restless', 'Feral', 'Patient', 'Bitter', 'Lucky', 'Faceless', 'Painted', 'Hollow', 'Midnight', 'Glass', 'Iron', 'Sunday'],
-            NOUN: ['Magpie', 'Warden', 'Cardinal', 'Undertaker', 'Cartographer', 'Widow', 'Gardener', 'Locksmith', 'Ferryman', 'Sommelier', 'Archivist', 'Butcher', 'Tailor', 'Fox', 'Heron', 'Machinist', 'Courier', 'Pilgrim', 'Bishop', 'Jackal'],
-            uniq(fn) { for (let i = 0; i < 16; i++) { const v = fn(); if (v && !this.used[v]) { this.used[v] = 1; return v } } return fn() },
-            biz() { return this.uniq(() => { let n = this.R(this.BIZ_A) + ' ' + this.R(this.BIZ_B); if (this.chance(.35)) n += ' ' + this.R(this.BIZ_S); return n }) },
-            sign(name) { const w = name.toUpperCase().replace(/[^A-Z ]/g, '').split(' ').filter(Boolean); return ((w.find(x => x.length > 3) || w[0] || 'OPEN')).slice(0, 12) },
-            person() { return this.uniq(() => this.chance(.5) ? (this.R(this.FIRST) + ' ' + this.R(this.LAST)) : ('The ' + this.R(this.ADJ) + ' ' + this.R(this.NOUN))) },
-            crew() { return this.uniq(() => 'The ' + this.R(this.NOUN) + 's') },
-            // ---- procedural GLYPH: invented top-down vector art, valid for sGlyph ----
-            glyph(kind) {
-                const g = [], J = this.jit.bind(this), w2 = 2 + (Math.random() * 4 | 0);
-                kind = kind || this.R(['tower', 'dome', 'ring', 'star', 'campus', 'cross', 'crystal', 'waves', 'estate']);
-                if (kind === 'tower') { let sz = J(80, 6), x = (100 - sz) / 2; for (let i = 0; i < 3 && sz > 16; i++) { g.push({ s: 'rect', x, y: x, w: sz, h: sz, w2 }); sz -= J(22, 4); x = (100 - sz) / 2 } g.push({ s: 'circle', x: 50, y: 50, r: J(6, 2), f: 1 }) }
-                else if (kind === 'dome') { g.push({ s: 'ellipse', x: 50, y: 58, rx: J(38, 5), ry: J(24, 4), w2 }); g.push({ s: 'circle', x: 50, y: 46, r: J(21, 4), w2 }); g.push({ s: 'line', x1: 12, y1: 80, x2: 88, y2: 80, w2 }) }
-                else if (kind === 'ring') { g.push({ s: 'circle', x: 50, y: 50, r: J(38, 4), d: 1, w2: 2 + (Math.random() * 3 | 0) }); g.push({ s: 'circle', x: 50, y: 50, r: J(20, 3), d: 1, w2 }); if (this.chance(.5)) g.push({ s: 'circle', x: 50, y: 50, r: J(7, 2), f: 1 }) }
-                else if (kind === 'star') { const pts = [], n = 5 + (Math.random() * 3 | 0), ro = J(42, 4), ri = ro * .45; for (let i = 0; i < n * 2 && pts.length < 10; i++) { const r = i % 2 ? ri : ro, a = -Math.PI / 2 + i * Math.PI / n; pts.push([50 + Math.cos(a) * r, 50 + Math.sin(a) * r]) } g.push({ s: 'poly', pts, w2 }); g.push({ s: 'circle', x: 50, y: 50, r: J(6, 2), f: 1 }) }
-                else if (kind === 'campus') { const n = 2 + (Math.random() * 2 | 0), step = 70 / n, o = 15; for (let a = 0; a < n; a++)for (let b = 0; b < n; b++) if (this.chance(.78)) g.push({ s: 'rect', x: o + a * step + 3, y: o + b * step + 3, w: step - 6, h: step - 6, f: this.chance(.3) ? 1 : 0, w2: 2 }) }
-                else if (kind === 'cross') { const ww = 3 + (Math.random() * 3 | 0); g.push({ s: 'line', x1: 50, y1: 12, x2: 50, y2: 88, w2: ww }); g.push({ s: 'line', x1: 12, y1: 50, x2: 88, y2: 50, w2: ww }); if (this.chance(.5)) { g.push({ s: 'line', x1: 22, y1: 22, x2: 78, y2: 78, w2 }); g.push({ s: 'line', x1: 78, y1: 22, x2: 22, y2: 78, w2 }) } g.push({ s: 'circle', x: 50, y: 50, r: J(9, 3), w2 }) }
-                else if (kind === 'crystal') { const pts = [], n = 5 + (Math.random() * 3 | 0); for (let i = 0; i < n && pts.length < 10; i++) { const a = -Math.PI / 2 + i * 2 * Math.PI / n + (Math.random() * .4 - .2), r = J(38, 10); pts.push([50 + Math.cos(a) * r, 50 + Math.sin(a) * r]) } g.push({ s: 'poly', pts, w2 }); if (this.chance(.6)) g.push({ s: 'poly', pts: pts.map(p => [50 + (p[0] - 50) * .5, 50 + (p[1] - 50) * .5]), w2 }) }
-                else if (kind === 'waves') { for (let i = 0; i < 4; i++)g.push({ s: 'line', x1: 14, y1: 26 + i * 16, x2: 86, y2: 26 + i * 16, d: 1, w2: 2 + (i % 2) }) }
-                else { g.push({ s: 'rect', x: 18, y: 30, w: 64, h: 48, w2 }); g.push({ s: 'poly', pts: [[14, 32], [50, 10], [86, 32]], w2 }); if (this.chance(.6)) g.push({ s: 'rect', x: 42, y: 52, w: 16, h: 26, f: 1 }) }
-                return g.slice(0, 16)
-            },
-            // ---- invent a block to expand the city (drawn fresh each time) ----
-            invent() {
-                return this.inventFor({ outcomeHint: this.R(['witness', 'smuggling', 'safehouse', 'repair', 'memory']) })
-            },
-            inventFor(built) {
-                const hint = (built && built.outcomeHint) || 'mystery';
-                const p = this.pos(520, 1150), col = this.R(['gold', 'blue', 'green', 'orange', 'white', 'purple', 'pink', 'red']);
-                const catalog = {
-                    betrayal: ['False Door Tribunal', 'a courthouse-front trap where informants are tested', 'cross', false, 'purple'],
-                    alliance: ['Oath Market', "a neutral market for the player's first alliance", 'ring', true, 'paving'],
-                    protected: ['Lantern Safehouse', 'a safehouse network born from the escort mission', 'estate', false, 'green'],
-                    defused: ['Fusewater Yard', 'a bomb-disposal yard built after the trunk wire job', 'waves', true, 'asphalt'],
-                    choice: ['Forked Court', "a public square marking the player's moral choice", 'cross', true, 'gold'],
-                    silenced: ['Mute Bell Annex', 'an archive for secrets that should not have spoken', 'dome', false, 'blue'],
-                    scored: ['Ledger Vault', 'a money-laundering property created by the heist', 'campus', false, 'gold'],
-                    delivered: ['Courier Exchange', 'a dispatch hub opened because the player beat the clock', 'tower', false, 'orange'],
-                    finale: ['Ash Garden Memorial', 'a scar on the map after the finale, part park and part warning', 'star', true, 'soil'],
-                    won: ['Redline Garage', 'a garage that services cars after crew wars', 'campus', false, 'red']
-                };
-                const spec = catalog[hint] || [this.biz(), 'a new story venue placed because the Director needs a stage', this.R(['tower', 'dome', 'ring', 'star', 'campus', 'crystal']), this.chance(.35), this.R(['grass', 'soil', 'paving', 'asphalt', 'water'])];
-                let name = this.uniq(() => spec[0] + (this.chance(.25) ? ' ' + this.R(['North', 'South', 'Annex', 'Yard', 'Gate']) : ''));
-                if (name.length > 18) name = name.slice(0, 18);
-                const asProp = this.chance(.46);
-                const o = { op: asProp ? 'property' : 'landmark', id: 'lg' + (this.uid++), dx: p.dx, dy: p.dy, name, sign: this.sign(name), purpose: spec[1], style: 'custom', color: col };
-                if (spec[3]) {
-                    o.walk = true; o.ground = spec[4] || this.R(['grass', 'soil', 'sand', 'water', 'paving', 'asphalt']);
-                    o.glyph = this.glyph(spec[2] || (o.ground === 'water' || o.ground === 'soil' ? 'waves' : 'ring'));
-                } else {
-                    o.walk = false; o.roof = this.R(['blue', 'purple', 'green', 'orange', 'white', 'red', null]);
-                    o.glyph = this.glyph(spec[2] || this.R(['tower', 'dome', 'crystal', 'estate', 'campus', 'ring']));
-                }
-                if (asProp) { o.price = 220 + (Math.random() * 1350 | 0); o.income = 12 + (Math.random() * 70 | 0); o.perk = this.R(['heal', 'ammo', 'garage', 'none', 'none']) }
-                return o
-            },
-            shop() {
-                const pool = [['Bribe the Watch', 150, 'bribe'], ['Field Medkit', 100, 'heal'], ['Ammo Crate', 90, 'ammo'], ['Black-Market Favor', 220, 'ammo']];
-                const out = [], n = 1 + (Math.random() * 2 | 0);
-                for (let i = 0; i < n; i++) { const x = this.R(pool); out.push({ label: x[0], cost: x[1], id: x[2] }) }
-                return out
-            },
-            // ---- compose one scripted scene, procedurally filled ----
-            compose(step) {
-                const rew = 120 + chapterN * 25 + (Math.random() * 130 | 0);
-                const templates = step === 1 ? ['hook'] : step >= 5 ? ['finale', 'finale', 'hunt'] : ['escort', 'bomb', 'choice', 'stakeout', 'heist', 'deadline', 'hunt'];
-                let kind = this.R(templates);
-                if (kind === this.lastKind && templates.length > 1) kind = this.R(templates.filter(k => k !== this.lastKind));
-                this.lastKind = kind;
-                const id = () => 'e' + (this.uid++);
-                const P = this.pos.bind(this);
-
-                if (kind === 'hook') {
-                    const who = this.person(), z = id(), betray = this.chance(.55), a = P(360, 620);
-                    const spawn = [{ type: 'zone', id: z, dx: a.dx, dy: a.dy, r: 80, label: 'MEET', color: 'purple' }, { type: 'npc', id: 'ct', name: who, dx: a.dx + 12, dy: a.dy, color: 'purple', role: 'friendly', behavior: { kind: 'guard' } }];
-                    const rules = [];
-                    if (betray) {
-                        const e = id(), o = P(700, 1000);
-                        rules.push({ when: 'enter_zone:' + z, do: [{ act: 'say', id: 'ct', text: 'You came alone? Bold.' }, { act: 'behavior', id: 'ct', kind: 'chase_player', role: 'hostile', speed: 120 }, { act: 'spawn', type: 'zone', id: e, dx: o.dx, dy: o.dy, r: 95, label: 'LOSE THEM', color: 'blue' }, { act: 'objective', text: 'A setup — drop ' + who + ' or vanish', nav: 'zone:' + e }] });
-                        rules.push({ when: 'npc_dead:ct', do: [{ act: 'reward', amount: rew }, { act: 'banner', text: who + ' won\u2019t be missed. The city noticed.' }, { act: 'complete' }] });
-                        rules.push({ when: 'enter_zone:' + e, do: [{ act: 'banner', text: 'You ran. ' + who + ' remembers faces.' }, { act: 'reward', amount: (rew / 2) | 0 }, { act: 'complete' }] });
-                    } else {
-                        const g = id(), o = P(650, 950);
-                        rules.push({ when: 'enter_zone:' + z, do: [{ act: 'say', id: 'ct', text: 'Good. Take this and go — quietly.' }, { act: 'give', kind: 'cash', amount: 60 }, { act: 'spawn', type: 'zone', id: g, dx: o.dx, dy: o.dy, r: 85, label: 'DROP', color: 'green' }, { act: 'objective', text: 'Make the drop for ' + who, nav: 'zone:' + g }] });
-                        rules.push({ when: 'enter_zone:' + g, do: [{ act: 'reward', amount: rew }, { act: 'banner', text: 'Clean work. ' + who + ' owes you now.' }, { act: 'complete' }] });
-                    }
-                    return { banner: 'someone is asking for you by name', mission: { title: 'The ' + who.split(' ').pop() + ' Meeting', briefing: who + ' put out word they want to see you. Bring nothing.', verb: 'scene', reward: rew, heatStart: 1 }, scene: { objective: 'Meet ' + who, nav: 'zone:' + z, spawn, rules }, outcomeHint: betray ? 'betrayal' : 'alliance' };
-                }
-                if (kind === 'escort') {
-                    const who = this.person(), safe = id(), v = P(120, 260), s = P(800, 1150);
-                    const spawn = [{ type: 'npc', id: 'esc', name: who, dx: v.dx, dy: v.dy, color: 'green', role: 'friendly', speed: 90, behavior: { kind: 'follow_player' } }, { type: 'zone', id: safe, dx: s.dx, dy: s.dy, r: 100, label: 'SAFE HOUSE', color: 'green' }];
-                    const amb = P(400, 650);
-                    const rules = [{ when: 'start', do: [{ act: 'objective', text: 'Walk ' + who + ' to the safe house', nav: 'zone:' + safe }] }, { when: 'zone_stay:' + safe + ':1', do: [{ act: 'reward', amount: rew }, { act: 'banner', text: who + ' is safe. For now.' }, { act: 'complete' }] }, { when: 'hearts_below:2', once: true, do: [{ act: 'spawn', type: 'npc', id: 'amb', name: this.crew(), dx: amb.dx, dy: amb.dy, color: 'red', role: 'hostile', speed: 110, behavior: { kind: 'chase_player' } }, { act: 'say', id: 'esc', text: 'They found us — go, go!' }] }];
-                    return { banner: 'a body worth protecting walks into your night', mission: { title: 'Warm Body', briefing: who + ' needs to reach the safe house alive. Shield them.', verb: 'scene', reward: rew, heatStart: 2 }, scene: { objective: 'Escort ' + who, nav: 'zone:' + safe, spawn, rules }, outcomeHint: 'protected' };
-                }
-                if (kind === 'bomb') {
-                    const car = id(), dump = P(1000, 1500), fuse = 40 + (Math.random() * 20 | 0), from = this.person();
-                    const spawn = [{ type: 'vehicle', id: car, dx: this.jit(280, 60), dy: this.jit(120, 60), color: 'pink', marked: true }, { type: 'zone', id: 'dz', dx: dump.dx, dy: dump.dy, r: 110, label: 'DEAD DROP', color: 'red' }];
-                    const rules = [{ when: 'in_vehicle:' + car, do: [{ act: 'timer', id: 'fuse', seconds: fuse }, { act: 'phone', from, text: fuse + ' seconds. Drive it out, hero.' }, { act: 'objective', text: 'Dump the rigged car — ' + fuse + 's', nav: 'zone:dz' }] }, { when: 'enter_zone:dz', do: [{ act: 'explode', id: car }, { act: 'shake' }, { act: 'banner', text: 'Contained. Barely.' }, { act: 'reward', amount: rew }, { act: 'complete' }] }, { when: 'timer:fuse', do: [{ act: 'explode', id: car }, { act: 'fail', reason: 'the fuse won' }] }];
-                    return { banner: 'a gift was left for you. it is ticking.', mission: { title: 'Wire In The Trunk', briefing: from + ' left a rigged car nearby. Get it far from the crowds.', verb: 'scene', reward: rew }, scene: { objective: 'Reach the rigged car', nav: 'vehicle:' + car, spawn, rules }, outcomeHint: 'defused' };
-                }
-                if (kind === 'choice') {
-                    const gz = id(), rz = id(), g = P(380, 560), r = P(380, 560);
-                    const spawn = [{ type: 'zone', id: gz, dx: g.dx, dy: g.dy, r: 90, label: 'THE CLEAN WAY', color: 'gold' }, { type: 'zone', id: rz, dx: -Math.abs(r.dx), dy: r.dy, r: 90, label: 'THE OTHER WAY', color: 'red' }];
-                    const rules = [{ when: 'enter_zone:' + gz, do: [{ act: 'reward', amount: (rew * .7) | 0 }, { act: 'banner', text: 'Restraint. The city remembers mercy too.' }, { act: 'complete' }] }, { when: 'enter_zone:' + rz, do: [{ act: 'reward', amount: (rew * 1.6) | 0 }, { act: 'heat', set: 3 }, { act: 'gang', dx: 200, dy: 0 }, { act: 'banner', text: 'Blood money spends the same. Now run.' }, { act: 'complete' }] }];
-                    return { banner: 'two doors. one city is watching which you pick.', mission: { title: 'Two Doors', briefing: 'Easy money one way, ugly money the other. Choose.', verb: 'scene', reward: rew }, scene: { objective: 'Pick a door', nav: 'zone:' + gz, spawn, rules }, outcomeHint: 'choice' };
-                }
-                if (kind === 'stakeout') {
-                    const rat = this.person(), z = id(), w = P(340, 560);
-                    const spawn = [{ type: 'zone', id: z, dx: w.dx, dy: w.dy, r: 100, label: 'STAKEOUT', color: 'blue' }];
-                    const rp = P(90, 160);
-                    const rules = [{ when: 'zone_stay:' + z + ':7', once: true, do: [{ act: 'spawn', type: 'npc', id: 'rat', name: rat, dx: rp.dx, dy: rp.dy, color: 'orange', role: 'neutral', speed: 132, behavior: { kind: 'flee_player' } }, { act: 'say', id: 'rat', text: 'No — not tonight, not me!' }, { act: 'objective', text: rat + ' is bolting — run them down', nav: 'npc:rat' }, { act: 'give', kind: 'ammo', amount: 8 }] }, { when: 'npc_dead:rat', do: [{ act: 'reward', amount: rew }, { act: 'banner', text: 'The corner is quiet again.' }, { act: 'complete' }] }];
-                    return { banner: 'sit. watch. do not let this one leave.', mission: { title: 'Stakeout', briefing: 'Hold the corner. When ' + rat + ' runs, end it.', verb: 'scene', reward: rew, heatStart: 1 }, scene: { objective: 'Hold the stakeout', nav: 'zone:' + z, spawn, rules }, outcomeHint: 'silenced' };
-                }
-                if (kind === 'heist') {
-                    const place = this.biz(), vault = id(), out = id(), vp = P(420, 640), op = P(900, 1300), t = 35 + (Math.random() * 20 | 0);
-                    const spawn = [{ type: 'zone', id: vault, dx: vp.dx, dy: vp.dy, r: 80, label: this.sign(place), color: 'gold' }];
-                    const rules = [{ when: 'start', do: [{ act: 'objective', text: 'Break into ' + place, nav: 'zone:' + vault }] }, { when: 'enter_zone:' + vault, once: true, do: [{ act: 'timer', id: 'alarm', seconds: t }, { act: 'banner', text: 'Alarm tripped — ' + t + 's to vanish' }, { act: 'heat', set: 2 }, { act: 'spawn', type: 'zone', id: out, dx: op.dx, dy: op.dy, r: 100, label: 'FENCE', color: 'green' }, { act: 'objective', text: 'Get the goods to the fence', nav: 'zone:' + out }] }, { when: 'enter_zone:' + out, do: [{ act: 'reward', amount: rew }, { act: 'banner', text: 'Clean exit. ' + place + ' never saw your face.' }, { act: 'complete' }] }, { when: 'timer:alarm', do: [{ act: 'heat', set: 4 }, { act: 'fail', reason: 'too slow — the block lit up' }] }];
-                    return { banner: 'there is a soft target with a hard payout', mission: { title: 'The ' + this.sign(place) + ' Job', briefing: place + ' keeps more than it should. Take it and fence it.', verb: 'scene', reward: rew }, scene: { objective: 'Case ' + place, nav: 'zone:' + vault, spawn, rules }, outcomeHint: 'scored' };
-                }
-                if (kind === 'deadline') {
-                    const z = id(), d = P(1000, 1450), t = 45 + (Math.random() * 25 | 0), who = this.person();
-                    const spawn = [{ type: 'zone', id: z, dx: d.dx, dy: d.dy, r: 100, label: 'DELIVERY', color: 'orange' }];
-                    const rules = [{ when: 'start', do: [{ act: 'timer', id: 'clk', seconds: t }, { act: 'objective', text: 'Deliver to ' + who + ' — ' + t + 's', nav: 'zone:' + z }] }, { when: 'enter_zone:' + z, do: [{ act: 'reward', amount: rew }, { act: 'banner', text: who + ' got the package on time.' }, { act: 'complete' }] }, { when: 'timer:clk', do: [{ act: 'fail', reason: 'the window closed' }] }];
-                    return { banner: 'a clock just started somewhere with your name on it', mission: { title: 'Beat The Clock', briefing: who + ' needs this across town before the window shuts.', verb: 'scene', reward: rew, heatStart: 1 }, scene: { objective: 'Race to the drop', nav: 'zone:' + z, spawn, rules }, outcomeHint: 'delivered' };
-                }
-                // finale / hunt — a boss and their crew
-                const boss = this.person(), crew = this.crew();
-                const bp = P(500, 760), m1 = P(300, 520), m2 = P(300, 520);
-                const spawn = [{ type: 'npc', id: 'boss', name: boss, dx: bp.dx, dy: bp.dy, color: 'red', role: 'hostile', hp: 10, speed: 96, behavior: { kind: 'chase_player' } }, { type: 'npc', id: 'm1', name: crew, dx: m1.dx, dy: m1.dy, color: 'red', role: 'hostile', hp: 5, speed: 108, behavior: { kind: 'chase_player' } }, { type: 'npc', id: 'm2', name: crew, dx: m2.dx, dy: m2.dy, color: 'red', role: 'hostile', hp: 5, speed: 108, behavior: { kind: 'chase_player' } }, { type: 'pickup', id: 'am', kind: 'ammo', dx: 120, dy: -90 }];
-                const big = step >= 5;
-                const rules = [{ when: 'start', do: [{ act: 'objective', text: 'End ' + boss, nav: 'npc:boss' }].concat(big ? [{ act: 'shake' }, { act: 'weather', kind: 'night' }] : []) }, { when: 'npc_dead:boss', do: [{ act: 'reward', amount: big ? rew + 300 : rew }, { act: 'banner', text: big ? boss + ' falls. A chapter of the city closes.' : boss + ' is finished.' }].concat(big ? [{ act: 'shake' }, { act: 'give', kind: 'cash', amount: 150 }] : []).concat([{ act: 'complete' }]) }];
-                return { banner: big ? 'everything has been leading to this' : crew + ' is hunting you first', mission: { title: big ? 'Finale: ' + boss.split(' ').pop() : 'Loose Ends', briefing: (big ? 'It ends tonight. ' : '') + boss + ' and ' + crew + ' are coming. Put them down.', verb: 'scene', reward: big ? rew + 300 : rew, heatStart: big ? 3 : 2 }, scene: { objective: 'Take down ' + boss, nav: 'npc:boss', spawn, rules }, outcomeHint: big ? 'finale' : 'won' };
-            },
-            // ---- arc memory (persisted so the saga reads continuous) ----
-            newArc() {
-                const seed = (muse && muse.length ? muse : ['neon', 'harbor', 'static']);
-                this.cast = [this.person(), this.person()]; this.step = 1;
-                this.premiseTxt = 'A saga spun from ' + seed.join(', ') + ' — starring your mortal, tangled with ' + this.cast[0] + ' and haunted by ' + this.cast[1] + '.';
-            },
-            memory(step, next) {
-                const arc = ['a hook', 'a job that turns', 'a debt called in', 'a point of no return', 'the reckoning'];
-                return (this.premiseTxt + ' PLAN: 1)' + arc[0] + ' 2)' + arc[1] + ' 3)' + arc[2] + ' 4)' + arc[3] + ' 5)' + arc[4] + '. STEP ' + next + '/5. CAST: ' + this.cast.join(', ') + '.').slice(0, 900)
-            },
-            plan() {
-                if (!this.cast.length) this.newArc();
-                let step = this.step; if (step < 1 || step > 5) step = 1;
-                const built = this.compose(step);
-                if (built.scene && Array.isArray(built.scene.rules) && (!Object.keys(abilities).some(k => abilities[k]) || this.chance(.18))) {
-                    const pow = this.R([['pulse', 'Echo Pulse'], ['dash', 'Alley Blink'], ['shield', 'Glass Shield'], ['repair', 'Street Patch'], ['magnet', 'Scrap Magnet']]);
-                    let sr = built.scene.rules.find(r => r.when === 'start');
-                    if (!sr) { sr = { when: 'start', do: [] }; built.scene.rules.unshift(sr) }
-                    sr.do = [{ act: 'ability', id: pow[0], label: pow[1] }, { act: 'banner', text: 'The city rewires your body: ' + pow[1] + ' unlocked.' }].concat(sr.do || []).slice(0, 6);
-                    built.mission.briefing = (built.mission.briefing + ' The city may install a new trick in you.').slice(0, 140)
-                }
-                const world = [];
-                if (this.chance(.92)) world.push(this.inventFor(built));
-                if (this.chance(.26)) world.push({ op: 'weather', kind: this.R(['night', 'rain', 'clear', 'fog']) });
-                if (this.chance(.22)) world.push({ op: 'mood', traffic: this.R([2, 4, 6, 9, 12]), peds: this.R([4, 8, 12, 18]) });
-                const next = step >= 5 ? 1 : step + 1;
-                if (step >= 5) this.newArc(); else this.step = next;
-                return { banner: built.banner, memory: this.memory(step, next), mission: built.mission, scene: built.scene, world, ui: [], shop: this.shop() }
-            }
-        };
-
         const Director = {
             key: '', mode: 'offline', memory: '', busy: false, lastCall: 0, timer: null, n: 0,
             plan(delay) { clearTimeout(Director.timer); Director.timer = setTimeout(() => Director.go(), delay || 10) },
             async go() {
-                if (Director.busy || Director.paused || state !== 'play') return;
+                if (Director.busy || state !== 'play') return;
                 const now = Date.now();
                 if (now - Director.lastCall < 7000) { Director.plan(7000 - (now - Director.lastCall)); return }
                 Director.busy = true; Director.lastCall = now;
@@ -1674,7 +1463,76 @@
                 if (!plan) plan = Director.offline();
                 Director.apply(plan); Director.busy = false
             },
-            offline() { return LG.plan() },
+            demoProperty() {
+                const nms = ['Neon Noodles', 'Shadow Clinic', 'The Rusty Wrench', 'Cyber Cafe', 'Bulletproof Vest Co.'];
+                const sns = ['NOODLES', 'CLINIC', 'WRENCH', 'CAFE', 'ARMOR'];
+                const cls = ['orange', 'red', 'white', 'blue', 'green'];
+                const r = Math.random() * nms.length | 0;
+                return {
+                    banner: 'the god of the city opens a business', memory: Director.memory || 'Offline saga running.',
+                    mission: { title: 'Grand Opening', briefing: `The Director built ${nms[r]}. Swing by — there is an offer taped to the counter.`, verb: 'goto', waypoints: [{ dx: 520, dy: 240, label: sns[r] }], reward: 120, timeLimit: 0 },
+                    world: [{ op: 'property', id: 'prop' + Date.now(), dx: 520, dy: 240, name: nms[r], sign: sns[r], style: 'shop', color: cls[r], price: 400, income: 25, perk: 'heal' }],
+                    ui: [], shop: [{ label: 'Medkit', cost: 100, id: 'heal' }]
+                }
+            },
+            demoWonder() {
+                const nms = ['The Monolith', 'Crystal Tower', 'Neon Obelisk', 'The Cube'];
+                const sns = ['MONOLITH', 'CRYSTAL', 'OBELISK', 'CUBE'];
+                const r = Math.random() * nms.length | 0;
+                return {
+                    banner: 'overnight, the god of the island redraws the map', memory: Director.memory || 'Offline saga running.',
+                    mission: { title: 'City Planning', briefing: `A monument rose downtown and a farm sprouted on the edge of the grid. Go look at what your god has made.`, verb: 'goto', waypoints: [{ dx: 640, dy: -320, label: sns[r] }], reward: 140, timeLimit: 0 },
+                    world: [
+                        { op: 'landmark', id: 'wonder1' + Date.now(), dx: 640, dy: -320, name: nms[r], sign: sns[r], style: 'wonder', color: 'gold', glyph: 'pyramid', gold: true },
+                        { op: 'landmark', id: 'farm1' + Date.now(), dx: -820, dy: 560, name: 'Hillside Farm', sign: 'FARM', style: 'farm', color: 'green', glyph: [{ s: 'circle', x: 50, y: 50, r: 30, d: 1 }, { s: 'circle', x: 50, y: 50, r: 6, f: 1 }] }
+                    ],
+                    ui: [], shop: [{ label: 'Medkit', cost: 100, id: 'heal' }]
+                }
+            },
+            demoScene(n) {
+                const kind = ((n / 6) | 0) % 4;
+                const nms = ['Ghost', 'Specter', 'Viper', 'Jackal'];
+                const r = Math.random() * nms.length | 0;
+                const v = nms[r];
+                const base = { memory: Director.memory || 'Offline saga running.', world: [], ui: [], shop: [{ label: 'Bribe Cops', cost: 150, id: 'bribe' }] };
+                if (kind === 0) return { ...base, banner: 'someone wants to meet. someones always lie.', mission: { title: `The ${v} Meeting`, briefing: `${v} has a job for you. Probably.`, verb: 'scene', reward: 240 }, scene: { objective: `Meet ${v} at the mark`, nav: 'zone:meet', spawn: [{ type: 'zone', id: 'meet', dx: 460, dy: -200, r: 85, label: 'MEET' }, { type: 'npc', id: 'vil', name: v, dx: 470, dy: -190, color: 'purple', role: 'friendly', behavior: { kind: 'guard' } }], rules: [{ when: 'enter_zone:meet', do: [{ act: 'say', id: 'vil', text: 'You came alone? Cute.' }, { act: 'behavior', id: 'vil', kind: 'chase_player', role: 'hostile', speed: 118 }, { act: 'spawn', type: 'zone', id: 'out', dx: -520, dy: 320, r: 95, label: 'ESCAPE', color: 'blue' }, { act: 'objective', text: `A trap — drop ${v} or escape`, nav: 'zone:out' }] }, { when: 'npc_dead:vil', do: [{ act: 'reward', amount: 120 }, { act: 'banner', text: `${v} is done. His boss will hear.` }, { act: 'complete' }] }, { when: 'enter_zone:out', do: [{ act: 'banner', text: `You ran. ${v} remembers that.` }, { act: 'complete' }] }] } };
+                if (kind === 1) return { ...base, banner: 'there is a pink sedan nearby. it ticks.', mission: { title: 'Wire In The Trunk', briefing: 'A rigged car. Get it far away before the timer.', verb: 'scene', reward: 300 }, scene: { objective: 'Get in the rigged car', nav: 'vehicle:bombcar', spawn: [{ type: 'vehicle', id: 'bombcar', dx: 300, dy: 120, color: 'pink', marked: true }, { type: 'zone', id: 'dump', dx: -900, dy: -500, r: 110, label: 'DUMP SITE', color: 'red' }], rules: [{ when: 'in_vehicle:bombcar', do: [{ act: 'timer', id: 'fuse', seconds: 45 }, { act: 'phone', from: 'UNKNOWN', text: '45 seconds. Drive, mortal.' }, { act: 'objective', text: 'DUMP IT — 45 seconds', nav: 'zone:dump' }] }, { when: 'enter_zone:dump', do: [{ act: 'explode', id: 'bombcar' }, { act: 'banner', text: 'BOOM. Contained. Barely.' }, { act: 'reward', amount: 80 }, { act: 'complete' }] }, { when: 'timer:fuse', do: [{ act: 'explode', id: 'bombcar' }, { act: 'fail', reason: 'the wire won' }] }] } };
+                if (kind === 2) return { ...base, banner: 'two doors. one city. choose.', mission: { title: 'The Choice', briefing: 'Gold zone: clean money. Red zone: blood money.', verb: 'scene', reward: 150 }, scene: { objective: 'Pick a door', nav: 'zone:gold', spawn: [{ type: 'zone', id: 'gold', dx: 420, dy: 300, r: 90, label: 'CLEAN', color: 'gold' }, { type: 'zone', id: 'red', dx: -420, dy: 300, r: 90, label: 'BLOOD', color: 'red' }], rules: [{ when: 'enter_zone:gold', do: [{ act: 'reward', amount: 90 }, { act: 'banner', text: 'Soft hands. The city notices mercy too.' }, { act: 'complete' }] }, { when: 'enter_zone:red', do: [{ act: 'reward', amount: 260 }, { act: 'heat', set: 3 }, { act: 'gang', dx: 200, dy: 0 }, { act: 'banner', text: 'Blood money spends the same. Run.' }, { act: 'complete' }] }] } };
+                return { ...base, banner: 'sit still. watch. then do not let him leave.', mission: { title: 'Stakeout', briefing: 'Hold the corner for 8 seconds. When the rat bolts — end him.', verb: 'scene', reward: 280 }, scene: { objective: 'Hold the stakeout zone', nav: 'zone:watch', spawn: [{ type: 'zone', id: 'watch', dx: 380, dy: -260, r: 100, label: 'STAKEOUT', color: 'blue' }], rules: [{ when: 'zone_stay:watch:8', do: [{ act: 'spawn', type: 'npc', id: 'rat', name: 'THE RAT', dx: 120, dy: -80, color: 'orange', role: 'neutral', speed: 130, behavior: { kind: 'flee_player' } }, { act: 'say', id: 'rat', text: 'No no no—' }, { act: 'objective', text: 'The rat is running — silence him', nav: 'npc:rat' }, { act: 'give', kind: 'ammo', amount: 8 }] }, { when: 'npc_dead:rat', do: [{ act: 'banner', text: 'Quiet corner again.' }, { act: 'complete' }] }] } };
+            },
+            offline() {
+                // True random instead of fixed sequence
+                const verbs = ['deliver', 'race', 'hunt', 'taxi', 'jack', 'evade', 'hit', 'goto'];
+                const v = verbs[Math.floor(Math.random() * verbs.length)];
+                const wp = (d) => { const a = Math.random() * 6.28; return { dx: Math.cos(a) * d, dy: Math.sin(a) * d, label: '' } };
+                const L = {
+                    deliver: ['Hot Package', 'No questions. Pick it up, drop it off, get paid.'],
+                    race: ['Street Sprint', 'Checkpoints. The clock is already laughing at you.'],
+                    goto: ['Meet the Contact', 'Someone wants a word. Come alone.'],
+                    taxi: ['Fare Dodger', 'A passenger needs out of the neighborhood. Fast.'],
+                    jack: ['Repo Job', 'A marked pink ride needs "recovering". Bring it in.'],
+                    evade: ['Burn Notice', 'Too famous. Lose the heat, earn the quiet.'],
+                    hunt: ['Crew Cut', 'A rival crew is cruising your block. Erase them.'],
+                    hit: ['Loose End', 'An informant in orange knows too much. He runs fast.']
+                };
+                const wps = v === 'race' ? [wp(500), wp(800), wp(1100)] : ['goto', 'evade', 'hunt', 'hit'].includes(v) ? [wp(620)] : [wp(550), wp(1000)];
+                const world = [];
+                if (Math.random() < 0.3) world.push({ op: 'weather', kind: ['night', 'rain', 'clear', 'fog'][Math.floor(Math.random() * 4)] });
+                if (v === 'hunt' || v === 'hit') world.push({ op: 'pickup', kind: 'ammo', dx: 120, dy: 80 });
+                if (Math.random() < 0.5) world.push({ op: 'pickup', kind: Math.random() < .5 ? 'heart' : 'cash', dx: -200, dy: 150 });
+
+                return {
+                    banner: 'the city hums along', memory: "Offline progression.", mission: {
+                        title: L[v][0], briefing: L[v][1], verb: v,
+                        waypoints: wps, reward: 90 + Math.floor(Math.random() * 100),
+                        timeLimit: v === 'race' ? 55 : 0, heatStart: 2
+                    }, world, ui: [],
+                    shop: [
+                        { label: "Bribe Cops", cost: 150, id: "bribe" },
+                        { label: "Medkit", cost: 100, id: "heal" }
+                    ]
+                }
+            },
             async callGemini() {
                 const prompt = Director.prompt();
                 const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=' + encodeURIComponent(Director.key), {
@@ -1698,8 +1556,6 @@
                 const forSale = props.filter(p => !p.owned).map(p => ({ name: p.name, price: p.price }));
                 return [
                     'You are THE DIRECTOR — the omnipotent God and Game Master of Blocktown. You run an ENDLESS, highly dynamic RPG campaign. The player is your mortal.',
-                    'HOW BLOCKTOWN IS BUILT (so you can reshape it): the world is an infinite grid of 260px BLOCKS, each a square ringed by roads with dashed lane lines. A block can be a building, a park, a parking lot, or anything YOU invent. A "car" is a rideable vehicle; "npcs" are people who walk, follow, flee or fight; the "player" is the one mortal you may NOT puppet — you shape everything else around them. Coordinates you emit are dx,dy pixel offsets from the player and get snapped to roads automatically.',
-                    'YOU DO NOT WRITE CODE — you emit JSON and the engine renders it. Your brushes are: landmarks/blocks (incl. fully custom ones), entities (npc/vehicle/pickup/zone), scene RULES (trigger->actions) that make missions play out, WORLD OPS that bend the city, and a GLYPH vector-art language to draw the top-down art on anything you build. Think like a god-director staging a living film, not a quest-list generator.',
                     'RULE 1 - ARC PLANNING: Your MEMORY must contain a "5-Mission Plan" (e.g. 1. Intro 2. Escort 3. Betrayal 4. Escape 5. Finale). Advance this plan every turn. On mission 5, execute a massive finale (explosions, riots, boss fights), then write a NEW arc in memory.',
                     'RULE 2 - ABSOLUTELY NO REPETITION: CRITICAL: DO NOT use generic names like "Vex", "Lucky Wok", "Pyramid", "Ghost", or "Giza". INVENT 100% original names, companies, and architecture. If you used a name or objective in a past mission, discard it.',
                     'RULE 3 - FIRST MISSION MUST BE A SCENE: NEVER start with a generic "sprint" or "deliver" mission. Chapter 1 MUST be a unique narrative hook (verb: "scene") with named NPCs and dialogue.',
@@ -1707,16 +1563,15 @@
                     ' {"type":"zone","id","dx","dy","r":40-220,"label":str12,"visible":bool,"color":C}',
                     ' {"type":"npc","id","name":str12,"dx","dy","color":C,"role":"friendly|hostile|neutral","hp":1-14,"speed":30-160,"behavior":{"kind":"wander|follow_player|flee_player|chase_player|goto|guard","dx","dy"}}',
                     ' {"type":"vehicle","id","dx","dy","color":C,"marked":bool,"hostile":bool} | {"type":"pickup","id","kind":"heart|ammo|cash|item","label","dx","dy"}',
-                    'RULE 4 - THE CITY IS YOUR CANVAS (INVENT BLOCKS): You MUST invent new buildings, parks, and special areas to fit your story using `style:"custom"`. Every mission should add 1-2 themed buildings/zones to the map, and EVERY building needs purpose/why: why this block exists in the story, what future mission it can support. {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"purpose":str90,"style":"custom","walk":true|false,"ground":"grass|soil|sand|paving|asphalt|water|gold","roof":C,"color":C,"glyph":G}. Walkable customs paint your glyph across the WHOLE block (use this to draw farms, alien crash sites, parks, mazes). Solid customs are buildings whose roof you draw.',
+                    'RULE 4 - THE CITY IS YOUR CANVAS (INVENT BLOCKS): You MUST invent new buildings, parks, and special areas to fit your story using `style:"custom"`. Every mission should add 1-2 themed buildings/zones to the map. {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"style":"custom","walk":true|false,"ground":"grass|soil|sand|paving|asphalt|water|gold","roof":C,"color":C,"glyph":G}. Walkable customs paint your glyph across the WHOLE block (use this to draw farms, alien crash sites, parks, mazes). Solid customs are buildings whose roof you draw.',
                     'GLYPH G = Your vector art tool to draw these new shapes. DO NOT rely on presets. Export your custom shapes as a max 20-item JSON array in a 0-100 viewbox: [{"s":"rect","x","y","w","h"}|{"s":"circle","x","y","r"}|{"s":"ellipse","x","y","rx","ry"}|{"s":"line","x1","y1","x2","y2"}|{"s":"poly","pts":[[x,y],...]}]. Options: {"f":1 filled,"d":1 dashed,"w2":2-8 stroke width}. INVENT THINGS: draw crop rows for farms using dashed lines, draw military bases using polygons, draw mansions. You decide the visuals!',
                     'RULES (max 14: {"when":TRIGGER,"once":bool,"do":[max 6 ACTIONS]}). TRIGGERS: start | enter_zone:ID | exit_zone:ID | zone_stay:ID:SECS | npc_dead:ID | npc_reached:ID | npc_near:ID:DIST | vehicle_destroyed:ID | in_vehicle:ID | pickup_taken:ID | timer:ID | heat_zero | heat_at:N | hearts_below:N | bought:PROPID.',
-                    'ACTIONS: {"act":"say","id":npc,"text"} | {"act":"phone","from","text"} | {"act":"objective","text","nav":"zone:ID"|"npc:ID"|"vehicle:ID"|"prop:ID"} | {"act":"spawn",...entity} | {"act":"despawn","id"} | {"act":"behavior","id","kind",..,"role","speed"} | {"act":"reward","amount"} | {"act":"give","kind":"ammo|heart|cash","amount"} | {"act":"ability","id":"pulse|dash|shield|repair|magnet","label":str18} | {"act":"heat","set":0-5} | {"act":"timer","id","seconds"} | {"act":"explode","id"} | {"act":"complete"} | {"act":"fail","reason"} | {"act":"banner","text"} | {"act":"shake"} | any WORLD OP as {"act":OP,...}.',
-                    'ABILITY DESIGN: You may invent a reason to unlock one power as part of a mission: pulse damages nearby enemies, dash teleports down the street, shield gives brief invulnerability, repair heals car/body, magnet pulls pickups. Do not grant every mission; grant when story needs a new capability.',
+                    'ACTIONS: {"act":"say","id":npc,"text"} | {"act":"phone","from","text"} | {"act":"objective","text","nav":"zone:ID"|"npc:ID"|"vehicle:ID"|"prop:ID"} | {"act":"spawn",...entity} | {"act":"despawn","id"} | {"act":"behavior","id","kind",..,"role","speed"} | {"act":"reward","amount"} | {"act":"give","kind":"ammo|heart|cash","amount"} | {"act":"heat","set":0-5} | {"act":"timer","id","seconds"} | {"act":"explode","id"} | {"act":"complete"} | {"act":"fail","reason"} | {"act":"banner","text"} | {"act":"shake"} | any WORLD OP as {"act":OP,...}.',
                     'WORLD OPS (max 6): earthquake | eclipse | nuke{dx,dy} | zombies | airdrop | lockdown | ambush{dx,dy,n} | gang{dx,dy} | crowd{dx,dy,n} | pickup{kind,dx,dy} | weather{kind:"clear|rain|night|fog"} | traffic{n} | landmark | property | mood{traffic:0-14,peds:0-24} | calm | panic{dx,dy,r} | possess{name,text,dx,dy} | convoy{dx,dy,n,color}.',
                     'ECONOMY: dying costs $200. SHOP: 0-3 items [{"label":str20,"cost":n,"id":"bribe|heal|ammo|nuke|god|chaos"}]. godActions {"setHealth":1-5,"adjustCash":+-n,"giveAmmo":n}.',
                     'UI (max 2 panels): {"type":"panel","slot":"tl|bl|bc","title":str16,"items":[{"type":"stat","label","bind":B}|{"type":"bar","label","bind":B}|{"type":"text","text":str90}]} with B in ' + JSON.stringify(BINDS_OK) + '.',
                     'RESPOND ONLY MINIFIED JSON: {"memory":str900,"banner":str90,"mission":{"title":str26,"briefing":str140,"verb":"scene","waypoints":[{"dx","dy","label"}],"reward":50-2000,"timeLimit":0|20-180,"heatStart":1-5},"scene":{"objective":str60,"nav":REF,"spawn":[entities],"rules":[rules]},"world":[ops],"shop":[items],"godActions":{},"ui":[panels]}',
-                    'STATE: ' + JSON.stringify({ cash, hearts, maxHearts, heat, ammo, abilities, powerLabel, inCar: !onFoot, weather, chapter: chapterN, minutes: Math.round(playMin), ownedProps: owned, forSale, city: landmarks.slice(0, 12).map(l => l.name + '(' + l.style + ')'), pastMissions: M.hist || [], sessionSaved: store.ok }),
+                    'STATE: ' + JSON.stringify({ cash, hearts, maxHearts, heat, ammo, inCar: !onFoot, weather, chapter: chapterN, minutes: Math.round(playMin), ownedProps: owned, forSale, city: landmarks.slice(0, 12).map(l => l.name + '(' + l.style + ')'), pastMissions: M.hist || [], sessionSaved: store.ok }),
                     'MUSE (secret inspiration words for this saga): ' + muse.join(', '),
                     'MEMORY: ' + (Director.memory || '(START OF A NEW ENDLESS SAGA. 1. Create a completely unique premise from your MUSE words. 2. Write a 5-mission Outline [M1..M5]. 3. Track Current Step: 1. 4. Spawn a unique custom building with a custom glyph array right now to serve as the narrative backdrop.)'),
                     'LAST MISSION RESULT: ' + (M.result || '(none yet)'),
@@ -1776,18 +1631,18 @@
 
         /* ================= GAME FLOW ================= */
         function reset() {
-            cash = 0; heat = 0; coolT = 0; onFoot = true; car = null; hearts = 3; maxHearts = 3; invT = 0; godT = 0; grabT = 0; stuckT = 0; ammo = 10; abilities = {}; powerCool = 0; powerLabel = '';
-            { const gi = 1 + (Math.random() * 5 | 0), gj = 1 + (Math.random() * 5 | 0); px = gi * T + RW + BS / 2; py = gj * T + RW + BS / 2; } ({ x: px, y: py } = findFree(px, py, 12));
+            cash = 0; heat = 0; coolT = 0; onFoot = true; car = null; hearts = 3; maxHearts = 3; invT = 0; godT = 0; grabT = 0; stuckT = 0; ammo = 10;
+            px = T * 1.5 + RW + BS / 2; py = T * 1.5 + RW + BS / 2; ({ x: px, y: py } = findFree(px, py, 12));
             peds = []; traffic = []; cops = []; gangs = []; gangsters = []; bullets = []; pickups = []; parts = []; rings = []; wrecks = [];
             takenLots = {}; copSpawnT = 0; pickupT = 12; targetPed = null; M.cur = null; trafficTarget = 6;
             events = []; Director.memory = ''; $('shop-panel').style.display = 'none';
-            props = []; landmarks = []; tileOv = {}; lmIdx = {}; chapterN = 0; playMin = 0; S.clear(); skids = []; muse = pickMuse(); pedTarget = 13; LG.reset();
+            props = []; landmarks = []; tileOv = {}; lmIdx = {}; chapterN = 0; playMin = 0; S.clear(); skids = []; muse = pickMuse(); pedTarget = 13;
             lookX = 0; lookY = 0; curProp = null; if (buyNode) { buyNode.remove && buyNode.remove(); buyNode = null }
         }
 
         function continueSession() {
             cash = Math.max(0, cash - 200);
-            heat = 0; hearts = maxHearts; onFoot = true; car = null; invT = 3; godT = 0; powerCool = 0;
+            heat = 0; hearts = maxHearts; onFoot = true; car = null; invT = 3; godT = 0;
             const f = findFree(px, py, 12); px = f.x; py = f.y;
             peds = []; cops = []; gangs = []; gangsters = []; bullets = []; M.cur = null; M.cleanup();
             skids = []; lookX = 0; lookY = 0;
@@ -1797,8 +1652,8 @@
         }
 
         function softReset() { // respawn the world, keep the saga & economy
-            heat = 0; coolT = 0; onFoot = true; car = null; hearts = maxHearts; invT = 2; godT = 0; powerCool = 0; grabT = 0; stuckT = 0;
-            { const gi = 1 + (Math.random() * 5 | 0), gj = 1 + (Math.random() * 5 | 0); px = gi * T + RW + BS / 2; py = gj * T + RW + BS / 2; } ({ x: px, y: py } = findFree(px, py, 12));
+            heat = 0; coolT = 0; onFoot = true; car = null; hearts = maxHearts; invT = 2; godT = 0; grabT = 0; stuckT = 0;
+            px = T * 1.5 + RW + BS / 2; py = T * 1.5 + RW + BS / 2; ({ x: px, y: py } = findFree(px, py, 12));
             peds = []; traffic = []; cops = []; gangs = []; gangsters = []; bullets = []; pickups = []; parts = []; rings = []; wrecks = []; skids = [];
             takenLots = {}; copSpawnT = 0; pickupT = 12; targetPed = null; M.cur = null; trafficTarget = 6; pedTarget = 13; S.clear();
             lookX = 0; lookY = 0; $('shop-panel').style.display = 'none'
@@ -1877,22 +1732,20 @@
         }
         (function coreHUD() {
             UIK.stat('CASH', 'cash', $('sl-tl')); UIK.badge('hearts', $('sl-tl'));
-            UIK.stat('AMMO', 'ammo', $('sl-tl')); UIK.stat('POWER', 'power', $('sl-tl'));
+            UIK.stat('AMMO', 'ammo', $('sl-tl'));
             UIK.badge('heat', $('sl-tc'));
             const p = UIK.panel('', 'tr'); UIK.stat('', 'carHpTxt', p); UIK.bar('', 'carHp', p)
         })();
         /* ================= INPUT ================= */
-        const actbtn = $('actbtn'), firebtn = $('firebtn'), powbtn = $('powbtn');
+        const actbtn = $('actbtn'), firebtn = $('firebtn');
         actbtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); action() });
         firebtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); firing = true; fire() });
         firebtn.addEventListener('pointerup', e => { firing = false });
-        powbtn.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); usePower() });
         addEventListener('keydown', e => {
             const k = e.key.toLowerCase(); keysDown[k] = 1;
             if (k.startsWith('arrow') || k === ' ') e.preventDefault && e.preventDefault();
             if (k === 'e') action();
             if (k === 'f') { firing = true; fire() }
-            if (k === 'q') usePower();
         });
         addEventListener('keyup', e => { const k = e.key.toLowerCase(); keysDown[k] = 0; if (k === 'f') firing = false });
         addEventListener('pointerdown', e => {
@@ -1955,7 +1808,6 @@
             const hostiles = [];
             for (const c of gangs) hostiles.push(c);
             for (const gg of gangsters) hostiles.push(gg);
-            for (const n of S.npcs) if (n.role === 'hostile' || (M.cur && M.cur.verb === 'scene')) hostiles.push(n);
             if (targetPed) hostiles.push(targetPed);
             for (const c of cops) hostiles.push(c);
             for (const h of hostiles) { const d = Math.hypot(h.x - px, h.y - py); if (d < bd) { bd = d; bt = h } }
@@ -1973,42 +1825,6 @@
         function spawnGangster(x, y) {
             const f = findFree(x, y, 10);
             gangsters.push({ x: f.x, y: f.y, a: Math.random() * 7, hp: 5, atkCd: 0 })
-        }
-        function grantAbility(id, label) {
-            id = String(id || '').toLowerCase();
-            if (!['pulse', 'dash', 'shield', 'repair', 'magnet'].includes(id)) id = 'pulse';
-            abilities[id] = true; powerLabel = sstr(label || id, 18) || id;
-            Msg.show('NEW POWER: ' + powerLabel.toUpperCase() + ' (Q / POWER)', 'ability', 0);
-            UIK.feed('new capability installed: ' + powerLabel, 'DIRECTOR');
-            saveGame();
-        }
-        function usePower() {
-            if (state !== 'play') return;
-            if (powerCool > 0) { Msg.show('power cooling down', 'pcd', 1); return }
-            const id = Object.keys(abilities).find(k => abilities[k]);
-            if (!id) { Msg.show('no power unlocked yet', 'nopower', 2); return }
-            powerCool = id === 'dash' ? 3.2 : id === 'magnet' ? 5 : 7;
-            if (id === 'dash') {
-                const a = facing || 0, nx = px + Math.cos(a) * 170, ny = py + Math.sin(a) * 170;
-                const f = clearAt(nx, ny, 11) ? { x: nx, y: ny } : findFree(nx, ny, 12);
-                rings.push({ x: px, y: py, r: 12, a: .9 }); px = f.x; py = f.y; if (car) { car.x = px; car.y = py }
-                Msg.show('DASH', 'powdash', 0)
-            } else if (id === 'shield') {
-                godT = Math.max(godT, 3.5); rings.push({ x: px, y: py, r: 30, a: 1 }); Msg.show('SHIELD ONLINE', 'powshield', 0)
-            } else if (id === 'repair') {
-                if (car) { car.hp = Math.min(car.mhp || 100, car.hp + 40); Msg.show('CAR PATCHED', 'powrepair', 0) }
-                else { hearts = Math.min(maxHearts, hearts + 1); Msg.show('+1 HEART', 'powrepair', 0) }
-            } else if (id === 'magnet') {
-                for (const p of pickups) { p.x = px + (Math.random() - .5) * 28; p.y = py + (Math.random() - .5) * 28 }
-                Msg.show('MAGNET PULL', 'powmagnet', 0)
-            } else {
-                let hit = 0;
-                for (const gg of gangsters) if (Math.hypot(gg.x - px, gg.y - py) < 150) { gg.hp -= 3; hit++ }
-                for (const n of S.npcs) if (n.role === 'hostile' && Math.hypot(n.x - px, n.y - py) < 150) { n.hp -= 3; hit++ }
-                for (const c of gangs) if (Math.hypot(c.x - px, c.y - py) < 180) { c.hp -= 25; hit++ }
-                rings.push({ x: px, y: py, r: 20, a: 1 }); shake = Math.max(shake, 4);
-                Msg.show('PULSE HIT ' + hit, 'powpulse', 0)
-            }
         }
 
         /* ================= SPAWN HELPERS ================= */
@@ -2082,8 +1898,6 @@
             actbtn.textContent = onFoot ? 'JACK' : 'EXIT';
             if (joyEl && joyEl.style) joyEl.style.visibility = state === 'play' ? 'visible' : 'hidden';
             firebtn.textContent = 'FIRE ' + ammo; firebtn.className = 'a-btn ui-int' + (ammo <= 0 ? ' empty' : '');
-            powbtn.textContent = powerCool > 0 ? ('POWER ' + Math.ceil(powerCool)) : (powerLabel ? powerLabel.toUpperCase() : 'POWER');
-            powbtn.className = 'a-btn ui-int' + (!powerLabel || powerCool > 0 ? ' empty' : '');
             requestAnimationFrame(loop)
         }
         requestAnimationFrame(loop);
@@ -2135,7 +1949,7 @@
             const k = kbSteer(), kbActive = k.up || k.down || k.left || k.right;
             lookX *= Math.pow(.03, dt); lookY *= Math.pow(.03, dt);
             if (onFoot) { zoomF += (1 - zoomF) * Math.min(1, dt * 2.2); Z = baseZ * zoomF }
-            invT = Math.max(0, invT - dt); godT = Math.max(0, godT - dt); fireCool = Math.max(0, fireCool - dt); powerCool = Math.max(0, powerCool - dt); shake *= Math.pow(.001, dt);
+            invT = Math.max(0, invT - dt); godT = Math.max(0, godT - dt); fireCool = Math.max(0, fireCool - dt); shake *= Math.pow(.001, dt);
             kbx *= Math.pow(.02, dt); kby *= Math.pow(.02, dt);
             if (firing) fire();
             if (onFoot) {
@@ -2216,8 +2030,7 @@
             for (const b of bullets) {
                 b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
                 if (b.life <= 0 || solidAt(b.x, b.y)) { b.dead = true; continue }
-                for (const gg of gangsters) if (!b.dead && Math.hypot(gg.x - b.x, gg.y - b.y) < 14) { gg.hp--; b.dead = true; boom(b.x, b.y, 2) }
-                for (const n of S.npcs) if (!b.dead && Math.hypot(n.x - b.x, n.y - b.y) < 15) { n.hp--; if (n.role !== 'friendly') n.role = 'hostile'; b.dead = true; boom(b.x, b.y, 2); logEvent('player shot ' + n.name) }
+                for (const gg of gangsters) if (!b.dead && Math.hypot(gg.x - b.x, gg.y - b.y) < 12) { gg.hp--; b.dead = true; boom(b.x, b.y, 2) }
                 if (targetPed && !b.dead && Math.hypot(targetPed.x - b.x, targetPed.y - b.y) < 12) {
                     targetPed.hp--; targetPed.flee = true; b.dead = true; boom(b.x, b.y, 2)
                 }
@@ -2875,14 +2688,11 @@
                 if (o.car !== undefined) car = o.car; if (o.key !== undefined) Director.key = o.key;
                 if (o.mode !== undefined) Director.mode = o.mode; if (o.targetPed !== undefined) targetPed = o.targetPed;
                 if (o.joyVec !== undefined) joyVec = o.joyVec;
-                if (o.pedTarget !== undefined) pedTarget = o.pedTarget; if (o.muse !== undefined) muse = o.muse;
-                if (o.invT !== undefined) invT = o.invT; if (o.godT !== undefined) godT = o.godT
+                if (o.pedTarget !== undefined) pedTarget = o.pedTarget; if (o.muse !== undefined) muse = o.muse
             },
             clearAt, solidAt, findFree, mod, reset, startGame, action, fire, spawnGangster, blockType,
             applyPlan: p => Director.apply(p), offline: () => Director.offline(), goDirector: () => Director.go(), M, snapshot,
             S, applyOp, addLandmark, addProperty, buyProp: id => buyProp(props.find(p => p.id === id)),
-            findFree, clearAt, blockType,
-            pauseDirector: v => { Director.paused = v }, wipeCity: () => { props.length = 0; landmarks.length = 0; for (const k in tileOv) delete tileOv[k]; for (const k in lmIdx) delete lmIdx[k] },
             saveGame, loadSave, wipeSave, restoreSave, econTick, continueSession, gameOver, softReset, store, bootMenu, updatePropUI
         };
     </script>
