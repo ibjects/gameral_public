@@ -772,7 +772,7 @@
         <button id="hudtoggle" class="a-btn ui-int">HUD</button>
         <button id="actbtn" class="a-btn ui-int">JACK</button>
         <div class="credit ui-int"><span class="credit-full">By: </span><span class="credit-short">By: </span><a
-                href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.3.1
+                href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.3.0
         </div>
     </div>
     <div id="modal"></div>
@@ -1450,26 +1450,6 @@
                 }
                 return false
             },
-            navReachRadius(key, nav) {
-                if (!key) return 44;
-                const id = key.indexOf(':') >= 0 ? key.split(':').slice(1).join(':') : '';
-                if (key.startsWith('zone:')) { const z = S.zones.find(z => z.id === id); return z ? Math.max(38, z.r + 8) : 80 }
-                if (key.startsWith('npc:')) return 42;
-                if (key.startsWith('vehicle:')) return 48;
-                if (key.startsWith('pickup:')) return 36;
-                if (key.startsWith('prop:') || key.startsWith('landmark:') || key.startsWith('lm:') || key.startsWith('block:')) return 90;
-                return 46
-            },
-            forceZoneArrival(id) {
-                if (!id) return false;
-                let did = false;
-                for (const r of S.rules) if (!r.fired && r.when === 'zone_stay' && r.id === id) {
-                    r.fired = true; if (r.once) S.onceDone++;
-                    S.runActs(r.do); did = true;
-                    if (state !== 'play') return true
-                }
-                return did
-            },
             checkNavArrival(dt) {
                 if (!M.cur || M.cur.verb !== 'scene' || state !== 'play') return;
                 S.ensureNav();
@@ -1477,30 +1457,18 @@
                 if (!nav || !isFinite(nav.x) || !isFinite(nav.y)) { S.navTouchKey = ''; S.navTouchT = 0; return }
                 const key = S.navKey() || 'target';
                 const d = Math.hypot(nav.x - px, nav.y - py);
-                const reach = S.navReachRadius(key, nav);
-                if (d > reach) { S.navTouchKey = ''; S.navTouchT = 0; return }
+                if (d > 34) { S.navTouchKey = ''; S.navTouchT = 0; return }
                 if (S.navTouchKey !== key) { S.navTouchKey = key; S.navTouchT = 0 }
                 S.navTouchT += dt;
                 const id = key.indexOf(':') >= 0 ? key.split(':').slice(1).join(':') : key;
-                if (S.navTouchT > .12 && !S.navArrived[key]) {
+                if (S.navTouchT > .45 && !S.navArrived[key]) {
                     S.navArrived[key] = 1;
-                    // Arrival means touching the target's interaction radius, not standing on its exact center.
-                    // Zone rings now trigger from any point inside the circle, which prevents 1m/3m stuck states.
+                    // Extra safety triggers for AI-authored missions. These make "reach / meet / steal / inspect"
+                    // steps progress even if the AI picked an NPC/vehicle/pickup instead of wrapping it in a zone.
                     S.fire('nav_arrived:' + id); if (state !== 'play') return;
                     if (key.startsWith('pickup:')) { S.fire('pickup_taken:' + id); if (state !== 'play') return }
                     if (key.startsWith('npc:')) { S.fire('npc_near:' + id); if (state !== 'play') return }
-                    if (key.startsWith('zone:')) {
-                        S.zoneIn[id] = 1;
-                        S.fire('enter_zone:' + id); if (state !== 'play') return;
-                        if (S.forceZoneArrival(id)) return
-                    }
-                }
-                if (S.navTouchT > 1.0 && M.cur && M.cur.verb === 'scene') {
-                    const hardOnThisTarget = S.hasLiveRule('npc_dead', id) || S.hasLiveRule('in_vehicle', id) || S.hasLiveRule('pickup_taken', id) || S.hasLiveRule('vehicle_destroyed', id) || S.hasLiveRule('timer', id);
-                    if (!hardOnThisTarget && (key.startsWith('zone:') || key.startsWith('prop:') || key.startsWith('landmark:') || key.startsWith('lm:') || key.startsWith('block:'))) {
-                        UIK.feed('Objective reached — the story continues.', 'SYSTEM');
-                        M.finish(true); return
-                    }
+                    if (key.startsWith('zone:')) { S.fire('enter_zone:' + id); if (state !== 'play') return }
                 }
                 if (S.navTouchT > 2.6 && M.cur && M.cur.verb === 'scene' && !S.hasPendingHardRule()) {
                     UIK.feed('Objective reached — the story continues.', 'SYSTEM');
@@ -1946,10 +1914,8 @@
                 let step = this.step; if (step < 1 || step > 5) step = 1;
                 const built = this.compose(step);
                 const world = [];
-                // Buildings are permanent city consequences, not disposable scenery. Add them only when a chapter needs one.
-                const shouldBuild = chapterN < 1 || step === 1 || step === 3 || step >= 5 || this.chance(.28);
-                if (shouldBuild) world.push(this.inventFor(built));
-                if ((step >= 5 || this.chance(.12)) && landmarks.length + props.length < 10) world.push(this.inventFor({ outcomeHint: this.R(['authority', 'armor', 'farm', 'lab', 'airport']) }));
+                if (this.chance(.92)) world.push(this.inventFor(built));
+                if (this.chance(.42)) world.push(this.inventFor({ outcomeHint: this.R(['authority', 'armor', 'farm', 'lab', 'airport']) }));
                 if (this.chance(.35)) {
                     const vp = this.pos(280, 760), kind = this.R(['sports', 'van', 'armored', 'bike', 'tank', 'car']);
                     world.push({ op: 'vehicle', id: 'veh' + (this.uid++), dx: vp.dx, dy: vp.dy, kind, color: this.R(['gold', 'blue', 'green', 'orange', 'white', 'purple', 'red']), marked: this.chance(.45), hostile: false, name: kind.toUpperCase() + ' PROTOTYPE' });
@@ -2006,7 +1972,7 @@
                     'HOW BLOCKTOWN IS BUILT (so you can reshape it): the world is an infinite grid of 260px BLOCKS, each a square ringed by roads with dashed lane lines. A block can be a solid building, a walkable park/farm/plaza/base/helipad, a parking lot, or anything YOU invent. A "car" is a rideable vehicle; "npcs" are people who walk, follow, flee or fight; the "player" is the one mortal you may NOT puppet — you shape everything else around them. Coordinates you emit are dx,dy pixel offsets from the player and get snapped to roads automatically.',
                     'YOU ARE EFFECTIVELY WRITING LIVE GAME CODE AS JSON — the engine executes your JSON like a tiny scripting language. You cannot output JavaScript, but your JSON is the code: it creates components, vehicles, goals, NPC logic, timers, shops, and city blocks. Your brushes are: landmarks/blocks (incl. fully custom ones), entities (npc/vehicle/pickup/zone), scene RULES (trigger->actions) that make missions play out, WORLD OPS that bend the city, and a GLYPH vector-art language to draw the top-down art on anything you build. Think like a god-director staging a living film, not a quest-list generator.',
                     'NAVIGATION CONTRACT: every scene MUST set scene.objective and scene.nav to the next real thing the player should reach: zone:ID, npc:ID, vehicle:ID, prop:ID, landmark:ID, lm:ID, or block:ID. Every rule that changes the task MUST include {act:"objective", text, nav} with a fresh target that exists after that rule runs. Never make the player infer where to go from text only; the arrow must always have a target. If the step is simply "reach / meet / steal / inspect / pick up", add a nav_arrived:ID or enter_zone:ID rule that advances or completes the mission so the player cannot get stuck at 1m.',
-                    'PROPERTY CONTRACT: buildings are permanent city consequences, not disposable decorations. Do NOT add a new building every mission. First reuse existing city blocks/properties when possible; create a new block only when the story truly needs a venue. Every property/building must have a gameplay/story reason: a safehouse heals, an ammo depot resupplies, a garage gives vehicles, a shop sells mission supplies, a civic site creates a meeting/heist/legal mission, a farm/park/plaza becomes walkable mission ground. Buying a property is not just money: use bought:PROPID rules when relevant to unlock contacts, betrayals, storage, safe zones, discounts, vehicles, or the next arc. Property income pays once every 5 real minutes, not every few seconds.',
+                    'PROPERTY CONTRACT: every property/building you create must have a gameplay/story reason: a safehouse heals, an ammo depot resupplies, a garage gives vehicles, a shop sells mission supplies, a civic site creates a meeting/heist/legal mission, a farm/park/plaza becomes a walkable mission ground. Buying a property is not just money: use bought:PROPID rules when relevant to unlock contacts, betrayals, storage, safe zones, or the next arc. Property income pays once every 5 real minutes, not every few seconds.',
                     'MISSION CRAFT: every mission needs a deliberate opening, at least one twist or meaningful action, and a clear ending. Success and failure must both update MEMORY so the saga progresses. Invent characters with motives, vehicles with purpose, and city blocks that matter to the objective. Avoid random decoration.',
                     'FAILSAFE SCENARIOS: always author branches for chaos. If a mission NPC can die, include npc_dead:ID rules. If a mission vehicle can be destroyed, include vehicle_destroyed:ID rules. If the player dies, the engine fails that mission and continues the saga from that failure, so MEMORY must treat failure as canon instead of restarting the same beat. Friendly/neutral NPC death should usually fail or alter the arc; hostile target death should usually complete or advance it.',
                     'SPAWN REALISM: spawn people near sidewalks, plazas, shops, parks, stations, and mission venues. Spawn cars on roads with traffic purpose: taxis near hotels, vans near warehouses, buses near civic/market zones, armored vehicles only when story justifies them. Do not over-spawn chaos unless it is a finale.',
@@ -2017,11 +1983,11 @@
                     ' {"type":"zone","id","dx","dy","r":40-220,"label":str12,"visible":bool,"color":C}',
                     ' {"type":"npc","id","name":str12,"dx","dy","color":C,"role":"friendly|hostile|neutral","hp":1-14,"speed":30-160,"behavior":{"kind":"wander|follow_player|flee_player|chase_player|goto|guard","dx","dy"}}',
                     ' {"type":"vehicle","id","dx","dy","color":C,"kind":"car|sports|van|tank|bike|armored|bus","marked":bool,"hostile":bool,"name":str16} | {"type":"pickup","id","kind":"heart|ammo|cash|item","label","dx","dy"}',
-                    'RULE 4 - THE CITY IS YOUR CANVAS (INVENT BLOCKS): You CAN invent buildings, parks, and special areas using `style:"custom"`, but only when the current chapter needs that block. Prefer fewer, memorable, reusable places over random new buildings. EVERY building needs purpose/why: why this block exists in the story, what current or future mission it supports. {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"purpose":str90,"style":"custom","walk":true|false,"ground":"grass|soil|sand|paving|asphalt|water|gold","roof":C,"color":C,"glyph":G}. Walkable customs paint your glyph across the WHOLE block (use this to draw farms, checkpoints, parks, mazes). Solid customs are buildings whose roof you draw.',
+                    'RULE 4 - THE CITY IS YOUR CANVAS (INVENT BLOCKS): You MUST invent new buildings, parks, and special areas to fit your story using `style:"custom"`. Every mission should add 1-2 themed buildings/zones to the map, and EVERY building needs purpose/why: why this block exists in the story, what future mission it can support. {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"purpose":str90,"style":"custom","walk":true|false,"ground":"grass|soil|sand|paving|asphalt|water|gold","roof":C,"color":C,"glyph":G}. Walkable customs paint your glyph across the WHOLE block (use this to draw farms, alien crash sites, parks, mazes). Solid customs are buildings whose roof you draw.',
                     'GLYPH G = Your vector art tool to draw these new shapes. DO NOT rely on presets. Export your custom shapes as a max 20-item JSON array in a 0-100 viewbox: [{"s":"rect","x","y","w","h"}|{"s":"circle","x","y","r"}|{"s":"ellipse","x","y","rx","ry"}|{"s":"line","x1","y1","x2","y2"}|{"s":"poly","pts":[[x,y],...]}]. Options: {"f":1 filled,"d":1 dashed,"w2":2-8 stroke width}. INVENT THINGS: draw crop rows for farms using dashed lines, draw military bases using polygons, draw mansions. You decide the visuals!',
                     'RULES (max 14: {"when":TRIGGER,"once":bool,"do":[max 6 ACTIONS]}). TRIGGERS: start | enter_zone:ID | exit_zone:ID | zone_stay:ID:SECS | npc_dead:ID | npc_reached:ID | npc_near:ID:DIST | vehicle_destroyed:ID | in_vehicle:ID | pickup_taken:ID | nav_arrived:ID | timer:ID | heat_zero | heat_at:N | hearts_below:N | bought:PROPID.',
                     'ACTIONS: {"act":"say","id":npc,"text"} | {"act":"phone","from","text"} | {"act":"objective","text","nav":"zone:ID"|"npc:ID"|"vehicle:ID"|"prop:ID"|"landmark:ID"} | {"act":"spawn",...entity} | {"act":"despawn","id"} | {"act":"behavior","id","kind",..,"role","speed"} | {"act":"reward","amount"} | {"act":"give","kind":"ammo|heart|cash","amount"} | {"act":"heat","set":0-5} | {"act":"timer","id","seconds"} | {"act":"explode","id"} | {"act":"complete"} | {"act":"fail","reason"} | {"act":"banner","text"} | {"act":"shake"} | any WORLD OP as {"act":OP,...}.',
-                    'MISSION DESIGN: Craft scenes, not chores. Each mission should have 2-4 beats using rules: arrive -> dialogue/discovery -> complication/choice/chase/fight -> success/fail ending. Any ring/zone objective must trigger with enter_zone as soon as the player touches the circle; do not require exact center standing. Use named NPCs with motives, purposeful vehicles, crowds, traffic, and buildings. Make the player do grounded real-world actions: meet, escort, steal a vehicle, tail a car, survive an ambush, deliver goods, buy/visit a property, protect an NPC, dump evidence, raid a depot, negotiate, infiltrate, investigate, smuggle, rescue, or choose between routes.',
+                    'MISSION DESIGN: Craft scenes, not chores. Each mission should have 2-4 beats using rules: arrive -> dialogue/discovery -> complication/choice/chase/fight -> success/fail ending. Use named NPCs with motives, purposeful vehicles, crowds, traffic, and buildings. Make the player do grounded real-world actions: meet, escort, steal a vehicle, tail a car, survive an ambush, deliver goods, buy/visit a property, protect an NPC, dump evidence, raid a depot, negotiate, infiltrate, investigate, smuggle, rescue, or choose between routes.',
                     'WORLD OPS (max 8): earthquake | eclipse | nuke{dx,dy} | zombies | airdrop | lockdown | ambush{dx,dy,n} | gang{dx,dy} | crowd{dx,dy,n} | pickup{kind,dx,dy} | weather{kind:"clear|rain|night|fog"} | traffic{n} | landmark | property | vehicle{kind:"car|sports|van|tank|bike|armored|bus",dx,dy,color,marked,hostile,name} | mood{traffic:0-14,peds:0-24} | calm | panic{dx,dy,r} | possess{name,text,dx,dy} | convoy{dx,dy,n,color,kind}.',
                     'INVENTION RULE: invent whatever the current story needs: farm, lab, shrine, checkpoint, prison, radio tower, flooded dock, clinic, roadblock, arena, market, scrapyard, safehouse, embassy, courthouse, mansion, bunker, motor pool, civic landmark, fake White House, ferry terminal, casino, school, warehouse, or secret base. Create it as custom landmark/property with purpose and glyph, then make the current or future mission interact with it via nav/rules. Plan the city like a living block-based world: solid blocks, walkable blocks, commerce, hazards, parking, roads, NPCs, and traffic must all have a reason.',
                     'ECONOMY: dying costs $200. SHOP: 0-3 practical items only [{"label":str20,"cost":n,"id":"bribe|heal|ammo"}]. No magic powers, no god items, no fake body resources.',
