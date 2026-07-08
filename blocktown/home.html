@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blocktown - The Endless AI City</title>
+    <style>
+        :root {
+            --bg-color: #1F2229;
+            --panel-bg: #15171c;
+            --text-main: #e7e9ee;
+            --text-muted: #8b8fa3;
+            --accent: #ffd166;
+            --accent-glow: rgba(255, 209, 102, 0.2);
+            --road-color: #22252c;
+            --road-lines: rgba(255, 220, 120, 0.28);
+            --green-zone: #233327;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            font-family: ui-monospace, Menlo, Consolas, monospace;
+            line-height: 1.6;
+            /* Infinite City Grid Background */
+            background-image:
+                linear-gradient(var(--road-lines) 2px, transparent 2px),
+                linear-gradient(90deg, var(--road-lines) 2px, transparent 2px);
+            background-size: 260px 260px;
+            background-position: center top;
+        }
+
+        /* Overlay to fade the grid into the dark background */
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, transparent 0%, var(--bg-color) 80%);
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 4rem 2rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        h1 {
+            font-size: 4rem;
+            color: var(--accent);
+            text-shadow: 0 4px 12px var(--accent-glow);
+            margin: 0;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .tagline {
+            color: var(--text-muted);
+            font-size: 1.2rem;
+            margin-top: 0.5rem;
+        }
+
+        .btn {
+            display: inline-block;
+            background: rgba(255, 209, 102, 0.13);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 16px 32px;
+            font-family: inherit;
+            font-weight: bold;
+            font-size: 1.1rem;
+            text-decoration: none;
+            letter-spacing: 0.1em;
+            margin-top: 2rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            background: rgba(255, 209, 102, 0.3);
+            transform: scale(1.05);
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 2.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .panel h2 {
+            color: var(--accent);
+            border-bottom: 1px dashed var(--road-lines);
+            padding-bottom: 0.5rem;
+            margin-top: 0;
+        }
+
+        /* --- THE BLOCK THEORY VISUALIZER --- */
+        .vision-grid {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .vision-text {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .block-diagram {
+            width: 260px;
+            height: 260px;
+            background-color: var(--road-color);
+            border: 2px dashed var(--road-lines);
+            position: relative;
+            margin: 0 auto;
+        }
+
+        .diagram-road-label {
+            position: absolute;
+            color: var(--road-lines);
+            font-size: 10px;
+            text-align: center;
+            width: 100%;
+            top: 15px;
+        }
+
+        .inner-zone {
+            width: 170px;
+            height: 170px;
+            background-color: var(--green-zone);
+            position: absolute;
+            left: 45px;
+            top: 45px;
+            border: 1px solid rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 1rem;
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .measurement {
+            position: absolute;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .m-width {
+            bottom: -20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        .m-inner {
+            top: -20px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: #4ade80;
+        }
+
+        /* --- TABLES FOR CONTROLS --- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        th {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+        }
+
+        kbd {
+            background: #2a2d35;
+            border: 1px solid #3e424f;
+            border-radius: 4px;
+            padding: 2px 6px;
+            color: var(--accent);
+            font-size: 0.9rem;
+        }
+
+        a {
+            color: var(--accent);
+            text-decoration: none;
+            border-bottom: 1px dotted var(--accent);
+        }
+
+        a:hover {
+            color: #fff;
+            border-bottom: 1px solid #fff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="overlay"></div>
+
+    <div class="container">
+        <header>
+            <img src="icon.png" alt="Blocktown" style="width:180px;border-radius:16px;margin-bottom:6px">
+            <!-- <h1>BLOCKTOWN</h1> -->
+            <div class="tagline">AI controlled world, mission and storyline.</div>
+            <a href="index.html" class="btn">PLAY NOW</a>
+        </header>
+
+        <div class="panel">
+            <h2>The Vision: The Block Theory</h2>
+            <div class="vision-grid">
+                <div class="vision-text">
+                    <p>Blocktown isn't just a map; it's a precisely defined mathematical grid designed to be the
+                        ultimate sandbox for Large Language Models.</p>
+                    <p>Every tile in the game is exactly <strong>260x260 pixels</strong>. The outer 45 pixels are
+                        strictly reserved for the asphalt and dashed yellow lines of the road matrix. This guarantees
+                        that no matter how the AI arranges the city, the streets always connect flawlessly.</p>
+                    <p>But the real magic happens in the inner <strong>170x170 pixel core</strong>. This is the seed
+                        area. It is a blank canvas where the AI Director can spawn procedurally generated skyscrapers,
+                        brutalist parking lots, lush parks, or custom narrative landmarks. It knows exactly what fits,
+                        who can walk over it, and where the shadows fall.</p>
+                </div>
+
+                <div style="padding: 20px;">
+                    <div class="block-diagram">
+                        <div class="diagram-road-label">45px ROAD MARGIN</div>
+                        <div class="inner-zone">
+                            <div class="measurement m-inner">170px AI CANVAS</div>
+                            Anything can spawn here.
+                        </div>
+                        <div class="measurement m-width">260px TOTAL GRID BLOCK</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h2>How to Play</h2>
+            <p>You can play offline with the built-in procedural engine, or connect an AI Director to weave a
+                never-ending narrative saga around your actions.</p>
+
+            <table>
+                <tr>
+                    <th>Action</th>
+                    <th>Keyboard</th>
+                </tr>
+                <tr>
+                    <td>Move / Drive</td>
+                    <td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or <kbd>Arrows</kbd></td>
+                </tr>
+                <tr>
+                    <td>Handbrake Drift</td>
+                    <td><kbd>Space</kbd></td>
+                </tr>
+                <tr>
+                    <td>Enter / Exit Vehicle</td>
+                    <td><kbd>E</kbd></td>
+                </tr>
+                <tr>
+                    <td>Fire Weapon</td>
+                    <td><kbd>F</kbd></td>
+                </tr>
+            </table>
+            <p style="margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                * Touch controls are also supported natively via on-screen joysticks when playing on mobile devices.
+            </p>
+        </div>
+
+        <div class="panel" id="api-key">
+            <h2>Connecting the AI Director</h2>
+            <p>To experience the "NEW SAGA (AI)" mode, you will need a Google Gemini API key. This allows the game
+                engine to communicate directly with the AI model to generate missions, shops, dialogue, and city layout
+                in real-time.</p>
+            <ul>
+                <li>Head over to <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>.
+                </li>
+                <li>Sign in and click <strong>Create API Key</strong>.</li>
+                <li>Copy the key and paste it into the Blocktown main menu when starting a new AI Saga.</li>
+            </ul>
+            <p style="font-size: 0.85rem; color: var(--text-muted);"><em>Note: Your API key is never stored on a server.
+                    It is only saved locally in your browser's localStorage and sent directly to Google's servers during
+                    gameplay.</em></p>
+        </div>
+    </div>
+
+</body>
+
+
+<footer style="text-align:center;padding:0 0 2rem 0;color:var(--text-muted);font-size:0.9rem">
+    <div>© 2026 <a href="https://gameral.com" target="_blank">Gameral</a> • By: <a
+            href="https://chaudhrytalha.carrd.co/" target="_blank">Chaudhry Talha</a> • v0.3.1 </div>
+    <!-- <div>Version 0.3.1</div> -->
+</footer>
+
+</html>
