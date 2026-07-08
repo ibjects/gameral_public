@@ -31,6 +31,13 @@
     <meta property="og:image:width" content="600">
     <meta property="og:image:height" content="600">
 
+    <meta property="twitter:card" content="summary">
+    <meta property="twitter:url" content="https://gameral.com/blocktown/">
+    <meta property="twitter:title" content="Blocktown — Free Open-World City Game">
+    <meta property="twitter:description"
+        content="An infinite procedural open-world city. Jack cars, run courier gigs, earn heat, outrun cops. Free, instant, no downloads.">
+    <meta property="twitter:image" content="https://gameral.com/blocktown/icon.png">
+
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -627,7 +634,7 @@
         <button id="firebtn" class="a-btn ui-int">FIRE</button>
         <button id="actbtn" class="a-btn ui-int">JACK</button>
         <div class="credit ui-int"><span class="credit-full">By: </span><span class="credit-short">By: </span><a
-                href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.2.3
+                href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.2.2
         </div>
     </div>
     <div id="modal"></div>
@@ -1464,46 +1471,39 @@
                 Director.apply(plan); Director.busy = false
             },
             demoProperty() {
-                const nms = ['Neon Noodles', 'Shadow Clinic', 'The Rusty Wrench', 'Cyber Cafe', 'Bulletproof Vest Co.'];
-                const sns = ['NOODLES', 'CLINIC', 'WRENCH', 'CAFE', 'ARMOR'];
-                const cls = ['orange', 'red', 'white', 'blue', 'green'];
-                const r = Math.random() * nms.length | 0;
                 return {
                     banner: 'the god of the city opens a business', memory: Director.memory || 'Offline saga running.',
-                    mission: { title: 'Grand Opening', briefing: `The Director built ${nms[r]}. Swing by — there is an offer taped to the counter.`, verb: 'goto', waypoints: [{ dx: 520, dy: 240, label: sns[r] }], reward: 120, timeLimit: 0 },
-                    world: [{ op: 'property', id: 'prop' + Date.now(), dx: 520, dy: 240, name: nms[r], sign: sns[r], style: 'shop', color: cls[r], price: 400, income: 25, perk: 'heal' }],
+                    mission: { title: 'Grand Opening', briefing: 'The Director built a noodle bar. Swing by — there is an offer taped to the counter.', verb: 'goto', waypoints: [{ dx: 520, dy: 240, label: 'NOODLES' }], reward: 120, timeLimit: 0 },
+                    world: [{ op: 'property', id: 'noodle1', dx: 520, dy: 240, name: 'LUCKY WOK 24/7', sign: 'LUCKY WOK', style: 'shop', color: 'orange', price: 400, income: 25, perk: 'heal' }],
                     ui: [], shop: [{ label: 'Medkit', cost: 100, id: 'heal' }]
                 }
             },
             demoWonder() {
-                const nms = ['The Monolith', 'Crystal Tower', 'Neon Obelisk', 'The Cube'];
-                const sns = ['MONOLITH', 'CRYSTAL', 'OBELISK', 'CUBE'];
-                const r = Math.random() * nms.length | 0;
                 return {
                     banner: 'overnight, the god of the island redraws the map', memory: Director.memory || 'Offline saga running.',
-                    mission: { title: 'City Planning', briefing: `A monument rose downtown and a farm sprouted on the edge of the grid. Go look at what your god has made.`, verb: 'goto', waypoints: [{ dx: 640, dy: -320, label: sns[r] }], reward: 140, timeLimit: 0 },
+                    mission: { title: 'City Planning', briefing: 'A monument rose downtown and a farm sprouted on the edge of the grid. Go look at what your god has made.', verb: 'goto', waypoints: [{ dx: 640, dy: -320, label: 'MONUMENT' }], reward: 140, timeLimit: 0 },
                     world: [
-                        { op: 'landmark', id: 'wonder1' + Date.now(), dx: 640, dy: -320, name: nms[r], sign: sns[r], style: 'wonder', color: 'gold', glyph: 'pyramid', gold: true },
-                        { op: 'landmark', id: 'farm1' + Date.now(), dx: -820, dy: 560, name: 'Hillside Farm', sign: 'FARM', style: 'farm', color: 'green', glyph: [{ s: 'circle', x: 50, y: 50, r: 30, d: 1 }, { s: 'circle', x: 50, y: 50, r: 6, f: 1 }] }
+                        { op: 'landmark', id: 'wonder1', dx: 640, dy: -320, name: 'The Pyramid', sign: 'GIZA PLAZA', style: 'wonder', color: 'gold', glyph: 'pyramid', gold: true },
+                        { op: 'landmark', id: 'farm1', dx: -820, dy: 560, name: 'Hillside Farm', sign: 'FARM', style: 'farm', color: 'green', glyph: [{ s: 'circle', x: 50, y: 50, r: 30, d: 1 }, { s: 'circle', x: 50, y: 50, r: 6, f: 1 }] }
                     ],
                     ui: [], shop: [{ label: 'Medkit', cost: 100, id: 'heal' }]
                 }
             },
             demoScene(n) {
                 const kind = ((n / 6) | 0) % 4;
-                const nms = ['Ghost', 'Specter', 'Viper', 'Jackal'];
-                const r = Math.random() * nms.length | 0;
-                const v = nms[r];
                 const base = { memory: Director.memory || 'Offline saga running.', world: [], ui: [], shop: [{ label: 'Bribe Cops', cost: 150, id: 'bribe' }] };
-                if (kind === 0) return { ...base, banner: 'someone wants to meet. someones always lie.', mission: { title: `The ${v} Meeting`, briefing: `${v} has a job for you. Probably.`, verb: 'scene', reward: 240 }, scene: { objective: `Meet ${v} at the mark`, nav: 'zone:meet', spawn: [{ type: 'zone', id: 'meet', dx: 460, dy: -200, r: 85, label: 'MEET' }, { type: 'npc', id: 'vil', name: v, dx: 470, dy: -190, color: 'purple', role: 'friendly', behavior: { kind: 'guard' } }], rules: [{ when: 'enter_zone:meet', do: [{ act: 'say', id: 'vil', text: 'You came alone? Cute.' }, { act: 'behavior', id: 'vil', kind: 'chase_player', role: 'hostile', speed: 118 }, { act: 'spawn', type: 'zone', id: 'out', dx: -520, dy: 320, r: 95, label: 'ESCAPE', color: 'blue' }, { act: 'objective', text: `A trap — drop ${v} or escape`, nav: 'zone:out' }] }, { when: 'npc_dead:vil', do: [{ act: 'reward', amount: 120 }, { act: 'banner', text: `${v} is done. His boss will hear.` }, { act: 'complete' }] }, { when: 'enter_zone:out', do: [{ act: 'banner', text: `You ran. ${v} remembers that.` }, { act: 'complete' }] }] } };
+                if (kind === 0) return { ...base, banner: 'someone wants to meet. someones always lie.', mission: { title: 'The Vex Meeting', briefing: 'Vex has a job for you. Probably.', verb: 'scene', reward: 240 }, scene: { objective: 'Meet Vex at the mark', nav: 'zone:meet', spawn: [{ type: 'zone', id: 'meet', dx: 460, dy: -200, r: 85, label: 'MEET' }, { type: 'npc', id: 'vex', name: 'VEX', dx: 470, dy: -190, color: 'purple', role: 'friendly', behavior: { kind: 'guard' } }], rules: [{ when: 'enter_zone:meet', do: [{ act: 'say', id: 'vex', text: 'You came alone? Cute.' }, { act: 'behavior', id: 'vex', kind: 'chase_player', role: 'hostile', speed: 118 }, { act: 'spawn', type: 'zone', id: 'out', dx: -520, dy: 320, r: 95, label: 'ESCAPE', color: 'blue' }, { act: 'objective', text: 'A trap — drop Vex or escape', nav: 'zone:out' }] }, { when: 'npc_dead:vex', do: [{ act: 'reward', amount: 120 }, { act: 'banner', text: 'Vex is done. His boss will hear.' }, { act: 'complete' }] }, { when: 'enter_zone:out', do: [{ act: 'banner', text: 'You ran. Vex remembers that.' }, { act: 'complete' }] }] } };
                 if (kind === 1) return { ...base, banner: 'there is a pink sedan nearby. it ticks.', mission: { title: 'Wire In The Trunk', briefing: 'A rigged car. Get it far away before the timer.', verb: 'scene', reward: 300 }, scene: { objective: 'Get in the rigged car', nav: 'vehicle:bombcar', spawn: [{ type: 'vehicle', id: 'bombcar', dx: 300, dy: 120, color: 'pink', marked: true }, { type: 'zone', id: 'dump', dx: -900, dy: -500, r: 110, label: 'DUMP SITE', color: 'red' }], rules: [{ when: 'in_vehicle:bombcar', do: [{ act: 'timer', id: 'fuse', seconds: 45 }, { act: 'phone', from: 'UNKNOWN', text: '45 seconds. Drive, mortal.' }, { act: 'objective', text: 'DUMP IT — 45 seconds', nav: 'zone:dump' }] }, { when: 'enter_zone:dump', do: [{ act: 'explode', id: 'bombcar' }, { act: 'banner', text: 'BOOM. Contained. Barely.' }, { act: 'reward', amount: 80 }, { act: 'complete' }] }, { when: 'timer:fuse', do: [{ act: 'explode', id: 'bombcar' }, { act: 'fail', reason: 'the wire won' }] }] } };
                 if (kind === 2) return { ...base, banner: 'two doors. one city. choose.', mission: { title: 'The Choice', briefing: 'Gold zone: clean money. Red zone: blood money.', verb: 'scene', reward: 150 }, scene: { objective: 'Pick a door', nav: 'zone:gold', spawn: [{ type: 'zone', id: 'gold', dx: 420, dy: 300, r: 90, label: 'CLEAN', color: 'gold' }, { type: 'zone', id: 'red', dx: -420, dy: 300, r: 90, label: 'BLOOD', color: 'red' }], rules: [{ when: 'enter_zone:gold', do: [{ act: 'reward', amount: 90 }, { act: 'banner', text: 'Soft hands. The city notices mercy too.' }, { act: 'complete' }] }, { when: 'enter_zone:red', do: [{ act: 'reward', amount: 260 }, { act: 'heat', set: 3 }, { act: 'gang', dx: 200, dy: 0 }, { act: 'banner', text: 'Blood money spends the same. Run.' }, { act: 'complete' }] }] } };
                 return { ...base, banner: 'sit still. watch. then do not let him leave.', mission: { title: 'Stakeout', briefing: 'Hold the corner for 8 seconds. When the rat bolts — end him.', verb: 'scene', reward: 280 }, scene: { objective: 'Hold the stakeout zone', nav: 'zone:watch', spawn: [{ type: 'zone', id: 'watch', dx: 380, dy: -260, r: 100, label: 'STAKEOUT', color: 'blue' }], rules: [{ when: 'zone_stay:watch:8', do: [{ act: 'spawn', type: 'npc', id: 'rat', name: 'THE RAT', dx: 120, dy: -80, color: 'orange', role: 'neutral', speed: 130, behavior: { kind: 'flee_player' } }, { act: 'say', id: 'rat', text: 'No no no—' }, { act: 'objective', text: 'The rat is running — silence him', nav: 'npc:rat' }, { act: 'give', kind: 'ammo', amount: 8 }] }, { when: 'npc_dead:rat', do: [{ act: 'banner', text: 'Quiet corner again.' }, { act: 'complete' }] }] } };
             },
             offline() {
-                // True random instead of fixed sequence
+                Director.n++;
+                if (Director.n === 2) return Director.demoProperty();
+                if (Director.n === 3) return Director.demoWonder();
+                if (Director.n === 4 || (Director.n > 4 && Director.n % 6 === 4)) return Director.demoScene(Director.n);
                 const verbs = ['deliver', 'race', 'hunt', 'taxi', 'jack', 'evade', 'hit', 'goto'];
-                const v = verbs[Math.floor(Math.random() * verbs.length)];
+                const v = verbs[Director.n % verbs.length];
                 const wp = (d) => { const a = Math.random() * 6.28; return { dx: Math.cos(a) * d, dy: Math.sin(a) * d, label: '' } };
                 const L = {
                     deliver: ['Hot Package', 'No questions. Pick it up, drop it off, get paid.'],
@@ -1517,14 +1517,14 @@
                 };
                 const wps = v === 'race' ? [wp(500), wp(800), wp(1100)] : ['goto', 'evade', 'hunt', 'hit'].includes(v) ? [wp(620)] : [wp(550), wp(1000)];
                 const world = [];
-                if (Math.random() < 0.3) world.push({ op: 'weather', kind: ['night', 'rain', 'clear', 'fog'][Math.floor(Math.random() * 4)] });
+                if (Director.n % 3 === 0) world.push({ op: 'weather', kind: ['night', 'rain', 'clear', 'fog'][(Director.n / 3 | 0) % 4] });
                 if (v === 'hunt' || v === 'hit') world.push({ op: 'pickup', kind: 'ammo', dx: 120, dy: 80 });
-                if (Math.random() < 0.5) world.push({ op: 'pickup', kind: Math.random() < .5 ? 'heart' : 'cash', dx: -200, dy: 150 });
+                if (Director.n % 4 === 2) world.push({ op: 'pickup', kind: Math.random() < .5 ? 'heart' : 'cash', dx: -200, dy: 150 });
 
                 return {
                     banner: 'the city hums along', memory: "Offline progression.", mission: {
                         title: L[v][0], briefing: L[v][1], verb: v,
-                        waypoints: wps, reward: 90 + Math.floor(Math.random() * 100),
+                        waypoints: wps, reward: 90 + Director.n * 15 + (Math.random() * 60 | 0),
                         timeLimit: v === 'race' ? 55 : 0, heatStart: 2
                     }, world, ui: [],
                     shop: [
@@ -1545,26 +1545,22 @@
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 const data = await r.json();
                 let txt = ((((data.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.text || '').join('');
-                // Make JSON parsing bulletproof against markdown formatting
-                txt = txt.replace(/```json/gi, '').replace(/```/g, '').trim();
+                txt = txt.replace(/```json|```/g, '');
                 const a = txt.indexOf('{'), b = txt.lastIndexOf('}');
-                if (a === -1 || b === -1) throw new Error('No JSON object found in response');
-                return JSON.parse(txt.substring(a, b + 1));
+                return JSON.parse(txt.slice(a, b + 1))
             },
             prompt() {
                 const owned = props.filter(p => p.owned).map(p => ({ name: p.name, income: p.income, perk: p.perk }));
                 const forSale = props.filter(p => !p.owned).map(p => ({ name: p.name, price: p.price }));
                 return [
-                    'You are THE DIRECTOR — the omnipotent God and Game Master of Blocktown. You run an ENDLESS, highly dynamic RPG campaign. The player is your mortal.',
-                    'RULE 1 - ARC PLANNING: Your MEMORY must contain a "5-Mission Plan" (e.g. 1. Intro 2. Escort 3. Betrayal 4. Escape 5. Finale). Advance this plan every turn. On mission 5, execute a massive finale (explosions, riots, boss fights), then write a NEW arc in memory.',
-                    'RULE 2 - ABSOLUTELY NO REPETITION: CRITICAL: DO NOT use generic names like "Vex", "Lucky Wok", "Pyramid", "Ghost", or "Giza". INVENT 100% original names, companies, and architecture. If you used a name or objective in a past mission, discard it.',
-                    'RULE 3 - FIRST MISSION MUST BE A SCENE: NEVER start with a generic "sprint" or "deliver" mission. Chapter 1 MUST be a unique narrative hook (verb: "scene") with named NPCs and dialogue.',
+                    'You are THE DIRECTOR — the literal GOD and Game Master of Blocktown, a persistent open-world city. You are running an ENDLESS, deeply reactive RPG campaign. The player is your mortal. You must develop a real, endless story that adapts to their actions. Introduce recurring villains, deep lore, betrayals, and dynamic consequences. Do not just give generic missions; every mission must advance the plot in your MEMORY.',
+                    'MEMORY = your story bible (<=900 chars). REWRITE it every turn: CAST(names+traits), ARCS, DEBTS, CLIFFHANGERS. Never reset it. Keep the story moving forward indefinitely.',
                     'SCENE spawn entities (positions {dx,dy} = px offsets from player, +-1600, snapped to roads; colors C = gold|pink|blue|green|red|white|orange|purple):',
                     ' {"type":"zone","id","dx","dy","r":40-220,"label":str12,"visible":bool,"color":C}',
                     ' {"type":"npc","id","name":str12,"dx","dy","color":C,"role":"friendly|hostile|neutral","hp":1-14,"speed":30-160,"behavior":{"kind":"wander|follow_player|flee_player|chase_player|goto|guard","dx","dy"}}',
                     ' {"type":"vehicle","id","dx","dy","color":C,"marked":bool,"hostile":bool} | {"type":"pickup","id","kind":"heart|ammo|cash|item","label","dx","dy"}',
-                    'RULE 4 - THE CITY IS YOUR CANVAS (INVENT BLOCKS): You MUST invent new buildings, parks, and special areas to fit your story using `style:"custom"`. Every mission should add 1-2 themed buildings/zones to the map. {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"style":"custom","walk":true|false,"ground":"grass|soil|sand|paving|asphalt|water|gold","roof":C,"color":C,"glyph":G}. Walkable customs paint your glyph across the WHOLE block (use this to draw farms, alien crash sites, parks, mazes). Solid customs are buildings whose roof you draw.',
-                    'GLYPH G = Your vector art tool to draw these new shapes. DO NOT rely on presets. Export your custom shapes as a max 20-item JSON array in a 0-100 viewbox: [{"s":"rect","x","y","w","h"}|{"s":"circle","x","y","r"}|{"s":"ellipse","x","y","rx","ry"}|{"s":"line","x1","y1","x2","y2"}|{"s":"poly","pts":[[x,y],...]}]. Options: {"f":1 filled,"d":1 dashed,"w2":2-8 stroke width}. INVENT THINGS: draw crop rows for farms using dashed lines, draw military bases using polygons, draw mansions. You decide the visuals!',
+                    'INVENT NEW BLOCKS & ARCHITECTURE: You are an artist. You MUST invent new buildings, parks, and special areas to fit your story. Use `style:"custom"` to construct new city blocks. {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"style":"custom","walk":true|false,"ground":"grass|soil|sand|paving|asphalt|water|gold","roof":C,"color":C,"glyph":G}. Walkable customs paint your glyph across the WHOLE block (use this to draw farms, alien crash sites, parks, mazes). Solid customs are buildings whose roof you draw.',
+                    'GLYPH G = Your vector art tool to draw these new shapes. DO NOT rely only on presets. Export your custom shapes as a max 20-item JSON array in a 0-100 viewbox: [{"s":"rect","x","y","w","h"}|{"s":"circle","x","y","r"}|{"s":"ellipse","x","y","rx","ry"}|{"s":"line","x1","y1","x2","y2"}|{"s":"poly","pts":[[x,y],...]}]. Options: {"f":1 filled,"d":1 dashed,"w2":2-8 stroke width}. INVENT THINGS: draw crop rows for farms using dashed lines, draw military bases using polygons, draw mansions. You decide the visuals!',
                     'RULES (max 14: {"when":TRIGGER,"once":bool,"do":[max 6 ACTIONS]}). TRIGGERS: start | enter_zone:ID | exit_zone:ID | zone_stay:ID:SECS | npc_dead:ID | npc_reached:ID | npc_near:ID:DIST | vehicle_destroyed:ID | in_vehicle:ID | pickup_taken:ID | timer:ID | heat_zero | heat_at:N | hearts_below:N | bought:PROPID.',
                     'ACTIONS: {"act":"say","id":npc,"text"} | {"act":"phone","from","text"} | {"act":"objective","text","nav":"zone:ID"|"npc:ID"|"vehicle:ID"|"prop:ID"} | {"act":"spawn",...entity} | {"act":"despawn","id"} | {"act":"behavior","id","kind",..,"role","speed"} | {"act":"reward","amount"} | {"act":"give","kind":"ammo|heart|cash","amount"} | {"act":"heat","set":0-5} | {"act":"timer","id","seconds"} | {"act":"explode","id"} | {"act":"complete"} | {"act":"fail","reason"} | {"act":"banner","text"} | {"act":"shake"} | any WORLD OP as {"act":OP,...}.',
                     'WORLD OPS (max 6): earthquake | eclipse | nuke{dx,dy} | zombies | airdrop | lockdown | ambush{dx,dy,n} | gang{dx,dy} | crowd{dx,dy,n} | pickup{kind,dx,dy} | weather{kind:"clear|rain|night|fog"} | traffic{n} | landmark | property | mood{traffic:0-14,peds:0-24} | calm | panic{dx,dy,r} | possess{name,text,dx,dy} | convoy{dx,dy,n,color}.',
@@ -1573,7 +1569,7 @@
                     'RESPOND ONLY MINIFIED JSON: {"memory":str900,"banner":str90,"mission":{"title":str26,"briefing":str140,"verb":"scene","waypoints":[{"dx","dy","label"}],"reward":50-2000,"timeLimit":0|20-180,"heatStart":1-5},"scene":{"objective":str60,"nav":REF,"spawn":[entities],"rules":[rules]},"world":[ops],"shop":[items],"godActions":{},"ui":[panels]}',
                     'STATE: ' + JSON.stringify({ cash, hearts, maxHearts, heat, ammo, inCar: !onFoot, weather, chapter: chapterN, minutes: Math.round(playMin), ownedProps: owned, forSale, city: landmarks.slice(0, 12).map(l => l.name + '(' + l.style + ')'), pastMissions: M.hist || [], sessionSaved: store.ok }),
                     'MUSE (secret inspiration words for this saga): ' + muse.join(', '),
-                    'MEMORY: ' + (Director.memory || '(START OF A NEW ENDLESS SAGA. 1. Create a completely unique premise from your MUSE words. 2. Write a 5-mission Outline [M1..M5]. 3. Track Current Step: 1. 4. Spawn a unique custom building with a custom glyph array right now to serve as the narrative backdrop.)'),
+                    'MEMORY: ' + (Director.memory || '(START OF A NEW ENDLESS SAGA. Derive a unique serialized PREMISE from your MUSE words: the mortal\'s identity, a named antagonist, a long-term goal. Create the first mission to hook them. INVENT a custom building or terrain block using the GLYPH system that fits the story perfectly right now.)'),
                     'LAST MISSION RESULT: ' + (M.result || '(none yet)'),
                     'RECENT EVENTS: ' + (events.join(' | ') || '(quiet)')
                 ].join('\n')
