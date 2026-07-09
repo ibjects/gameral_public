@@ -77,6 +77,72 @@
             margin-top: 0.5rem;
         }
 
+        .coin-shine {
+            display: inline-block;
+            position: relative;
+            overflow: hidden;
+            width: 180px;
+            height: 180px;
+            border-radius: 60%;
+            /* margin-bottom: 6px; */
+            /* background: transparent; */
+            box-shadow: 0 0 6px rgba(255, 209, 102, 0.14);
+        }
+
+        .coin-shine img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .coin-shine::after {
+            content: "";
+            position: absolute;
+            inset: -35% -70%;
+            border-radius: inherit;
+            background: linear-gradient(115deg,
+                    transparent 35%,
+                    rgba(255, 255, 255, 0.08) 43%,
+                    rgba(255, 247, 190, 0.72) 50%,
+                    rgba(255, 255, 255, 0.16) 57%,
+                    transparent 65%);
+            transform: translateX(-120%) skewX(-18deg);
+            animation: coinSweep 4.8s ease-in-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes coinSweep {
+
+            0%,
+            58% {
+                transform: translateX(-120%) skewX(-18deg);
+                opacity: 0;
+            }
+
+            63% {
+                opacity: 1;
+            }
+
+            78% {
+                transform: translateX(120%) skewX(-18deg);
+                opacity: 1;
+            }
+
+            84%,
+            100% {
+                transform: translateX(120%) skewX(-18deg);
+                opacity: 0;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .coin-shine::after {
+                animation: none;
+                opacity: 0;
+            }
+        }
+
         .btn {
             display: inline-block;
             background: rgba(255, 209, 102, 0.13);
@@ -230,7 +296,9 @@
 
     <div class="container">
         <header>
-            <img src="icon.png" alt="Blocktown" style="width:180px;border-radius:16px;margin-bottom:6px">
+            <span class="coin-shine">
+                <img src="blocktown-badge.png" alt="Blocktown">
+            </span>
             <!-- <h1>BLOCKTOWN</h1> -->
             <div class="tagline">AI controlled world, mission and storyline.</div>
             <a href="index.html" class="btn">PLAY NOW</a>

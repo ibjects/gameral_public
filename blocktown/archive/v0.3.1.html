@@ -772,7 +772,7 @@
         <button id="hudtoggle" class="a-btn ui-int">HUD</button>
         <button id="actbtn" class="a-btn ui-int">JACK</button>
         <div class="credit ui-int"><span class="credit-full">By: </span><span class="credit-short">By: </span><a
-                href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.3.2
+                href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.3.1
         </div>
     </div>
     <div id="modal"></div>
@@ -1049,12 +1049,6 @@
         const LPAL = { gold: '#ffd166', pink: '#f472b6', blue: '#60a5fa', green: '#4ade80', red: '#ef4444', white: '#e8e8ee', orange: '#fb923c', purple: '#a78bfa' };
         const LM_STYLES = ['tower', 'shop', 'club', 'warehouse', 'motel', 'billboard', 'wonder', 'park', 'farm', 'plaza', 'court', 'playground', 'helipad', 'lot', 'garden', 'market', 'pier', 'custom'];
         const GCOL = { grass: '#20301f', soil: '#2a2418', sand: '#37311e', paving: '#262a33', asphalt: '#22252c', water: '#152838', gold: '#2a2312' };
-        function sColor(v, fallback) {
-            if (LPAL[v]) return LPAL[v];
-            if (GCOL[v]) return GCOL[v];
-            if (typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v)) return v;
-            return fallback;
-        }
         function sGround(gk) { return GCOL[gk] ? gk : 'paving' }
         const WALK_STYLES = { park: 'park', farm: 'farm', plaza: 'plaza', court: 'plaza', playground: 'park', helipad: 'plaza', lot: 'plaza', garden: 'park', market: 'plaza', pier: 'plaza' };
         /* Preset top-down glyphs (0-100 viewbox) — nine wonders; the AI can also draw its own */
@@ -1075,7 +1069,7 @@
             const out = [];
             for (const sh of gl.slice(0, 30)) {
                 if (!sh || typeof sh !== 'object') continue;
-                const n = v => snum(v, 0, 100, 50), o = { s: sh.s, f: sh.f ? 1 : 0, d: sh.d ? 1 : 0, w2: snum(sh.w2, 2, 8, 4), c: sColor(sh.c, null), a: snum(sh.a, .08, 1, 1) };
+                const n = v => snum(v, 0, 100, 50), o = { s: sh.s, f: sh.f ? 1 : 0, d: sh.d ? 1 : 0, w2: snum(sh.w2, 2, 8, 4) };
                 if (sh.s === 'rect') { o.x = n(sh.x); o.y = n(sh.y); o.w = snum(sh.w, 2, 100, 20); o.h = snum(sh.h, 2, 100, 20) }
                 else if (sh.s === 'circle') { o.x = n(sh.x); o.y = n(sh.y); o.r = snum(sh.r, 1, 50, 10) }
                 else if (sh.s === 'ellipse') { o.x = n(sh.x); o.y = n(sh.y); o.rx = snum(sh.rx, 1, 50, 15); o.ry = snum(sh.ry, 1, 50, 10) }
@@ -1096,10 +1090,6 @@
                 g.strokeStyle = color; g.fillStyle = color;
                 for (const sh of shapes) {
                     g.lineWidth = (sh.w2 || 4) * sc * (pass ? 1 : 2.4);
-                    const oldAlpha = g.globalAlpha;
-                    if (sh.a !== undefined) g.globalAlpha = oldAlpha * sh.a;
-                    g.strokeStyle = sh.c || color;
-                    g.fillStyle = sh.c || color;
                     g.setLineDash(sh.d ? [8 * sc, 6 * sc] : []);
                     g.beginPath();
                     if (sh.s === 'rect') g.rect(ox + sh.x * sc, oy + sh.y * sc, sh.w * sc, sh.h * sc);
@@ -1107,8 +1097,7 @@
                     else if (sh.s === 'ellipse') g.ellipse(ox + sh.x * sc, oy + sh.y * sc, sh.rx * sc, sh.ry * sc, 0, 0, 7);
                     else if (sh.s === 'line') { g.moveTo(ox + sh.x1 * sc, oy + sh.y1 * sc); g.lineTo(ox + sh.x2 * sc, oy + sh.y2 * sc) }
                     else if (sh.s === 'poly') { const p0 = sh.pts[0]; g.moveTo(ox + p0[0] * sc, oy + p0[1] * sc); for (let q = 1; q < sh.pts.length; q++)g.lineTo(ox + sh.pts[q][0] * sc, oy + sh.pts[q][1] * sc); g.closePath() }
-                    if (sh.f) g.fill(); else g.stroke();
-                    g.globalAlpha = oldAlpha
+                    if (sh.f) g.fill(); else g.stroke()
                 }
             }
             g.setLineDash([]); g.globalAlpha = 1; g.restore()
@@ -1137,9 +1126,7 @@
                 style: LM_STYLES.includes(spec.style) ? spec.style : 'shop',
                 color: LPAL[spec.color] ? spec.color : 'gold',
                 glyph: sGlyph(spec.glyph), gold: !!spec.gold,
-                walk: spec.blocker === false ? true : !!spec.walk, ground: sGround(spec.ground),
-                inner: sColor(spec.inner || spec.base || spec.fill || spec.groundColor, null),
-                roof: sColor(spec.roof, null)
+                walk: !!spec.walk, ground: sGround(spec.ground), roof: LPAL[spec.roof] ? spec.roof : null
             };
             landmarks.push(lm); lmIdx[bi + ',' + bj] = lm;
             tileOv[bi + ',' + bj] = lm.style === 'custom' ? (lm.walk ? 'g:' + lm.ground : 'bldg') : (WALK_STYLES[lm.style] || 'bldg');
@@ -1156,7 +1143,7 @@
             landmarks.splice(landmarks.indexOf(lm), 1); // it lives in props instead
             const pr = {
                 id: lm.id, bi: lm.bi, bj: lm.bj, name: lm.name, sign: lm.sign, purpose: lm.purpose, style: lm.style, color: lm.color,
-                glyph: lm.glyph, walk: lm.walk, ground: lm.ground, inner: lm.inner, roof: lm.roof,
+                glyph: lm.glyph, walk: lm.walk, ground: lm.ground, roof: lm.roof,
                 price: Math.round(snum(spec.price, 100, 5000, 600)), income: Math.round(snum(spec.income, 0, 150, 20)),
                 perk: ['heal', 'ammo', 'garage', 'none'].includes(spec.perk) ? spec.perk : 'none',
                 owned: !!spec.owned, visitCd: 0, healT: 0
@@ -1234,7 +1221,7 @@
                 pickups = pickups.filter(p => !p.pid);
                 S.zones = []; S.npcs = []; S.bubbles = []; S.rules = []; S.timers = {}; S.items = [];
                 S.nav = null; S.navRef = null; S.zoneIn = {}; S.zoneStay = {}; S.prevInVeh = '';
-                S.navTouchKey = ''; S.navTouchT = 0; S.navArrived = {}; S.softSteps = 0; S.forceFinal = false; S.objectiveText = '';
+                S.navTouchKey = ''; S.navTouchT = 0; S.navArrived = {};
                 S.onceTotal = 0; S.onceDone = 0; S.hadHeat = false
             },
             progress() { return S.onceTotal ? S.onceDone / S.onceTotal : 0 },
@@ -1300,64 +1287,15 @@
                 S.fire('start');
                 S.ensureNav()
             },
-            navNorm(v) {
-                return String(v || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\b(the|a|an|to|at|near|in|inside|from|go|goto|reach|meet|speak|talk|find|enter|evacuate|steal|take|deliver|drop|inspect|visit|follow|tail|protect|escort|hide|bring|get|with|and|of|on|by)\b/g, ' ').replace(/\s+/g, ' ').trim()
-            },
-            navScore(text, label) {
-                const a = S.navNorm(text), b = S.navNorm(label);
-                if (!a || !b) return 0;
-                if (a.includes(b) || b.includes(a)) return 100 + Math.min(a.length, b.length);
-                const aw = a.split(' ').filter(w => w.length > 2), bw = b.split(' ').filter(w => w.length > 2);
-                let score = 0;
-                for (const w of bw) if (aw.includes(w) || a.includes(w)) score += Math.min(18, 4 + w.length * 2);
-                for (const w of aw) if (bw.includes(w) || b.includes(w)) score += Math.min(12, 3 + w.length);
-                return score
-            },
-            objectivePrefersPlace(txt) {
-                return /\b(evacuate|go|reach|enter|visit|inspect|deliver|drop|hide|escape|meet at|near|inside|to the|to )\b/i.test(String(txt || ''))
-            },
-            objectivePrefersNpc(txt) {
-                return /\b(speak|talk|meet with|question|protect|escort|follow|find\s+[A-Z][a-z]+|kill|stop|chase|tail)\b/i.test(String(txt || ''))
-            },
             guessNavRef(txt) {
-                const raw = String(txt || '');
-                const low = raw.toLowerCase();
+                const low = String(txt || '').toLowerCase();
                 if (!low) return null;
-                const placeBias = S.objectivePrefersPlace(raw), npcBias = S.objectivePrefersNpc(raw) && !placeBias;
-                const candidates = [];
-                const add = (ref, label, type, obj) => {
-                    if (!label) return;
-                    let score = S.navScore(raw, label);
-                    if (!score) return;
-                    if (placeBias && (type === 'prop' || type === 'landmark' || type === 'zone')) score += 35;
-                    if (placeBias && type === 'npc') score -= 28;
-                    if (npcBias && type === 'npc') score += 25;
-                    if (type === 'zone') score += 8;
-                    candidates.push({ ref, score, obj, type })
-                };
-                for (const z of S.zones) if (z && z.id) add('zone:' + z.id, (z.label || '') + ' ' + z.id, 'zone', z);
-                for (const pr of props) if (pr) add('prop:' + pr.id, (pr.name || '') + ' ' + (pr.sign || '') + ' ' + (pr.purpose || ''), 'prop', pr);
-                for (const lm of landmarks) if (lm) add('landmark:' + lm.id, (lm.name || '') + ' ' + (lm.sign || '') + ' ' + (lm.purpose || ''), 'landmark', lm);
-                for (const v of traffic.concat(gangs)) if (v && v.svid) add('vehicle:' + v.svid, (v.label || '') + ' ' + (v.svid || ''), 'vehicle', v);
-                for (const n of S.npcs) if (n && !n.gone) add('npc:' + n.id, (n.name || '') + ' ' + n.id, 'npc', n);
-                candidates.sort((a, b) => b.score - a.score);
-                if (candidates.length && candidates[0].score >= 14) return candidates[0].ref;
+                for (const n of S.npcs) if (n && !n.gone && n.name && low.includes(String(n.name).toLowerCase())) return 'npc:' + n.id;
+                for (const z of S.zones) if (z && z.id && ((z.label && low.includes(String(z.label).toLowerCase())) || low.includes(String(z.id).toLowerCase()))) return 'zone:' + z.id;
+                for (const v of traffic.concat(gangs)) if (v && v.svid && ((v.label && low.includes(String(v.label).toLowerCase())) || low.includes(String(v.svid).toLowerCase()))) return 'vehicle:' + v.svid;
+                for (const pr of props) if (pr && pr.name && low.includes(String(pr.name).toLowerCase())) return 'prop:' + pr.id;
+                for (const lm of landmarks) if (lm && lm.name && low.includes(String(lm.name).toLowerCase())) return 'landmark:' + lm.id;
                 return null
-            },
-            makeObjectiveZone(txt) {
-                const name = sstr(String(txt || '').replace(/.*\b(to|at|near|inside|in|from)\b/i, '').trim() || 'next lead', 20);
-                const a = Math.random() * Math.PI * 2, d = 430 + Math.random() * 340;
-                const p2 = snapRoad(px + Math.cos(a) * d, py + Math.sin(a) * d);
-                const id = 'obj' + ((Date.now() + Math.random() * 999) | 0).toString(36).slice(-6);
-                S.zones.push({ id, x: p2.x, y: p2.y, r: 95, label: sstr(name.toUpperCase(), 12) || 'GOAL', visible: true, color: 'gold' });
-                S.rules.push({
-                    when: 'enter_zone', id, arg: 0, once: true, fired: false, cd: 0, do: [
-                        { act: 'banner', text: 'You reached the lead. The Director adapts the next beat.' },
-                        { act: 'complete', final: true }
-                    ]
-                });
-                S.onceTotal++;
-                return 'zone:' + id
             },
             ensureNav() {
                 if (S.resolveNav()) return;
@@ -1373,22 +1311,13 @@
                 if (lm) { S.navRef = 'landmark:' + lm.id; return }
             },
             setObjective(txt, nav) {
-                if (txt) { const c = UIK.card(); c.children[1].textContent = txt; S.objectiveText = sstr(txt, 90) }
-                // The arrow is part of the mission contract. If the Director updates text
-                // without nav, infer the intended target from current zones/NPCs/properties.
-                const guessed = (nav === undefined || nav === null || nav === '') ? S.guessNavRef(txt) : null;
-                const finalNav = (nav !== undefined && nav !== null && nav !== '') ? nav : guessed;
-                if (finalNav !== undefined && finalNav !== null && finalNav !== '') {
-                    const beforeKey = S.navKey ? S.navKey() : '';
+                if (txt) { const c = UIK.card(); c.children[1].textContent = txt }
+                // Only replace navigation when the Director gives a new target.
+                // This prevents the arrow from disappearing when a rule updates text but forgets nav.
+                if (nav !== undefined && nav !== null && nav !== '') {
                     S.nav = null; S.navRef = null;
-                    if (typeof finalNav === 'string') S.navRef = sstr(finalNav, 32);
-                    else if (finalNav && typeof finalNav === 'object') { const s2 = snapRoad(px + snum(finalNav.dx, -1800, 1800, 0), py + snum(finalNav.dy, -1800, 1800, 0)); S.nav = s2 }
-                    const afterKey = S.navKey ? S.navKey() : '';
-                    if (afterKey && afterKey !== beforeKey) { S.navTouchKey = ''; S.navTouchT = 0; if (S.navArrived) delete S.navArrived[afterKey] }
-                } else if (txt && S.objectivePrefersPlace(txt) && (!S.navRef || S.navRef.indexOf('npc:') === 0)) {
-                    // Do not leave the player pointing at Ronan/Kenjiro/etc. when the text says
-                    // evacuate/reach/enter a place. Create a safe objective zone rather than a stale NPC arrow.
-                    S.nav = null; S.navRef = S.makeObjectiveZone(txt);
+                    if (typeof nav === 'string') S.navRef = sstr(nav, 26);
+                    else if (nav && typeof nav === 'object') { const s2 = snapRoad(px + snum(nav.dx, -1800, 1800, 0), py + snum(nav.dy, -1800, 1800, 0)); S.nav = s2 }
                 }
                 S.ensureNav();
             },
@@ -1408,47 +1337,16 @@
                 return S.nav
             },
             fire(evt) {
-                let did = false;
                 for (const r of S.rules) {
                     const key = r.when + (r.id ? ':' + r.id : '');
                     if (key !== evt) continue;
                     if (r.once && r.fired) continue;
                     if (!r.once && t < r.cd) continue;
                     if (!r.fired && r.once) S.onceDone++;
-                    r.fired = true; r.cd = t + 3; did = true;
+                    r.fired = true; r.cd = t + 3;
                     S.runActs(r.do);
-                    if (state !== 'play') return true
+                    if (state !== 'play') return
                 }
-                return did
-            },
-            shouldExtendBeforeComplete(a) {
-                if (!M.cur || M.cur.verb !== 'scene' || !a || a.final) return false;
-                // A one-touch ring should not instantly end a scene. If the mission has had
-                // fewer than two authored beats or only a few seconds of play, synthesize a follow-up.
-                return S.onceDone < 2 && !S.forceFinal;
-            },
-            extendScene(reason) {
-                if (!M.cur || M.cur.verb !== 'scene') return false;
-                S.softSteps++;
-                const a = Math.random() * Math.PI * 2, d = 420 + Math.random() * 360;
-                const s2 = snapRoad(px + Math.cos(a) * d, py + Math.sin(a) * d);
-                const zid = 'lead' + ((Date.now() + Math.random() * 999) | 0).toString(36).slice(-6);
-                S.zones.push({ id: zid, x: s2.x, y: s2.y, r: 86, label: 'NEXT LEAD', visible: true, color: 'gold' });
-                S.rules.push({
-                    when: 'enter_zone', id: zid, arg: 0, once: true, fired: false, cd: 0, do: [
-                        { act: 'banner', text: 'The lead checks out. The chapter can close now.' },
-                        { act: 'complete', final: true }
-                    ]
-                });
-                S.onceTotal++;
-                UIK.feed(reason || 'You arrive, but the job is not finished yet.', 'SYSTEM');
-                S.setObjective('Follow the next lead before closing this job', 'zone:' + zid);
-                return true;
-            },
-            softArrival(key, id, nav) {
-                if (!M.cur || M.cur.verb !== 'scene' || S.hasPendingHardRule()) return false;
-                if (S.softSteps <= 0) return S.extendScene('You reached the place. Look deeper before calling it done.');
-                S.forceFinal = true; M.finish(true); return true;
             },
             runActs(list) {
                 for (const a of list) {
@@ -1495,10 +1393,7 @@
                             (car && car.svid === a.id ? car : null) || S.npcs.find(n => n.id === a.id);
                         if (v) { explode(v.x, v.y, v.ang || 0); if (v.hp !== undefined) v.hp = 0 }
                     }
-                    else if (act === 'complete') {
-                        if (S.shouldExtendBeforeComplete(a)) { S.extendScene('You reached the spot, but the Director reveals one more lead.'); return }
-                        if (M.cur) M.finish(true); return
-                    }
+                    else if (act === 'complete') { if (M.cur) M.finish(true); return }
                     else if (act === 'fail') { if (M.cur) M.finish(false, sstr(a.reason, 40) || 'the Director says so'); return }
                     else if (act === 'banner') UIK.feed(sstr(a.text, 90), 'GOD');
                     else if (act === 'shake') shake = Math.max(shake, 14);
@@ -1590,23 +1485,26 @@
                 if (S.navTouchT > .12 && !S.navArrived[key]) {
                     S.navArrived[key] = 1;
                     // Arrival means touching the target's interaction radius, not standing on its exact center.
-                    let fired = false;
-                    fired = S.fire('nav_arrived:' + id) || fired; if (state !== 'play') return;
-                    if (key.startsWith('pickup:')) { fired = S.fire('pickup_taken:' + id) || fired; if (state !== 'play') return }
-                    if (key.startsWith('npc:')) { fired = S.fire('npc_near:' + id) || fired; if (state !== 'play') return }
+                    // Zone rings now trigger from any point inside the circle, which prevents 1m/3m stuck states.
+                    S.fire('nav_arrived:' + id); if (state !== 'play') return;
+                    if (key.startsWith('pickup:')) { S.fire('pickup_taken:' + id); if (state !== 'play') return }
+                    if (key.startsWith('npc:')) { S.fire('npc_near:' + id); if (state !== 'play') return }
                     if (key.startsWith('zone:')) {
-                        // Do not mark zoneIn before firing; otherwise the normal zone loop may think
-                        // the player already entered and never run the authored enter_zone rule.
-                        fired = S.fire('enter_zone:' + id) || fired; if (state !== 'play') return;
                         S.zoneIn[id] = 1;
+                        S.fire('enter_zone:' + id); if (state !== 'play') return;
                         if (S.forceZoneArrival(id)) return
                     }
-                    if (!fired && (key.startsWith('zone:') || key.startsWith('prop:') || key.startsWith('landmark:') || key.startsWith('lm:') || key.startsWith('block:'))) {
-                        S.softArrival(key, id, nav); return
+                }
+                if (S.navTouchT > 1.0 && M.cur && M.cur.verb === 'scene') {
+                    const hardOnThisTarget = S.hasLiveRule('npc_dead', id) || S.hasLiveRule('in_vehicle', id) || S.hasLiveRule('pickup_taken', id) || S.hasLiveRule('vehicle_destroyed', id) || S.hasLiveRule('timer', id);
+                    if (!hardOnThisTarget && (key.startsWith('zone:') || key.startsWith('prop:') || key.startsWith('landmark:') || key.startsWith('lm:') || key.startsWith('block:'))) {
+                        UIK.feed('Objective reached — the story continues.', 'SYSTEM');
+                        M.finish(true); return
                     }
                 }
-                if (S.navTouchT > 3.2 && M.cur && M.cur.verb === 'scene' && !S.hasPendingHardRule()) {
-                    S.softArrival(key, id, nav);
+                if (S.navTouchT > 2.6 && M.cur && M.cur.verb === 'scene' && !S.hasPendingHardRule()) {
+                    UIK.feed('Objective reached — the story continues.', 'SYSTEM');
+                    M.finish(true);
                 }
             },
             update(dt) {
@@ -1616,19 +1514,8 @@
                     if (S.timers[id] <= 0) { delete S.timers[id]; S.fire('timer:' + id); if (state !== 'play') return }
                 }
                 for (const z of S.zones) {
-                    // A mission ring is an interaction area: touching/entering the circle should count.
-                    // Use a small player/vehicle radius and keep checking live rules even if nav-arrival
-                    // previously marked zoneIn, so a stale arrow cannot strand the player inside a ring.
-                    const touchR = z.r + (onFoot ? 14 : 26);
-                    const inz = Math.hypot(z.x - px, z.y - py) <= touchR;
-                    if (inz) {
-                        const firstTouch = !S.zoneIn[z.id];
-                        S.zoneIn[z.id] = 1;
-                        if (firstTouch || S.hasLiveRule('enter_zone', z.id)) {
-                            const didEnter = S.fire('enter_zone:' + z.id); if (state !== 'play') return;
-                            if (didEnter) S.navTouchT = 0;
-                        }
-                    }
+                    const inz = Math.hypot(z.x - px, z.y - py) < z.r;
+                    if (inz && !S.zoneIn[z.id]) { S.zoneIn[z.id] = 1; S.fire('enter_zone:' + z.id); if (state !== 'play') return }
                     if (!inz && S.zoneIn[z.id]) { S.zoneIn[z.id] = 0; S.fire('exit_zone:' + z.id); if (state !== 'play') return }
                     S.zoneStay[z.id] = inz ? (S.zoneStay[z.id] || 0) + dt : 0;
                     for (const r of S.rules) if (r.when === 'zone_stay' && r.id === z.id && !r.fired && (S.zoneStay[z.id] || 0) >= (r.arg || 5)) {
@@ -1955,8 +1842,7 @@
                 let name = this.uniq(() => spec[0] + (this.chance(.25) ? ' ' + this.R(['North', 'South', 'Annex', 'Yard', 'Gate']) : ''));
                 if (name.length > 18) name = name.slice(0, 18);
                 const asProp = this.chance(.46);
-                const innerPal = ['#22252C', '#1C2230', '#273323', '#2A2418', '#262A33', '#101216', '#2D2434', '#20333A', '#D8C98A', '#1E2A22'];
-                const o = { op: asProp ? 'property' : 'landmark', id: 'lg' + (this.uid++), dx: p.dx, dy: p.dy, name, sign: this.sign(name), purpose: spec[1], style: 'custom', color: col, inner: this.R(innerPal) };
+                const o = { op: asProp ? 'property' : 'landmark', id: 'lg' + (this.uid++), dx: p.dx, dy: p.dy, name, sign: this.sign(name), purpose: spec[1], style: 'custom', color: col };
                 if (spec[3]) {
                     o.walk = true; o.ground = spec[4] || this.R(['grass', 'soil', 'sand', 'water', 'paving', 'asphalt']);
                     o.glyph = this.glyph(spec[2] || (o.ground === 'water' || o.ground === 'soil' ? 'waves' : 'ring'));
@@ -2119,7 +2005,7 @@
                     'You are THE DIRECTOR — the omnipotent God and Game Master of Blocktown. You run an ENDLESS, highly dynamic RPG campaign. The player is your mortal.',
                     'HOW BLOCKTOWN IS BUILT (so you can reshape it): the world is an infinite grid of 260px BLOCKS, each a square ringed by roads with dashed lane lines. A block can be a solid building, a walkable park/farm/plaza/base/helipad, a parking lot, or anything YOU invent. A "car" is a rideable vehicle; "npcs" are people who walk, follow, flee or fight; the "player" is the one mortal you may NOT puppet — you shape everything else around them. Coordinates you emit are dx,dy pixel offsets from the player and get snapped to roads automatically.',
                     'YOU ARE EFFECTIVELY WRITING LIVE GAME CODE AS JSON — the engine executes your JSON like a tiny scripting language. You cannot output JavaScript, but your JSON is the code: it creates components, vehicles, goals, NPC logic, timers, shops, and city blocks. Your brushes are: landmarks/blocks (incl. fully custom ones), entities (npc/vehicle/pickup/zone), scene RULES (trigger->actions) that make missions play out, WORLD OPS that bend the city, and a GLYPH vector-art language to draw the top-down art on anything you build. Think like a god-director staging a living film, not a quest-list generator.',
-                    'NAVIGATION CONTRACT: every scene MUST set scene.objective and scene.nav to the exact next thing the player should reach: zone:ID, npc:ID, vehicle:ID, prop:ID, landmark:ID, lm:ID, or block:ID. The visible objective text and the nav target MUST refer to the same thing. If text says evacuate/reach/enter/visit a PLACE, nav must be that place/zone/property/landmark, not a nearby NPC. If text says speak/protect/follow a PERSON, nav may be npc:ID. Every rule that changes the task MUST include {act:"objective", text, nav} with a fresh target that exists after that rule runs. Never make the player infer where to go from text only; the arrow must always have a target. If the step is simply "reach / meet / steal / inspect / pick up", add a nav_arrived:ID or enter_zone:ID rule that advances the mission so the player cannot get stuck at 1m.',
+                    'NAVIGATION CONTRACT: every scene MUST set scene.objective and scene.nav to the next real thing the player should reach: zone:ID, npc:ID, vehicle:ID, prop:ID, landmark:ID, lm:ID, or block:ID. Every rule that changes the task MUST include {act:"objective", text, nav} with a fresh target that exists after that rule runs. Never make the player infer where to go from text only; the arrow must always have a target. If the step is simply "reach / meet / steal / inspect / pick up", add a nav_arrived:ID or enter_zone:ID rule that advances or completes the mission so the player cannot get stuck at 1m.',
                     'PROPERTY CONTRACT: buildings are permanent city consequences, not disposable decorations. Do NOT add a new building every mission. First reuse existing city blocks/properties when possible; create a new block only when the story truly needs a venue. Every property/building must have a gameplay/story reason: a safehouse heals, an ammo depot resupplies, a garage gives vehicles, a shop sells mission supplies, a civic site creates a meeting/heist/legal mission, a farm/park/plaza becomes walkable mission ground. Buying a property is not just money: use bought:PROPID rules when relevant to unlock contacts, betrayals, storage, safe zones, discounts, vehicles, or the next arc. Property income pays once every 5 real minutes, not every few seconds.',
                     'MISSION CRAFT: every mission needs a deliberate opening, at least one twist or meaningful action, and a clear ending. Success and failure must both update MEMORY so the saga progresses. Invent characters with motives, vehicles with purpose, and city blocks that matter to the objective. Avoid random decoration.',
                     'FAILSAFE SCENARIOS: always author branches for chaos. If a mission NPC can die, include npc_dead:ID rules. If a mission vehicle can be destroyed, include vehicle_destroyed:ID rules. If the player dies, the engine fails that mission and continues the saga from that failure, so MEMORY must treat failure as canon instead of restarting the same beat. Friendly/neutral NPC death should usually fail or alter the arc; hostile target death should usually complete or advance it.',
@@ -2131,12 +2017,11 @@
                     ' {"type":"zone","id","dx","dy","r":40-220,"label":str12,"visible":bool,"color":C}',
                     ' {"type":"npc","id","name":str12,"dx","dy","color":C,"role":"friendly|hostile|neutral","hp":1-14,"speed":30-160,"behavior":{"kind":"wander|follow_player|flee_player|chase_player|goto|guard","dx","dy"}}',
                     ' {"type":"vehicle","id","dx","dy","color":C,"kind":"car|sports|van|tank|bike|armored|bus","marked":bool,"hostile":bool,"name":str16} | {"type":"pickup","id","kind":"heart|ammo|cash|item","label","dx","dy"}',
-                    'RULE 4 - THE CITY IS YOUR CANVAS (INVENT BLOCKS): You CAN invent buildings, parks, and special areas using `style:"custom"`, but only when the current chapter needs that block. Prefer fewer, memorable, reusable places over random new buildings. EVERY building needs purpose/why: why this block exists in the story, what current or future mission it supports. {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"purpose":str90,"style":"custom","walk":true|false,"blocker":true|false,"ground":"grass|soil|sand|paving|asphalt|water|gold","inner":"#RRGGBB"|C,"roof":"#RRGGBB"|C,"color":C,"glyph":G}. Walkable customs paint your glyph across the WHOLE block (use this to draw farms, checkpoints, parks, mazes). Solid customs are buildings whose roof you draw.',
-                    'GLYPH G = Your vector art tool for the inner 170x170 component area. DO NOT rely on presets. Export custom shapes as max 20-item JSON array in a 0-100 viewbox: [{"s":"rect","x","y","w","h"}|{"s":"circle","x","y","r"}|{"s":"ellipse","x","y","rx","ry"}|{"s":"line","x1","y1","x2","y2"}|{"s":"poly","pts":[[x,y],...]}]. Options: {"f":1 filled,"d":1 dashed,"w2":2-8 stroke width,"c":"#RRGGBB" or color name,"a":0.1-1}. INVENT components: crop rows, parking stalls, military base, mansion floorplan, White-House roof, helipad, market tents, maze, dock, bunker, lab table, barricade. The rest of the 260x260 block is road; only draw/design inside this component area.',
+                    'RULE 4 - THE CITY IS YOUR CANVAS (INVENT BLOCKS): You CAN invent buildings, parks, and special areas using `style:"custom"`, but only when the current chapter needs that block. Prefer fewer, memorable, reusable places over random new buildings. EVERY building needs purpose/why: why this block exists in the story, what current or future mission it supports. {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"purpose":str90,"style":"custom","walk":true|false,"ground":"grass|soil|sand|paving|asphalt|water|gold","roof":C,"color":C,"glyph":G}. Walkable customs paint your glyph across the WHOLE block (use this to draw farms, checkpoints, parks, mazes). Solid customs are buildings whose roof you draw.',
+                    'GLYPH G = Your vector art tool to draw these new shapes. DO NOT rely on presets. Export your custom shapes as a max 20-item JSON array in a 0-100 viewbox: [{"s":"rect","x","y","w","h"}|{"s":"circle","x","y","r"}|{"s":"ellipse","x","y","rx","ry"}|{"s":"line","x1","y1","x2","y2"}|{"s":"poly","pts":[[x,y],...]}]. Options: {"f":1 filled,"d":1 dashed,"w2":2-8 stroke width}. INVENT THINGS: draw crop rows for farms using dashed lines, draw military bases using polygons, draw mansions. You decide the visuals!',
                     'RULES (max 14: {"when":TRIGGER,"once":bool,"do":[max 6 ACTIONS]}). TRIGGERS: start | enter_zone:ID | exit_zone:ID | zone_stay:ID:SECS | npc_dead:ID | npc_reached:ID | npc_near:ID:DIST | vehicle_destroyed:ID | in_vehicle:ID | pickup_taken:ID | nav_arrived:ID | timer:ID | heat_zero | heat_at:N | hearts_below:N | bought:PROPID.',
                     'ACTIONS: {"act":"say","id":npc,"text"} | {"act":"phone","from","text"} | {"act":"objective","text","nav":"zone:ID"|"npc:ID"|"vehicle:ID"|"prop:ID"|"landmark:ID"} | {"act":"spawn",...entity} | {"act":"despawn","id"} | {"act":"behavior","id","kind",..,"role","speed"} | {"act":"reward","amount"} | {"act":"give","kind":"ammo|heart|cash","amount"} | {"act":"heat","set":0-5} | {"act":"timer","id","seconds"} | {"act":"explode","id"} | {"act":"complete"} | {"act":"fail","reason"} | {"act":"banner","text"} | {"act":"shake"} | any WORLD OP as {"act":OP,...}.',
-                    'MISSION DESIGN: Craft scenes, not chores. NEVER end a mission immediately on the first circle unless it is explicitly the final beat. Each mission needs 2-4 playable beats: arrive -> dialogue/discovery -> complication/choice/chase/fight/infiltration -> success/fail ending. Any ring/zone objective must trigger with enter_zone as soon as the player touches the circle; do not require exact center standing. When the first zone is reached, use say/phone/banner/objective with a new nav to send the player to the next target, spawn an NPC/vehicle, start a timer, or reveal a choice. Only use complete after the player has done a meaningful second action. Use named NPCs with motives, purposeful vehicles, crowds, traffic, and buildings. Make the player do grounded real-world actions: meet, escort, steal a vehicle, tail a car, survive an ambush, deliver goods, buy/visit a property, protect an NPC, dump evidence, raid a depot, negotiate, infiltrate, investigate, smuggle, rescue, or choose between routes. Outside active missions, you may still evolve the city with small believable world ops/properties/crowds that seed future missions.',
-                    'MISSION ROBUSTNESS: every mission must handle normal player chaos. Add branches for npc_dead for important NPCs, vehicle_destroyed for important vehicles, timer failure if a timer exists, and at least one valid success ending. If an objective says enter/reach a zone, include enter_zone:ID that clearly advances the story. If an objective says talk to a person, use npc_near:ID or nav_arrived:ID plus dialogue and a next objective. Never point the arrow at a decorative NPC when the text names a place. Reuse permanent locations when possible; create a new block only when it has a future purpose in the arc.',
+                    'MISSION DESIGN: Craft scenes, not chores. Each mission should have 2-4 beats using rules: arrive -> dialogue/discovery -> complication/choice/chase/fight -> success/fail ending. Any ring/zone objective must trigger with enter_zone as soon as the player touches the circle; do not require exact center standing. Use named NPCs with motives, purposeful vehicles, crowds, traffic, and buildings. Make the player do grounded real-world actions: meet, escort, steal a vehicle, tail a car, survive an ambush, deliver goods, buy/visit a property, protect an NPC, dump evidence, raid a depot, negotiate, infiltrate, investigate, smuggle, rescue, or choose between routes.',
                     'WORLD OPS (max 8): earthquake | eclipse | nuke{dx,dy} | zombies | airdrop | lockdown | ambush{dx,dy,n} | gang{dx,dy} | crowd{dx,dy,n} | pickup{kind,dx,dy} | weather{kind:"clear|rain|night|fog"} | traffic{n} | landmark | property | vehicle{kind:"car|sports|van|tank|bike|armored|bus",dx,dy,color,marked,hostile,name} | mood{traffic:0-14,peds:0-24} | calm | panic{dx,dy,r} | possess{name,text,dx,dy} | convoy{dx,dy,n,color,kind}.',
                     'INVENTION RULE: invent whatever the current story needs: farm, lab, shrine, checkpoint, prison, radio tower, flooded dock, clinic, roadblock, arena, market, scrapyard, safehouse, embassy, courthouse, mansion, bunker, motor pool, civic landmark, fake White House, ferry terminal, casino, school, warehouse, or secret base. Create it as custom landmark/property with purpose and glyph, then make the current or future mission interact with it via nav/rules. Plan the city like a living block-based world: solid blocks, walkable blocks, commerce, hazards, parking, roads, NPCs, and traffic must all have a reason.',
                     'ECONOMY: dying costs $200. SHOP: 0-3 practical items only [{"label":str20,"cost":n,"id":"bribe|heal|ammo"}]. No magic powers, no god items, no fake body resources.',
@@ -3249,14 +3134,8 @@
                 drawGlyph(x + (BS - 8) / 2, y + (BS - 8) / 2 + 2, 96, lm.glyph || 'pyramid', col)
             }
             else if (walkable) {
-                // The inner 170x170 component area is the AI canvas. Walkable blocks are ground-level modules.
-                if (lm.style === 'custom') {
-                    g.fillStyle = lm.inner || GCOL[lm.ground] || '#262a33';
-                    g.fillRect(x, y, BS, BS);
-                    g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1;
-                    g.strokeRect(x + .5, y + .5, BS - 1, BS - 1);
-                    if (lm.glyph) drawGlyph(x + BS / 2, y + BS / 2 + 2, BS - 16, lm.glyph, col, 2)
-                }
+                // terrain draws itself; invented grounds carry painted markings (court lines, helipad H) — never a rooftop icon
+                if (lm.style === 'custom') { if (lm.glyph) drawGlyph(x + BS / 2, y + BS / 2 + 2, BS - 14, lm.glyph, col, 2) }
                 else if (lm.glyph && !['park', 'farm', 'plaza'].includes(lm.style)) drawGlyph(x + BS / 2, y + BS / 2 + 2, 104, lm.glyph, col, true)
             }
             else {
@@ -3284,13 +3163,10 @@
                     g.fillStyle = 'rgba(255,240,180,' + (night ? .5 : .2) + ')';
                     for (let k = 0; k < 4; k++)g.fillRect(x + 15 + k * 36, y + BS - 60, 18, 18)
                 }
-                else if (lm.style === 'custom' && !walkable) { // an AI-composed blocker building on the 170x170 canvas
-                    g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(x + 8, y + 10, BS, BS);
-                    g.fillStyle = lm.inner || lm.roof || '#22252c'; g.fillRect(x, y, BS, BS);
-                    g.strokeStyle = 'rgba(255,255,255,.10)'; g.lineWidth = 2; g.strokeRect(x + 1, y + 1, BS - 2, BS - 2);
-                    g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(x, y, BS, 4); g.fillRect(x, y, 4, BS);
-                    g.fillStyle = 'rgba(0,0,0,.20)'; g.fillRect(x + BS - 8, y + 8, 6, BS - 16); g.fillRect(x + 8, y + BS - 8, BS - 16, 6);
-                    if (lm.glyph) drawGlyph(x + BS / 2, y + BS / 2 + 3, BS - 28, lm.glyph, col)
+                else if (lm.style === 'custom' && !walkable) { // an AI-composed building
+                    g.fillStyle = lm.roof ? LPAL[lm.roof] : '#1b2029'; g.fillRect(x + 6, y + 6, BS - 20, BS - 20);
+                    g.fillStyle = 'rgba(255,255,255,.05)'; g.fillRect(x + 6, y + 6, BS - 20, 4); g.fillRect(x + 6, y + 6, 4, BS - 20);
+                    if (lm.glyph) drawGlyph(x + (BS - 8) / 2, y + (BS - 8) / 2 + 4, BS - 54, lm.glyph, col)
                 }
                 else if (lm.style === 'billboard') {
                     g.fillStyle = '#0c0e13'; g.fillRect(x + 14, y + 18, BS - 36, 52);
@@ -3303,7 +3179,7 @@
                     for (let k = 0; k < 6; k++)g.fillRect(x + 8 + k * 26, y + BS - 32, 16, 12);
                     g.fillStyle = 'rgba(255,240,180,' + (night ? .45 : .18) + ')'; g.fillRect(x + 12, y + 32, BS - 34, 26)
                 }
-                if (lm.glyph && lm.style !== 'custom') drawGlyph(x + (BS - 8) / 2, y + (BS - 8) / 2 + 4, 58, lm.glyph, col)
+                if (lm.glyph) drawGlyph(x + (BS - 8) / 2, y + (BS - 8) / 2 + 4, 58, lm.glyph, col)
             }
             const sx2 = x + (BS - 8) / 2;
             if (!walkable) { // only buildings wear a glowing sign
