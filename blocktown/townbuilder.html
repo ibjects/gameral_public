@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blocktown Town Builder</title>
+    <style>
+        :root {
+            --bg-dark: #101216;
+            --panel-bg: #14161d;
+            --text-main: #e7e9ee;
+            --accent: #ffd166;
+            --road-color: #22252c;
+            --road-lines: rgba(255, 220, 120, 0.28);
+            --tile-size: 260px;
+            --inner-size: 170px;
+            --offset: 45px;
+            /* (260 - 170) / 2 */
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: ui-monospace, Menlo, monospace;
+            overflow: hidden;
+        }
+
+        /* Split Screen Layout */
+        .layout {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* --- LEFT PANEL: CONTROLS --- */
+        .controls-side {
+            flex: 1;
+            background: linear-gradient(90deg, #101216 0%, #1a1d26 100%);
+            border-right: 2px solid var(--accent);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+            box-shadow: 5px 0 15px rgba(0, 0, 0, 0.5);
+            max-width: 450px;
+        }
+
+        .controls-side h1 {
+            color: var(--accent);
+            margin-top: 0;
+            font-size: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            background: rgba(255, 209, 102, 0.1);
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            padding: 10px 15px;
+            font-family: inherit;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn.active,
+        .btn:active {
+            background: var(--accent);
+            color: var(--bg-dark);
+        }
+
+        .custom-code-area {
+            display: none;
+            flex-direction: column;
+            flex-grow: 1;
+        }
+
+        .custom-code-area label {
+            margin-bottom: 8px;
+            color: #f87171;
+            font-weight: bold;
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .snippet-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .snippet-controls select {
+            flex-grow: 1;
+            background: #0a0c10;
+            color: var(--accent);
+            border: 1px solid #3a3f4d;
+            padding: 6px;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+
+        .snippet-controls button {
+            background: #0a0c10;
+            color: #4ade80;
+            border: 1px solid #4ade80;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            padding: 0 10px;
+        }
+
+        textarea {
+            width: 100%;
+            flex-grow: 1;
+            background: #0a0c10;
+            border: 1px solid #3a3f4d;
+            color: #4ade80;
+            padding: 10px;
+            font-family: inherit;
+            border-radius: 6px;
+            resize: none;
+        }
+
+        .instructions {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #8b8fa3;
+            line-height: 1.5;
+        }
+
+        /* --- RIGHT PANEL: MAP --- */
+        .map-side {
+            flex: 1.5;
+            position: relative;
+            background-color: #0c0e12;
+            overflow: hidden;
+            cursor: grab;
+        }
+
+        .map-side:active {
+            cursor: grabbing;
+        }
+
+        /* The Infinite Grid Container */
+        #map-container {
+            position: absolute;
+            transform-origin: 0 0;
+            /* Strict top-left origin for accurate pointer-zoom math */
+            background-size: var(--tile-size) var(--tile-size);
+            background-image:
+                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        }
+
+        /* --- CITY BLOCKS --- */
+        .city-block {
+            position: absolute;
+            width: var(--tile-size);
+            height: var(--tile-size);
+            background-color: var(--road-color);
+            border: 2px dashed var(--road-lines);
+            box-sizing: border-box;
+        }
+
+        /* Inner Playable Area (Strictly 170x170) */
+        .inner-block {
+            position: absolute;
+            width: var(--inner-size);
+            height: var(--inner-size);
+            left: var(--offset);
+            top: var(--offset);
+            box-sizing: border-box;
+            box-shadow: 8px 10px 15px rgba(0, 0, 0, 0.5);
+            transition: transform 0.2s;
+        }
+
+        .city-block:hover .inner-block {
+            transform: scale(1.05);
+            z-index: 5;
+        }
+
+        /* Block Types */
+        .bldg-roof {
+            width: 100%;
+            height: 100%;
+            border: 1px solid rgba(0, 0, 0, 0.4);
+        }
+
+        .park-grass {
+            width: 100%;
+            height: 100%;
+            background: #233327;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .park-tree {
+            position: absolute;
+            background: #2f4a33;
+            border-radius: 50%;
+            box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        .parking-lot {
+            width: 100%;
+            height: 100%;
+            background: #2a2d35;
+            background-image: repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255, 255, 255, 0.2) 20px, rgba(255, 255, 255, 0.2) 22px);
+            border: 2px solid #1a1c23;
+        }
+
+        /* STRICT 170x170 Custom Wrapper */
+        .custom-wrapper {
+            width: 170px;
+            height: 170px;
+            background: rgba(74, 222, 128, 0.05);
+            border: 2px solid #4ade80;
+            overflow: hidden;
+            /* Prevent user code from breaking grid */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            position: relative;
+        }
+
+        /* UI Overlays on Map */
+        .map-ui {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 20;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="layout">
+        <div class="controls-side">
+            <h1>Town Builder</h1>
+            <div class="toolbar" id="toolbar">
+                <button class="btn active" data-tool="building">🏢 Building</button>
+                <button class="btn" data-tool="park">🌳 Park</button>
+                <button class="btn" data-tool="parking">🅿️ Parking</button>
+                <button class="btn" data-tool="custom">⚡ Custom (HTML)</button>
+                <button class="btn" data-tool="eraser" style="border-color: #f87171; color: #f87171;">🗑️
+                    Eraser</button>
+            </div>
+
+            <div class="custom-code-area" id="custom-area">
+                <label>
+                    <span>HTML/CSS INJECTOR (170x170)</span>
+                </label>
+
+                <div class="snippet-controls">
+                    <select id="snippet-select">
+                        <option value="default">Default Ad Space</option>
+                    </select>
+                    <button id="save-snippet-btn" title="Save Current HTML">💾 Save</button>
+                    <button id="del-snippet-btn" style="color: #f87171; border-color: #f87171;"
+                        title="Delete Snippet">X</button>
+                </div>
+
+                <textarea id="custom-code" spellcheck="false">
+<div style="background: #f472b6; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center;">
+  <b style="color:#000;">AD SPACE<br>OR CSS</b>
+</div>
+                </textarea>
+                <div class="instructions">
+                    * Click map to place block.<br>
+                    * Drag to Pan. Scroll to Smooth Zoom.<br>
+                    * Wrapper is strictly locked to 170x170 with hidden overflow.
+                </div>
+            </div>
+        </div>
+
+        <div class="map-side" id="map-viewport">
+            <div id="map-container" style="width: 10000px; height: 10000px;"></div>
+
+            <div class="map-ui">
+                <button class="btn" id="center-map" title="Center on starting block">🎯 Center</button>
+                <button class="btn" id="zoom-out">➖</button>
+                <button class="btn" id="zoom-in">➕</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const mapContainer = document.getElementById('map-container');
+        const viewport = document.getElementById('map-viewport');
+        const customCodeInput = document.getElementById('custom-code');
+        const snippetSelect = document.getElementById('snippet-select');
+        const tileSize = 260;
+        const bpal = ['#2b3242', '#343049', '#3a2f3b', '#2e3a3a', '#373430', '#303648'];
+
+        // --- STATE ---
+        let currentTool = 'building';
+        let scale = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDragging = false;
+        let startX, startY;
+        const blocks = {}; // Store placed blocks by "x,y" 
+        const mapCenterGrid = Math.floor(10000 / 2 / tileSize); // Grid index for absolute center
+
+        // --- LOCAL STORAGE SNIPPETS ---
+        const STORE_KEY = 'bt_citybuilder_snippets';
+        let snippets = JSON.parse(localStorage.getItem(STORE_KEY)) || {
+            "Default Ad": `<div style="background: #f472b6; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center;">\n  <b style="color:#000;">AD SPACE<br>OR CSS</b>\n</div>`,
+            "Pool": `<div style="background: #0ea5e9; width: 100%; height: 100%; border: 10px solid #e2e8f0; border-radius: 12px; box-sizing: border-box;"></div>`
+        };
+
+        function renderSnippets() {
+            snippetSelect.innerHTML = '';
+            for (let key in snippets) {
+                let opt = document.createElement('option');
+                opt.value = key;
+                opt.textContent = key;
+                snippetSelect.appendChild(opt);
+            }
+        }
+
+        snippetSelect.addEventListener('change', (e) => {
+            customCodeInput.value = snippets[e.target.value];
+        });
+
+        document.getElementById('save-snippet-btn').addEventListener('click', () => {
+            let name = prompt("Enter a name to save this snippet:");
+            if (!name) return;
+            snippets[name] = customCodeInput.value;
+            localStorage.setItem(STORE_KEY, JSON.stringify(snippets));
+            renderSnippets();
+            snippetSelect.value = name;
+        });
+
+        document.getElementById('del-snippet-btn').addEventListener('click', () => {
+            let current = snippetSelect.value;
+            if (Object.keys(snippets).length <= 1) return alert("Keep at least one snippet.");
+            if (confirm(`Delete snippet '${current}'?`)) {
+                delete snippets[current];
+                localStorage.setItem(STORE_KEY, JSON.stringify(snippets));
+                renderSnippets();
+                customCodeInput.value = snippets[snippetSelect.value];
+            }
+        });
+
+        renderSnippets();
+        customCodeInput.value = snippets[snippetSelect.value]; // Load initial
+
+
+        // --- TOOLBAR LOGIC ---
+        document.querySelectorAll('.toolbar .btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.toolbar .btn').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                currentTool = e.target.getAttribute('data-tool');
+                document.getElementById('custom-area').style.display = (currentTool === 'custom') ? 'flex' : 'none';
+            });
+        });
+
+        // --- PAN & POINTER-CENTRIC ZOOM LOGIC ---
+        function updateTransform() {
+            mapContainer.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        }
+
+        function centerMap() {
+            const keys = Object.keys(blocks);
+            let targetGridX = mapCenterGrid;
+            let targetGridY = mapCenterGrid;
+
+            // Focus on the very first block placed, or default center
+            if (keys.length > 0) {
+                const firstBlock = keys[0].split(',');
+                targetGridX = parseInt(firstBlock[0]);
+                targetGridY = parseInt(firstBlock[1]);
+            }
+
+            const targetPx = targetGridX * tileSize + (tileSize / 2);
+            const targetPy = targetGridY * tileSize + (tileSize / 2);
+
+            const vW = viewport.clientWidth;
+            const vH = viewport.clientHeight;
+
+            // Calculate pan to put target pixel directly in viewport center
+            panX = (vW / 2) - (targetPx * scale);
+            panY = (vH / 2) - (targetPy * scale);
+            updateTransform();
+        }
+
+        viewport.addEventListener('mousedown', e => {
+            // Prevent dragging if clicking UI buttons
+            if (e.target.closest('.map-ui')) return;
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+            viewport.style.cursor = 'grabbing';
+        });
+
+        window.addEventListener('mousemove', e => {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            updateTransform();
+        });
+
+        window.addEventListener('mouseup', () => {
+            isDragging = false;
+            viewport.style.cursor = 'grab';
+        });
+
+        // Pointer-centric smooth scroll zoom
+        viewport.addEventListener('wheel', e => {
+            e.preventDefault();
+
+            // Get mouse position relative to viewport
+            const rect = viewport.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Determine zoom direction and intensity
+            const zoomIntensity = 0.002;
+            const wheel = e.deltaY < 0 ? 1 : -1;
+            const zoomFactor = Math.exp(wheel * zoomIntensity * Math.abs(e.deltaY));
+
+            // Limit scale between 0.15 (far out) and 3 (close up)
+            const newScale = Math.max(0.15, Math.min(scale * zoomFactor, 3));
+
+            // Offset the pan to keep the point under the mouse stationary
+            panX = mouseX - (mouseX - panX) * (newScale / scale);
+            panY = mouseY - (mouseY - panY) * (newScale / scale);
+            scale = newScale;
+
+            updateTransform();
+        }, { passive: false });
+
+        document.getElementById('zoom-in').onclick = () => { scale = Math.min(scale * 1.3, 3); updateTransform(); };
+        document.getElementById('zoom-out').onclick = () => { scale = Math.max(scale * 0.7, 0.15); updateTransform(); };
+        document.getElementById('center-map').onclick = centerMap;
+
+        // --- BUILDING LOGIC ---
+        viewport.addEventListener('click', e => {
+            if (e.target.closest('.map-ui')) return;
+
+            // Don't place a block if we were just dragging
+            if (Math.abs(e.clientX - startX - panX) > 5 || Math.abs(e.clientY - startY - panY) > 5) return;
+
+            // Calculate grid coordinates accounting for scale and pan offsets
+            const rect = viewport.getBoundingClientRect();
+            const clickX = (e.clientX - rect.left - panX) / scale;
+            const clickY = (e.clientY - rect.top - panY) / scale;
+
+            const gridX = Math.floor(clickX / tileSize);
+            const gridY = Math.floor(clickY / tileSize);
+            const key = `${gridX},${gridY}`;
+
+            if (currentTool === 'eraser') {
+                if (blocks[key]) {
+                    blocks[key].remove();
+                    delete blocks[key];
+                }
+                return;
+            }
+
+            // Replace existing block
+            if (blocks[key]) blocks[key].remove();
+            createBlock(gridX, gridY, currentTool);
+        });
+
+        function createBlock(x, y, type) {
+            const block = document.createElement('div');
+            block.className = 'city-block';
+            block.style.left = `${x * tileSize}px`;
+            block.style.top = `${y * tileSize}px`;
+
+            const inner = document.createElement('div');
+            inner.className = 'inner-block';
+
+            if (type === 'building') {
+                const roof = document.createElement('div');
+                roof.className = 'bldg-roof';
+                roof.style.backgroundColor = bpal[Math.floor(Math.random() * bpal.length)];
+                inner.appendChild(roof);
+            }
+            else if (type === 'park') {
+                const grass = document.createElement('div');
+                grass.className = 'park-grass';
+                for (let i = 0; i < 5; i++) {
+                    const tree = document.createElement('div');
+                    tree.className = 'park-tree';
+                    const r = 10 + Math.random() * 8;
+                    tree.style.width = `${r * 2}px`;
+                    tree.style.height = `${r * 2}px`;
+                    tree.style.left = `${20 + Math.random() * 90}px`;
+                    tree.style.top = `${20 + Math.random() * 90}px`;
+                    grass.appendChild(tree);
+                }
+                inner.appendChild(grass);
+            }
+            else if (type === 'parking') {
+                const parking = document.createElement('div');
+                parking.className = 'parking-lot';
+                inner.appendChild(parking);
+            }
+            else if (type === 'custom') {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'custom-wrapper';
+                wrapper.innerHTML = customCodeInput.value;
+                inner.appendChild(wrapper);
+            }
+
+            block.appendChild(inner);
+            mapContainer.appendChild(block);
+            blocks[`${x},${y}`] = block;
+        }
+
+        // --- INITIALIZATION ---
+        // Place the first building in the absolute center
+        createBlock(mapCenterGrid, mapCenterGrid, 'building');
+        // Center the camera on it
+        centerMap();
+
+    </script>
+    <script src="blocks/block-snippets.js"></script>
+</body>
+
+</html>
