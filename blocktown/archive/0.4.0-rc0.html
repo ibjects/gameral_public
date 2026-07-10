@@ -779,7 +779,7 @@
     <script>
         'use strict';
         /* =====================================================================
-           BLOCKTOWN v8 — THE PROGRAMMABLE CITY DIRECTOR
+           BLOCKTOWN v7 — THE OMNIPOTENT CHAOS DIRECTOR
            - Perfected AI Vehicle Collision (Cops/Gangs slide & unstuck automatically)
            - Maximum AI Freedom Prompt (Earthquakes, Eclipses, Chaos Shop)
            - Persistent God-Mode Session System
@@ -821,51 +821,6 @@
             return { x: Math.round(x / T) * T + RW / 2, y: Math.round(y / T) * T + RW / 2 };
         }
         function snapRoad(x, y) { return { x: Math.round(x / T) * T + RW / 2, y: Math.round(y / T) * T + RW / 2 } }
-        function isRoadAt(x, y) { return mod(x, T) < RW || mod(y, T) < RW }
-        function snapVehicleRoad(x, y, seed) {
-            const vxCell = Math.round((x - RW / 2) / T), hyCell = Math.round((y - RW / 2) / T);
-            const vx = vxCell * T + RW / 2, hy = hyCell * T + RW / 2;
-            const laneA = RW * .29, laneB = RW * .71;
-            const lane = hsh(vxCell, hyCell, seed || 31) < .5 ? laneA : laneB;
-            if (Math.abs(x - vx) <= Math.abs(y - hy)) return { x: vxCell * T + lane, y, axis: 'v' };
-            return { x, y: hyCell * T + lane, axis: 'h' }
-        }
-        function roadRoutePoint(c, target) {
-            const dst = snapVehicleRoad(target.x, target.y, c.routeIndex || 0);
-            const onV = mod(c.x, T) < RW, onH = mod(c.y, T) < RW;
-            const targetV = Math.round((target.x - RW / 2) / T) * T + RW / 2;
-            const targetH = Math.round((target.y - RW / 2) / T) * T + RW / 2;
-            if (onV && Math.abs(c.x - targetV) < RW * .65) return { x: c.x, y: target.y };
-            if (onH && Math.abs(c.y - targetH) < RW * .65) return { x: target.x, y: c.y };
-            if (onV && !onH) {
-                if (Math.abs(c.y - targetH) > 28) return { x: c.x, y: targetH };
-                return { x: dst.x, y: targetH }
-            }
-            if (onH && !onV) {
-                if (Math.abs(c.x - targetV) > 28) return { x: targetV, y: c.y };
-                return { x: targetV, y: dst.y }
-            }
-            // At an intersection, choose a legal road axis before turning toward the next corridor.
-            return Math.abs(target.x - c.x) > Math.abs(target.y - c.y)
-                ? { x: targetV, y: c.y }
-                : { x: c.x, y: targetH }
-        }
-        function blockAccessPoint(bi, bj, fromX, fromY) {
-            const c = blockCenter(bi, bj), fx = isFinite(fromX) ? fromX : px, fy = isFinite(fromY) ? fromY : py;
-            const pts = [
-                { x: bi * T + RW / 2, y: c.y, side: 'west' },
-                { x: (bi + 1) * T + RW / 2, y: c.y, side: 'east' },
-                { x: c.x, y: bj * T + RW / 2, side: 'north' },
-                { x: c.x, y: (bj + 1) * T + RW / 2, side: 'south' }
-            ];
-            pts.sort((a, b) => Math.hypot(a.x - fx, a.y - fy) - Math.hypot(b.x - fx, b.y - fy));
-            return pts[0]
-        }
-        function siteNavPoint(site) {
-            if (!site) return null;
-            if (site.walk) return blockCenter(site.bi, site.bj);
-            return blockAccessPoint(site.bi, site.bj, px, py)
-        }
         const BPAL = ['#2b3242', '#343049', '#3a2f3b', '#2e3a3a', '#373430', '#303648'];
 
         /* ---------------- state ---------------- */
@@ -905,7 +860,7 @@
             maxHearts = snum(sv.maxHearts, 3, 5, 3); hearts = maxHearts;
             weather = ['clear', 'rain', 'night', 'fog'].includes(sv.weather) ? sv.weather : 'clear';
             chapterN = snum(sv.chapterN, 0, 1e6, 0); playMin = snum(sv.playMin, 0, 1e6, 0);
-            Director.memory = sstr(sv.mem, 2200);
+            Director.memory = sstr(sv.mem, 900);
             muse = Array.isArray(sv.muse) && sv.muse.length ? sv.muse.slice(0, 3).map(w => sstr(w, 14)) : (muse.length ? muse : pickMuse());
             events = Array.isArray(sv.events) ? sv.events.slice(-10).map(e => sstr(e, 120)) : [];
             landmarks = []; props = []; tileOv = {}; lmIdx = {};
@@ -1161,8 +1116,8 @@
         function sBlueprint(bp) {
             if (!Array.isArray(bp)) return null;
             const out = [];
-            const kinds = ['rect', 'roundRect', 'line', 'circle', 'ellipse', 'poly', 'road', 'runway', 'parking', 'building', 'hangar', 'tower', 'tree', 'plane', 'helipad', 'crop', 'water', 'fence', 'tent', 'container', 'tank', 'car', 'label'];
-            const n = (v, d = 50) => snum(v, -20, 120, d);
+            const kinds = ['rect','roundRect','line','circle','ellipse','poly','road','runway','parking','building','hangar','tower','tree','plane','helipad','crop','water','fence','tent','container','tank','car','label'];
+            const n = (v, d=50) => snum(v, -20, 120, d);
             for (const raw of bp.slice(0, 40)) {
                 if (!raw || typeof raw !== 'object' || !kinds.includes(raw.kind)) continue;
                 const o = {
@@ -1193,59 +1148,59 @@
                 const c = it.c || fallback || '#e8e8ee', c2 = it.c2 || 'rgba(255,255,255,.18)';
                 g.globalAlpha = it.a == null ? 1 : it.a; g.fillStyle = c; g.strokeStyle = c; g.lineWidth = (it.w2 || 2) * sc;
                 rotated(it, () => {
-                    const x = X(it.x), y = Y(it.y), w = it.w * sc, h = it.h * sc;
+                    const x=X(it.x), y=Y(it.y), w=it.w*sc, h=it.h*sc;
                     if (it.kind === 'rect' || it.kind === 'roundRect') {
                         g.beginPath();
-                        if (it.kind === 'roundRect' && g.roundRect) g.roundRect(x, y, w, h, (it.r || 4) * sc); else g.rect(x, y, w, h);
+                        if (it.kind === 'roundRect' && g.roundRect) g.roundRect(x,y,w,h,(it.r||4)*sc); else g.rect(x,y,w,h);
                         if (it.fill) g.fill(); if (it.stroke) g.stroke()
                     } else if (it.kind === 'line') {
-                        g.beginPath(); g.moveTo(x, y); g.lineTo(X(it.x2), Y(it.y2)); g.stroke()
+                        g.beginPath(); g.moveTo(x,y); g.lineTo(X(it.x2),Y(it.y2)); g.stroke()
                     } else if (it.kind === 'circle') {
-                        g.beginPath(); g.arc(x, y, it.r * sc, 0, 7); if (it.fill) g.fill(); if (it.stroke) g.stroke()
+                        g.beginPath(); g.arc(x,y,it.r*sc,0,7); if(it.fill)g.fill(); if(it.stroke)g.stroke()
                     } else if (it.kind === 'ellipse') {
-                        g.beginPath(); g.ellipse(x, y, it.rx * sc, it.ry * sc, 0, 0, 7); if (it.fill) g.fill(); if (it.stroke) g.stroke()
-                    } else if (it.kind === 'poly' && it.pts && it.pts.length > 2) {
-                        g.beginPath(); g.moveTo(X(it.pts[0][0]), Y(it.pts[0][1])); for (let i = 1; i < it.pts.length; i++)g.lineTo(X(it.pts[i][0]), Y(it.pts[i][1])); g.closePath(); if (it.fill) g.fill(); if (it.stroke) g.stroke()
+                        g.beginPath(); g.ellipse(x,y,it.rx*sc,it.ry*sc,0,0,7); if(it.fill)g.fill(); if(it.stroke)g.stroke()
+                    } else if (it.kind === 'poly' && it.pts && it.pts.length>2) {
+                        g.beginPath(); g.moveTo(X(it.pts[0][0]),Y(it.pts[0][1])); for(let i=1;i<it.pts.length;i++)g.lineTo(X(it.pts[i][0]),Y(it.pts[i][1])); g.closePath(); if(it.fill)g.fill(); if(it.stroke)g.stroke()
                     } else if (it.kind === 'road' || it.kind === 'runway') {
-                        g.fillStyle = c; g.fillRect(x - w / 2, y - h / 2, w, h);
-                        g.strokeStyle = c2; g.lineWidth = Math.max(1, 1.4 * sc); g.strokeRect(x - w / 2, y - h / 2, w, h);
-                        g.fillStyle = it.kind === 'runway' ? '#e8e8d8' : '#e2d36a';
-                        const count = Math.max(3, Math.floor(it.w / 12)); for (let q = 0; q < count; q++) g.fillRect(x - w / 2 + 6 * sc + q * (w - 12 * sc) / count, y - 1.5 * sc, 6 * sc, 3 * sc)
+                        g.fillStyle = c; g.fillRect(x-w/2,y-h/2,w,h);
+                        g.strokeStyle = c2; g.lineWidth = Math.max(1,1.4*sc); g.strokeRect(x-w/2,y-h/2,w,h);
+                        g.fillStyle = it.kind==='runway' ? '#e8e8d8' : '#e2d36a';
+                        const count=Math.max(3,Math.floor(it.w/12)); for(let q=0;q<count;q++) g.fillRect(x-w/2+6*sc+q*(w-12*sc)/count,y-1.5*sc,6*sc,3*sc)
                     } else if (it.kind === 'parking') {
-                        g.fillStyle = c; g.fillRect(x, y, w, h); g.strokeStyle = c2; g.lineWidth = 1.5 * sc;
-                        const cols = Math.max(2, it.cols || 5); for (let q = 1; q < cols; q++) { g.beginPath(); g.moveTo(x + w * q / cols, y + 4 * sc); g.lineTo(x + w * q / cols, y + h - 4 * sc); g.stroke() }
+                        g.fillStyle=c; g.fillRect(x,y,w,h); g.strokeStyle=c2; g.lineWidth=1.5*sc;
+                        const cols=Math.max(2,it.cols||5); for(let q=1;q<cols;q++){g.beginPath();g.moveTo(x+w*q/cols,y+4*sc);g.lineTo(x+w*q/cols,y+h-4*sc);g.stroke()}
                     } else if (it.kind === 'building') {
-                        g.fillStyle = 'rgba(0,0,0,.28)'; g.fillRect(x + 4 * sc, y + 5 * sc, w, h); g.fillStyle = c; g.fillRect(x, y, w, h);
-                        g.fillStyle = c2; g.fillRect(x, y, w, 4 * sc); for (let yy = 0; yy < Math.max(1, it.rows); yy++)for (let xx = 0; xx < Math.max(1, it.cols); xx++) if ((xx + yy) % 2) g.fillRect(x + 7 * sc + xx * (w - 14 * sc) / it.cols, y + 10 * sc + yy * (h - 16 * sc) / it.rows, 3 * sc, 4 * sc)
+                        g.fillStyle='rgba(0,0,0,.28)'; g.fillRect(x+4*sc,y+5*sc,w,h); g.fillStyle=c; g.fillRect(x,y,w,h);
+                        g.fillStyle=c2; g.fillRect(x,y,w,4*sc); for(let yy=0;yy<Math.max(1,it.rows);yy++)for(let xx=0;xx<Math.max(1,it.cols);xx++) if((xx+yy)%2) g.fillRect(x+7*sc+xx*(w-14*sc)/it.cols,y+10*sc+yy*(h-16*sc)/it.rows,3*sc,4*sc)
                     } else if (it.kind === 'hangar') {
-                        g.fillStyle = c; g.fillRect(x - w / 2, y - h / 2, w, h); g.fillStyle = c2; g.beginPath(); g.ellipse(x, y - h / 2, w / 2, h * .45, 0, PI, 0, true); g.fill()
+                        g.fillStyle=c; g.fillRect(x-w/2,y-h/2,w,h); g.fillStyle=c2; g.beginPath(); g.ellipse(x,y-h/2,w/2,h*.45,0,PI,0,true); g.fill()
                     } else if (it.kind === 'tower') {
-                        g.fillStyle = c; g.beginPath(); g.arc(x, y, it.r * sc, 0, 7); g.fill(); g.fillStyle = c2; g.beginPath(); g.arc(x, y, it.r * .55 * sc, 0, 7); g.fill(); g.fillStyle = c; g.fillRect(x - 3 * sc, y + it.r * sc, 6 * sc, it.h * sc)
+                        g.fillStyle=c; g.beginPath(); g.arc(x,y,it.r*sc,0,7); g.fill(); g.fillStyle=c2; g.beginPath(); g.arc(x,y,it.r*.55*sc,0,7); g.fill(); g.fillStyle=c; g.fillRect(x-3*sc,y+it.r*sc,6*sc,it.h*sc)
                     } else if (it.kind === 'tree') {
-                        g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.arc(x + 3 * sc, y + 4 * sc, it.r * sc, 0, 7); g.fill(); g.fillStyle = c; g.beginPath(); g.arc(x, y, it.r * sc, 0, 7); g.fill()
+                        g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.arc(x+3*sc,y+4*sc,it.r*sc,0,7); g.fill(); g.fillStyle=c; g.beginPath(); g.arc(x,y,it.r*sc,0,7); g.fill()
                     } else if (it.kind === 'plane') {
-                        g.fillStyle = c; g.fillRect(x - 2 * sc, y - 13 * sc, 4 * sc, 26 * sc); g.fillRect(x - 15 * sc, y - 2 * sc, 30 * sc, 4 * sc); g.fillRect(x - 7 * sc, y + 8 * sc, 14 * sc, 3 * sc); g.fillStyle = c2; g.beginPath(); g.arc(x, y - 14 * sc, 2.4 * sc, 0, 7); g.fill()
+                        g.fillStyle=c; g.fillRect(x-2*sc,y-13*sc,4*sc,26*sc); g.fillRect(x-15*sc,y-2*sc,30*sc,4*sc); g.fillRect(x-7*sc,y+8*sc,14*sc,3*sc); g.fillStyle=c2; g.beginPath(); g.arc(x,y-14*sc,2.4*sc,0,7); g.fill()
                     } else if (it.kind === 'helipad') {
-                        g.strokeStyle = c; g.lineWidth = 4 * sc; g.beginPath(); g.arc(x, y, it.r * sc, 0, 7); g.stroke(); g.beginPath(); g.moveTo(x - 8 * sc, y - 14 * sc); g.lineTo(x - 8 * sc, y + 14 * sc); g.moveTo(x + 8 * sc, y - 14 * sc); g.lineTo(x + 8 * sc, y + 14 * sc); g.moveTo(x - 8 * sc, y); g.lineTo(x + 8 * sc, y); g.stroke()
+                        g.strokeStyle=c; g.lineWidth=4*sc; g.beginPath(); g.arc(x,y,it.r*sc,0,7); g.stroke(); g.beginPath(); g.moveTo(x-8*sc,y-14*sc);g.lineTo(x-8*sc,y+14*sc);g.moveTo(x+8*sc,y-14*sc);g.lineTo(x+8*sc,y+14*sc);g.moveTo(x-8*sc,y);g.lineTo(x+8*sc,y);g.stroke()
                     } else if (it.kind === 'crop' || it.kind === 'water') {
-                        g.strokeStyle = c; g.lineWidth = (it.w2 || 2) * sc; const rows = Math.max(2, it.rows || 6);
-                        for (let q = 0; q < rows; q++) { const yy = y - h / 2 + q * h / (rows - 1); g.beginPath(); g.moveTo(x - w / 2, yy); if (it.kind === 'water') { for (let xx = 0; xx <= 8; xx++)g.lineTo(x - w / 2 + xx * w / 8, yy + Math.sin(xx * PI / 2) * 2 * sc) } else g.lineTo(x + w / 2, yy); g.stroke() }
+                        g.strokeStyle=c; g.lineWidth=(it.w2||2)*sc; const rows=Math.max(2,it.rows||6);
+                        for(let q=0;q<rows;q++){const yy=y-h/2+q*h/(rows-1);g.beginPath();g.moveTo(x-w/2,yy); if(it.kind==='water'){for(let xx=0;xx<=8;xx++)g.lineTo(x-w/2+xx*w/8,yy+Math.sin(xx*PI/2)*2*sc)}else g.lineTo(x+w/2,yy);g.stroke()}
                     } else if (it.kind === 'fence') {
-                        g.strokeStyle = c; g.setLineDash([5 * sc, 4 * sc]); g.strokeRect(x, y, w, h); g.setLineDash([])
+                        g.strokeStyle=c; g.setLineDash([5*sc,4*sc]); g.strokeRect(x,y,w,h); g.setLineDash([])
                     } else if (it.kind === 'tent') {
-                        g.fillStyle = c; g.beginPath(); g.moveTo(x, y - h / 2); g.lineTo(x + w / 2, y + h / 2); g.lineTo(x - w / 2, y + h / 2); g.closePath(); g.fill(); g.strokeStyle = c2; g.stroke()
+                        g.fillStyle=c; g.beginPath(); g.moveTo(x,y-h/2);g.lineTo(x+w/2,y+h/2);g.lineTo(x-w/2,y+h/2);g.closePath();g.fill();g.strokeStyle=c2;g.stroke()
                     } else if (it.kind === 'container') {
-                        g.fillStyle = c; g.fillRect(x, y, w, h); g.strokeStyle = c2; g.strokeRect(x, y, w, h); for (let q = 1; q < 5; q++) { g.beginPath(); g.moveTo(x + w * q / 5, y); g.lineTo(x + w * q / 5, y + h); g.stroke() }
+                        g.fillStyle=c;g.fillRect(x,y,w,h);g.strokeStyle=c2;g.strokeRect(x,y,w,h);for(let q=1;q<5;q++){g.beginPath();g.moveTo(x+w*q/5,y);g.lineTo(x+w*q/5,y+h);g.stroke()}
                     } else if (it.kind === 'tank') {
-                        g.fillStyle = '#111827'; g.fillRect(x - w / 2, y - h / 2, w, h); g.fillStyle = c; g.fillRect(x - w * .42, y - h * .38, w * .84, h * .76); g.fillRect(x, y - 2 * sc, w * .7, 4 * sc); g.beginPath(); g.arc(x, y, 6 * sc, 0, 7); g.fill()
+                        g.fillStyle='#111827';g.fillRect(x-w/2,y-h/2,w,h);g.fillStyle=c;g.fillRect(x-w*.42,y-h*.38,w*.84,h*.76);g.fillRect(x,y-2*sc,w*.7,4*sc);g.beginPath();g.arc(x,y,6*sc,0,7);g.fill()
                     } else if (it.kind === 'car') {
-                        g.fillStyle = c; g.fillRect(x - w / 2, y - h / 2, w, h); g.fillStyle = c2; g.fillRect(x - w * .08, y - h * .35, w * .28, h * .7)
+                        g.fillStyle=c;g.fillRect(x-w/2,y-h/2,w,h);g.fillStyle=c2;g.fillRect(x-w*.08,y-h*.35,w*.28,h*.7)
                     } else if (it.kind === 'label' && it.text) {
-                        g.font = 'bold ' + Math.max(6, it.h * sc) + 'px ui-monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillStyle = c; g.fillText(it.text, x, y)
+                        g.font='bold '+Math.max(6,it.h*sc)+'px ui-monospace';g.textAlign='center';g.textBaseline='middle';g.fillStyle=c;g.fillText(it.text,x,y)
                     }
                 })
             }
-            g.globalAlpha = 1; g.restore()
+            g.globalAlpha=1; g.restore()
         }
 
         function blockCenter(bi, bj) { return { x: bi * T + RW + BS / 2, y: bj * T + RW + BS / 2 } }
@@ -1357,180 +1312,80 @@
         }
 
         const SceneCompiler = {
-            triggerFor(ref, event, objective) {
+            triggerFor(ref, event) {
                 ref = String(ref || ''); const ix = ref.indexOf(':'), k = ix > 0 ? ref.slice(0, ix) : '', id = ix > 0 ? ref.slice(ix + 1) : ref;
                 if (event) return String(event);
-                const text = String(objective || '').toLowerCase();
                 if (k === 'zone') return 'enter_zone:' + id;
-                if (k === 'npc') {
-                    if (/\b(kill|eliminate|stop|take down|defeat|silence|neutralize)\b/.test(text)) return 'npc_dead:' + id;
-                    return 'npc_near:' + id + ':64'
-                }
-                if (k === 'vehicle') {
-                    if (/\b(destroy|disable|wreck|blow up|take down)\b/.test(text)) return 'vehicle_destroyed:' + id;
-                    if (/\b(board|enter|jack|steal|take|drive|fly|ride)\b/.test(text)) return 'in_vehicle:' + id;
-                    return 'vehicle_near:' + id + ':90'
-                }
+                if (k === 'npc') return 'npc_near:' + id + ':64';
+                if (k === 'vehicle') return 'in_vehicle:' + id;
                 if (k === 'pickup') return 'pickup_taken:' + id;
-                if (['prop', 'landmark', 'lm', 'block'].includes(k)) return 'nav_arrived:' + id;
+                if (['prop','landmark','lm','block'].includes(k)) return 'nav_arrived:' + id;
                 return 'nav_arrived:' + id
             },
-            hasTerminal(actions) { return (actions || []).some(a => a && ['complete', 'fail'].includes(a.act)) },
-            hasSuccess(actions) { return (actions || []).some(a => a && a.act === 'complete') },
-            isProgressRule(r) {
-                return !!r && r.when !== 'start' && !/^timer:/.test(String(r.when || '')) && (r.do || []).some(a => a && ['objective', 'complete', 'reward', 'say', 'phone', 'banner', 'spawn', 'behavior', 'vehicle_behavior'].includes(a.act))
-            },
-            allSpawnIds(scene) {
-                const ids = new Set();
-                for (const e of scene.spawn || []) if (e && e.id) ids.add(String(e.id));
-                for (const r of scene.rules || []) for (const a of r.do || []) if (a && a.act === 'spawn' && a.id) ids.add(String(a.id));
-                for (const l of landmarks) ids.add(String(l.id)); for (const q of props) ids.add(String(q.id));
-                return ids
-            },
-            refExists(scene, ref) {
-                ref = String(ref || ''); if (!ref) return false;
-                const id = ref.split(':').slice(1).join(':'); if (!id) return false;
-                return this.allSpawnIds(scene).has(id)
-            },
-            repairTarget(scene, ref, index) {
-                ref = String(ref || ''); const parts = ref.split(':'), kind = parts[0], id = sstr(parts.slice(1).join(':'), 14);
-                if (!id || this.refExists(scene, ref)) return;
-                const ang = (index || 0) * 1.9 + Math.random() * 1.4, dist = 360 + (index || 0) * 120 + Math.random() * 240;
-                const dx = Math.round(Math.cos(ang) * dist), dy = Math.round(Math.sin(ang) * dist);
-                if (kind === 'zone') scene.spawn.push({ type: 'zone', id, dx, dy, r: 88, label: 'OBJECTIVE', color: 'gold' });
-                else if (kind === 'npc') scene.spawn.push({ type: 'npc', id, name: sstr(id.replace(/[_-]+/g, ' '), 12) || 'CONTACT', dx, dy, color: 'purple', role: 'neutral', behavior: { kind: 'guard' } });
-                else if (kind === 'vehicle') scene.spawn.push({ type: 'vehicle', id, name: sstr(id.replace(/[_-]+/g, ' '), 16) || 'MISSION CAR', dx, dy, color: 'blue', kind: 'car', marked: true, parked: true });
-                else if (kind === 'pickup') scene.spawn.push({ type: 'pickup', id, label: sstr(id.replace(/[_-]+/g, ' '), 10) || 'ITEM', kind: 'item', dx, dy });
-                else if (kind === 'prop') scene.spawn.push({ type: 'property', id, name: sstr(id.replace(/[_-]+/g, ' '), 18) || 'MISSION PROPERTY', sign: 'MISSION SITE', purpose: 'A persistent property repaired from a generated mission reference', style: 'custom', walk: false, ground: 'paving', roof: '#2b3242', color: 'gold', dx, dy, price: 500, income: 20, perk: 'none' });
-                else if (kind === 'landmark' || kind === 'lm' || kind === 'block') scene.spawn.push({ type: 'landmark', id, name: sstr(id.replace(/[_-]+/g, ' '), 18) || 'MISSION SITE', sign: 'MISSION SITE', purpose: 'A persistent venue repaired from a generated mission reference', style: 'custom', walk: false, ground: 'paving', roof: '#343049', color: 'gold', dx, dy });
-            },
-            addClosure(scene, force) {
-                if (scene._closureId) return scene._closureId;
-                const progress = (scene.rules || []).filter(r => this.isProgressRule(r));
-                const needed = force ? 1 : Math.max(0, 3 - progress.length);
-                if (!needed) return null;
-                const ids = [];
-                for (let q = 0; q < needed; q++) {
-                    const zid = (q === needed - 1 ? 'debrief_' : 'verify_') + Math.random().toString(36).slice(2, 8);
-                    const ang = Math.random() * PI * 2 + q * 1.7, dist = 430 + q * 210 + Math.random() * 150;
-                    scene.spawn.push({ type: 'zone', id: zid, dx: Math.round(Math.cos(ang) * dist), dy: Math.round(Math.sin(ang) * dist), r: 90, label: q === needed - 1 ? 'DEBRIEF' : 'VERIFY', color: q === needed - 1 ? 'green' : 'orange' });
-                    ids.push(zid)
-                }
-                const firstId = ids[0]; let redirected = false;
-                for (const r of scene.rules) {
-                    if (!r || !Array.isArray(r.do) || /^timer:/.test(String(r.when || ''))) continue;
-                    for (let i = 0; i < r.do.length; i++) if (r.do[i] && r.do[i].act === 'complete') {
-                        const text = /escape|evacuate|flee|lose the cops/i.test(scene.objective || '')
-                            ? 'Reach the safe boundary and confirm you are clear'
-                            : (needed > 1 ? 'Verify the result at the marked point' : 'Reach the debrief point and confirm the outcome');
-                        r.do.splice(i, 1, { act: 'objective', text, nav: 'zone:' + firstId }); redirected = true
-                    }
-                }
-                if (!redirected) {
-                    const last = progress.slice(-1)[0] || (scene.rules || []).filter(r => r && r.when !== 'start').slice(-1)[0];
-                    if (last) (last.do || (last.do = [])).push({ act: 'objective', text: needed > 1 ? 'Verify the result at the marked point' : 'Reach the debrief point and confirm the outcome', nav: 'zone:' + firstId })
-                }
-                for (let q = 0; q < ids.length; q++) {
-                    const last = q === ids.length - 1, next = ids[q + 1];
-                    scene.rules.push({
-                        when: 'enter_zone:' + ids[q], once: true, beatId: last ? 'debrief' : 'verification_' + q,
-                        do: last ? [
-                            { act: 'phone', from: 'DIRECTOR', text: 'The city has registered the outcome. Hold the line.' },
-                            { act: 'complete', final: true, text: 'The operation closes cleanly and its consequences remain in Blocktown.' }
-                        ] : [
-                            { act: 'phone', from: 'DISPATCH', text: 'The first report is verified. One final debrief point is marked.' },
-                            { act: 'objective', text: 'Reach the debrief point and close the operation', nav: 'zone:' + next }
-                        ]
-                    })
-                }
-                scene._closureId = firstId; scene._closureIds = ids; return firstId
-            },
+            hasTerminal(actions) { return (actions || []).some(a => a && ['complete','fail'].includes(a.act)) },
             compile(scene) {
                 scene = scene && typeof scene === 'object' ? scene : {};
-                scene.spawn = Array.isArray(scene.spawn) ? scene.spawn.slice(0, 30) : [];
-                scene.rules = Array.isArray(scene.rules) ? scene.rules.slice(0, 30).map(r => ({ ...r, do: Array.isArray(r && r.do) ? r.do.slice(0, 10) : [] })) : [];
+                scene.spawn = Array.isArray(scene.spawn) ? scene.spawn.slice(0, 24) : [];
+                scene.rules = Array.isArray(scene.rules) ? scene.rules.slice(0, 24) : [];
                 const beats = Array.isArray(scene.beats) ? scene.beats.slice(0, 6) : [];
                 if (beats.length) {
-                    const clean = beats.map((b, i) => ({
-                        id: sstr((b && b.id) || ('beat' + (i + 1)), 14), objective: sstr(b && b.objective, 70), nav: b && b.nav,
-                        trigger: sstr(b && b.trigger, 60), actions: Array.isArray(b && (b.actions || b.do)) ? (b.actions || b.do).slice(0, 10) : [],
+                    const clean = beats.map((b,i) => ({
+                        id: sstr((b && b.id) || ('beat'+(i+1)), 14), objective: sstr(b && b.objective, 70), nav: b && b.nav,
+                        trigger: sstr(b && b.trigger, 50), actions: Array.isArray(b && (b.actions || b.do)) ? (b.actions || b.do).slice(0,8) : [],
                         final: !!(b && b.final), fail: !!(b && b.fail)
-                    })).filter(b => b.objective || b.nav || b.actions.length);
-                    if (clean.length) {
-                        scene.objective = clean[0].objective || scene.objective || 'Follow the marked lead'; scene.nav = clean[0].nav || scene.nav;
-                        const starts = scene.rules.filter(r => r && r.when === 'start'); const compiled = [];
-                        clean.forEach((b, i) => {
-                            const next = clean[i + 1]; let acts = b.actions.slice();
-                            if (next) {
-                                acts = acts.filter(a => !(a && a.act === 'complete'));
-                                if (!acts.some(a => a && a.act === 'objective')) acts.push({ act: 'objective', text: next.objective || 'Continue the operation', nav: next.nav })
-                            } else if (!this.hasTerminal(acts)) {
-                                acts.push(b.fail ? { act: 'fail', reason: 'the operation collapsed' } : { act: 'complete', final: true, text: 'The final objective is secured.' })
-                            }
-                            compiled.push({ when: b.trigger || this.triggerFor(b.nav, '', b.objective), once: true, beatId: b.id, do: acts })
-                        });
-                        const extras = scene.rules.filter(r => r && r.when !== 'start' && !compiled.some(c => String(c.when) === String(r.when)));
-                        scene.rules = starts.concat(compiled).concat(extras)
-                    }
+                    }));
+                    scene.objective = clean[0].objective || scene.objective || 'Follow the lead'; scene.nav = clean[0].nav || scene.nav;
+                    const starts = scene.rules.filter(r => r && r.when === 'start');
+                    const compiled = [];
+                    clean.forEach((b,i) => {
+                        const next = clean[i+1]; const acts = b.actions.slice();
+                        if (!this.hasTerminal(acts)) {
+                            if (next) acts.push({ act:'objective', text:next.objective || 'Continue the operation', nav:next.nav });
+                            else acts.push(b.fail ? {act:'fail',reason:'the operation collapsed'} : {act:'complete',final:true})
+                        }
+                        compiled.push({ when:b.trigger || this.triggerFor(b.nav), once:true, beatId:b.id, do:acts })
+                    });
+                    const extras = scene.rules.filter(r => r && r.when !== 'start' && !compiled.some(c => String(c.when) === String(r.when)));
+                    scene.rules = starts.concat(compiled).concat(extras)
                 }
-                // Give legacy rules stable beat IDs so progress and completion quality are measurable.
-                let legacyBeat = 0;
-                for (const r of scene.rules) if (this.isProgressRule(r) && !r.beatId) r.beatId = 'beat' + (++legacyBeat);
-                if (!scene.objective) scene.objective = 'Follow the marked lead';
-                // A valid success path must exist before we can build a closure.
-                if (!scene.rules.some(r => this.hasSuccess(r.do))) {
-                    const last = scene.rules.filter(r => this.isProgressRule(r)).slice(-1)[0] || scene.rules.filter(r => r && r.when !== 'start').slice(-1)[0];
-                    if (last) (last.do || (last.do = [])).push({ act: 'complete', final: true, text: 'The operation is secured.' })
-                }
-                // Every authored mission gets at least three playable transitions. The last is a visible debrief, never an abrupt vanish.
-                this.addClosure(scene, false);
-                let navRefs = [];
+                const navRefs = [];
                 if (scene.nav) navRefs.push(String(scene.nav));
-                for (const r of scene.rules) for (const a of r.do || []) if (a && a.act === 'objective' && a.nav) navRefs.push(String(a.nav));
-                navRefs.forEach((ref, i) => { if (!this.refExists(scene, ref)) this.repairTarget(scene, ref, i) });
-                const keyFor = ref => this.triggerFor(ref).split(':').slice(0, 2).join(':');
-                const hasRuleFor = ref => {
-                    const k = keyFor(ref), id = String(ref).split(':').slice(1).join(':');
-                    return scene.rules.some(r => {
-                        const p = String(r.when || '').split(':');
-                        if ((p[0] === 'escort_arrived' || p[0] === 'vehicle_in_zone') && (p[1] === id || p[2] === id)) return true;
-                        return (p[0] + ':' + (p[1] || '')) === k || (p[0] === 'nav_arrived' && p[1] === id)
-                    })
-                };
+                for (const r of scene.rules) for (const a of (Array.isArray(r && r.do) ? r.do : [])) if (a && a.act === 'objective' && a.nav) navRefs.push(String(a.nav));
+                const keyFor = ref => this.triggerFor(ref).split(':').slice(0,2).join(':');
+                const hasRuleFor = ref => { const k=keyFor(ref), id=String(ref).split(':').slice(1).join(':'); return scene.rules.some(r => { const p=String(r.when||'').split(':'); return (p[0]+':'+(p[1]||''))===k || (p[0]==='nav_arrived' && p[1]===id) }) };
+                const targets = new Set(navRefs);
                 for (const ref of navRefs) if (ref && !hasRuleFor(ref)) {
-                    const close = this.addClosure(scene, true);
-                    scene.rules.push({
-                        when: this.triggerFor(ref), once: true, beatId: 'repair_' + String(ref).split(':').pop().slice(0, 8), repaired: true,
-                        do: [
-                            { act: 'phone', from: 'DISPATCH', text: 'Target confirmed. The next safe point is now marked.' },
-                            { act: 'objective', text: 'Move to the verified debrief point', nav: 'zone:' + close }
-                        ]
-                    })
+                    scene.rules.push({ when:this.triggerFor(ref), once:true, repaired:true, do:[{act:'banner',text:'The lead reacts as you arrive.'},{act:'complete',final:true}] })
+                }
+                // A one-touch scene is too abrupt. Convert its ending into a short extraction beat.
+                const meaningful = scene.rules.filter(r => r && r.when !== 'start');
+                if (meaningful.length < 2 && meaningful.length) {
+                    const zid='extract_'+Math.random().toString(36).slice(2,8);
+                    scene.spawn.push({type:'zone',id:zid,dx:520,dy:-320,r:88,label:'CLEAR AREA',color:'green'});
+                    const first=meaningful[0], acts=Array.isArray(first.do)?first.do:[];
+                    const idx=acts.findIndex(a=>a&&a.act==='complete');
+                    if(idx>=0) acts.splice(idx,1,{act:'objective',text:'Leave the area and confirm the operation',nav:'zone:'+zid});
+                    else if(!this.hasTerminal(acts)) acts.push({act:'objective',text:'Leave the area and confirm the operation',nav:'zone:'+zid});
+                    scene.rules.push({when:'enter_zone:'+zid,once:true,beatId:'extraction',do:[{act:'banner',text:'The operation closes with a clean exit.'},{act:'complete',final:true}]})
                 }
                 const referenced = new Set(navRefs.map(r => String(r).split(':').slice(1).join(':')));
-                const has = (when, id) => scene.rules.some(r => { const p = String(r.when || '').split(':'); return p[0] === when && p[1] === id });
+                const has = (when,id) => scene.rules.some(r => {const p=String(r.when||'').split(':');return p[0]===when && p[1]===id});
                 for (const e of scene.spawn) {
                     if (!e || !e.id || !referenced.has(String(e.id))) continue;
-                    if (e.type === 'npc' && !has('npc_dead', String(e.id))) {
-                        scene.rules.push({ when: 'npc_dead:' + e.id, once: true, do: [e.role === 'hostile' ? { act: 'complete', text: (e.name || 'The target') + ' is down; the city records the consequence.' } : { act: 'fail', reason: (e.name || 'the contact') + ' died' }] })
+                    if (e.type==='npc' && !has('npc_dead',String(e.id))) {
+                        scene.rules.push({when:'npc_dead:'+e.id,once:true,do:[e.role==='hostile'?{act:'complete',final:true}:{act:'fail',reason:(e.name||'the contact')+' died'}]})
                     }
-                    if (e.type === 'vehicle' && !has('vehicle_destroyed', String(e.id))) {
-                        scene.rules.push({ when: 'vehicle_destroyed:' + e.id, once: true, do: [e.hostile ? { act: 'complete', text: (e.name || 'The target vehicle') + ' is disabled.' } : { act: 'fail', reason: (e.name || 'the mission vehicle') + ' was destroyed' }] })
+                    if (e.type==='vehicle' && !has('vehicle_destroyed',String(e.id))) {
+                        scene.rules.push({when:'vehicle_destroyed:'+e.id,once:true,do:[e.hostile?{act:'complete',final:true}:{act:'fail',reason:(e.name||'the mission vehicle')+' was destroyed'}]})
                     }
                 }
-                const timers = []; for (const r of scene.rules) for (const a of r.do || []) if (a && a.act === 'timer' && a.id) timers.push(String(a.id));
-                for (const id of timers) if (!has('timer', id)) scene.rules.push({ when: 'timer:' + id, once: true, do: [{ act: 'fail', reason: 'time ran out' }] });
-                scene.rules = scene.rules.slice(0, 38); scene.spawn = scene.spawn.slice(0, 34); scene.beats = beats; scene._compiled = true;
+                const timers=[]; for(const r of scene.rules)for(const a of (r.do||[]))if(a&&a.act==='timer'&&a.id)timers.push(String(a.id));
+                for(const id of timers) if(!has('timer',id)) scene.rules.push({when:'timer:'+id,once:true,do:[{act:'fail',reason:'time ran out'}]});
+                if (!scene.rules.some(r => (r.do||[]).some(a => a && a.act==='complete'))) {
+                    const last=scene.rules.filter(r=>r&&r.when!=='start').slice(-1)[0]; if(last) (last.do||(last.do=[])).push({act:'complete',final:true})
+                }
+                scene.rules=scene.rules.slice(0,28); scene.spawn=scene.spawn.slice(0,28); scene.beats=beats;
                 return scene
-            },
-            audit(scene) {
-                const issues = []; scene = scene || {};
-                if (!scene.objective) issues.push('missing objective'); if (!scene.nav) issues.push('missing nav');
-                if (!(scene.rules || []).some(r => this.hasSuccess(r.do))) issues.push('no success ending');
-                const progress = (scene.rules || []).filter(r => this.isProgressRule(r)); if (progress.length < 3) issues.push('fewer than 3 playable transitions');
-                const refs = []; if (scene.nav) refs.push(scene.nav); for (const r of scene.rules || []) for (const a of r.do || []) if (a && a.act === 'objective' && a.nav) refs.push(a.nav);
-                for (const ref of refs) if (!this.refExists(scene, ref)) issues.push('missing target ' + ref);
-                return issues
             }
         };
 
@@ -1541,19 +1396,17 @@
         const S = {
             zones: [], npcs: [], bubbles: [], rules: [], timers: {}, items: [],
             nav: null, navRef: null, zoneIn: {}, zoneStay: {}, prevInVeh: '',
-            onceTotal: 0, onceDone: 0, storyTotal: 0, storyDone: 0, storySeen: {}, storyBeatIds: {},
-            conclusion: null, sceneStartT: 0, lastNarrative: '', currentBeat: '', hadHeat: false,
+            onceTotal: 0, onceDone: 0, hadHeat: false,
             clear() {
-                traffic = traffic.filter(c => !c.svid || c.persistent); gangs = gangs.filter(c => !c.svid || c.persistent);
+                traffic = traffic.filter(c => !c.svid); gangs = gangs.filter(c => !c.svid);
                 pickups = pickups.filter(p => !p.pid);
                 S.zones = []; S.npcs = []; S.bubbles = []; S.rules = []; S.timers = {}; S.items = [];
                 S.nav = null; S.navRef = null; S.zoneIn = {}; S.zoneStay = {}; S.prevInVeh = '';
                 S.navTouchKey = ''; S.navTouchT = 0; S.navArrived = {}; S.softSteps = 0; S.forceFinal = false; S.objectiveText = '';
                 S.lastProgressT = t; S.lastObjectiveT = t; S.lastRuleKey = ''; S.repairCount = 0; S.compiledBeats = [];
-                S.onceTotal = 0; S.onceDone = 0; S.storyTotal = 0; S.storyDone = 0; S.storySeen = {}; S.storyBeatIds = {};
-                S.conclusion = null; S.sceneStartT = t; S.lastNarrative = ''; S.currentBeat = ''; S.hadHeat = false
+                S.onceTotal = 0; S.onceDone = 0; S.hadHeat = false
             },
-            progress() { return S.storyTotal ? S.storyDone / S.storyTotal : (S.onceTotal ? S.onceDone / S.onceTotal : 0) },
+            progress() { return S.onceTotal ? S.onceDone / S.onceTotal : 0 },
             mkBeh(bh) {
                 bh = bh || {};
                 const kind = ['wander', 'follow_player', 'flee_player', 'chase_player', 'goto', 'guard'].includes(bh.kind) ? bh.kind : 'wander';
@@ -1584,17 +1437,17 @@
                     })
                 }
                 else if (e.type === 'vehicle') {
-                    const s2 = snapVehicleRoad(px + ox, py + oy, S.npcs.length + traffic.length), f = findFree(s2.x, s2.y, 16);
+                    const s2 = snapRoad(px + ox, py + oy), f = findFree(s2.x, s2.y, 16);
                     const col = LPAL[e.color] || sColor(e.color, '#f472b6'), svid = sstr(e.id, 14) || ('v' + (Math.random() * 999 | 0));
-                    const kinds = ['car', 'sports', 'van', 'tank', 'bike', 'armored', 'bus', 'truck', 'taxi', 'limo', 'police', 'plane', 'helicopter', 'drone', 'boat'];
+                    const kinds = ['car','sports','van','tank','bike','armored','bus','truck','taxi','limo','police','plane','helicopter','drone','boat'];
                     const kind = kinds.includes(e.kind) ? e.kind : 'car';
-                    const air = ['plane', 'helicopter', 'drone'].includes(kind);
+                    const air = ['plane','helicopter','drone'].includes(kind);
                     const mhp = kind === 'tank' ? 180 : kind === 'armored' ? 130 : kind === 'bus' || kind === 'truck' ? 120 : kind === 'bike' || kind === 'drone' ? 45 : 90;
-                    const bh = e.behavior || {}; const aiMode = sstr(bh.kind || e.ai || (e.hostile ? 'chase_player' : ''), 20);
-                    const route = (Array.isArray(e.route || bh.route) ? (e.route || bh.route) : []).slice(0, 8).map(q => { const qx = px + snum(q && q.dx, -1800, 1800, 0), qy = py + snum(q && q.dy, -1800, 1800, 0); return air ? { x: qx, y: qy } : snapVehicleRoad(qx, qy, route.length) });
-                    const base = { x: f.x, y: f.y, v: 0, ang: snum(e.angle, -7, 7, 0), hp: mhp, mhp, ramCd: 0, svid, kind, col, air, alt: air ? .15 : 0, aiMode, route, routeIndex: 0, loop: bh.loop !== false, targetRef: sstr(bh.target || e.target, 28), cruise: snum(bh.speed || e.speed, 30, 520, kind === 'plane' ? 360 : kind === 'helicopter' ? 220 : 150), label: sstr(e.name || e.label, 16), persistent: !!e.persistent };
-                    if (e.hostile && gangs.length < 7) gangs.push({ ...base, hunt: 1, parked: false });
-                    else traffic.push({ ...base, parked: aiMode ? false : e.parked !== false, mkey: e.marked ? 1 : 0 })
+                    const bh = e.behavior || {}; const aiMode = sstr(bh.kind || e.ai || (e.hostile?'chase_player':''), 20);
+                    const route = (Array.isArray(e.route || bh.route) ? (e.route || bh.route) : []).slice(0,8).map(q => { const qx=px+snum(q&&q.dx,-1800,1800,0), qy=py+snum(q&&q.dy,-1800,1800,0); return air?{x:qx,y:qy}:snapRoad(qx,qy) });
+                    const base = { x:f.x,y:f.y,v:0,ang:snum(e.angle,-7,7,0),hp:mhp,mhp,ramCd:0,svid,kind,col,air,alt:air?.15:0,aiMode,route,routeIndex:0,loop:bh.loop!==false,targetRef:sstr(bh.target||e.target,28),cruise:snum(bh.speed||e.speed,30,520,kind==='plane'?360:kind==='helicopter'?220:150),label:sstr(e.name||e.label,16) };
+                    if (e.hostile && gangs.length < 7) gangs.push({ ...base, hunt:1, parked:false });
+                    else traffic.push({ ...base, parked: aiMode ? false : e.parked !== false, mkey:e.marked?1:0 })
                 }
                 else if (e.type === 'pickup' && pickups.length < 12) {
                     const f = findFree(px + ox, py + oy, 10);
@@ -1606,20 +1459,17 @@
             },
             load(scene) {
                 if (!scene || typeof scene !== 'object') return;
-                scene = scene._compiled ? scene : SceneCompiler.compile(scene); S.compiledBeats = scene.beats || [];
+                scene = SceneCompiler.compile(scene); S.compiledBeats = scene.beats || [];
                 for (const e of (Array.isArray(scene.spawn) ? scene.spawn : []).slice(0, 28)) S.spawnEnt(e);
                 for (const r of (Array.isArray(scene.rules) ? scene.rules : []).slice(0, 28)) {
                     if (!r || typeof r.when !== 'string') continue;
                     const parts = String(r.when).slice(0, 44).split(':');
-                    const pairTrigger = parts[0] === 'escort_arrived' || parts[0] === 'vehicle_in_zone';
                     const rule = {
-                        when: parts[0], id: parts[1] || '', id2: pairTrigger ? (parts[2] || '') : '',
-                        arg: pairTrigger ? (+(parts[3]) || 0) : (+(parts[2] ?? parts[1]) || 0),
-                        once: r.once !== false, fired: false, cd: 0, beatId: sstr(r.beatId, 14), repaired: !!r.repaired,
+                        when: parts[0], id: parts[1] || '', arg: +(parts[2] ?? parts[1]) || 0,
+                        once: r.once !== false, fired: false, cd: 0, beatId: sstr(r.beatId,14), repaired: !!r.repaired,
                         do: (Array.isArray(r.do) ? r.do : []).slice(0, 10)
                     };
-                    S.rules.push(rule); if (rule.once) S.onceTotal++;
-                    if (rule.beatId && !S.storyBeatIds[rule.beatId]) { S.storyBeatIds[rule.beatId] = 1; S.storyTotal++ }
+                    S.rules.push(rule); if (rule.once) S.onceTotal++
                 }
                 if (scene.objective) S.setObjective(sstr(scene.objective, 60), scene.nav);
                 S.fire('start');
@@ -1709,11 +1559,7 @@
                     if (typeof finalNav === 'string') S.navRef = sstr(finalNav, 32);
                     else if (finalNav && typeof finalNav === 'object') { const s2 = snapRoad(px + snum(finalNav.dx, -1800, 1800, 0), py + snum(finalNav.dy, -1800, 1800, 0)); S.nav = s2 }
                     const afterKey = S.navKey ? S.navKey() : '';
-                    if (afterKey) {
-                        S.navTouchKey = ''; S.navTouchT = 0;
-                        if (S.navArrived) delete S.navArrived[afterKey];
-                        if (afterKey.startsWith('zone:')) S.zoneIn[afterKey.slice(5)] = 0
-                    }
+                    if (afterKey && afterKey !== beforeKey) { S.navTouchKey = ''; S.navTouchT = 0; if (S.navArrived) delete S.navArrived[afterKey] }
                 } else if (txt && S.objectivePrefersPlace(txt) && (!S.navRef || S.navRef.indexOf('npc:') === 0)) {
                     // Do not leave the player pointing at Ronan/Kenjiro/etc. when the text says
                     // evacuate/reach/enter a place. Create a safe objective zone rather than a stale NPC arrow.
@@ -1730,40 +1576,11 @@
                         if (car && car.svid === id) return null;
                         const v = traffic.find(c => c.svid === id) || gangs.find(c => c.svid === id); if (v) return v
                     }
-                    if (k === 'prop') { const p = props.find(p => p.id === id || p.name === id); if (p) return siteNavPoint(p) }
-                    if (k === 'landmark' || k === 'lm' || k === 'block') { const l = landmarks.find(l => l.id === id || l.name === id) || props.find(p => p.id === id || p.name === id); if (l) return siteNavPoint(l) }
+                    if (k === 'prop') { const p = props.find(p => p.id === id || p.name === id); if (p) return blockCenter(p.bi, p.bj) }
+                    if (k === 'landmark' || k === 'lm' || k === 'block') { const l = landmarks.find(l => l.id === id || l.name === id) || props.find(p => p.id === id || p.name === id); if (l) return blockCenter(l.bi, l.bj) }
                     return null
                 }
                 return S.nav
-            },
-            markRule(r, key) {
-                if (!r) return;
-                if (!r.fired && r.once) S.onceDone++;
-                r.fired = true; r.cd = t + 3; S.lastProgressT = t; S.lastRuleKey = key || (r.when + (r.id ? ':' + r.id : ''));
-                if (r.beatId && !S.storySeen[r.beatId]) { S.storySeen[r.beatId] = 1; S.storyDone++; S.currentBeat = r.beatId }
-            },
-            canConclude() {
-                const authoredNeed = S.storyTotal ? Math.min(2, S.storyTotal) : 2;
-                return S.storyDone >= authoredNeed || S.onceDone >= 2 || (M.cur && M.cur.t >= 12)
-            },
-            requestConclusion(ok, text) {
-                if (!M.cur || S.conclusion) return false;
-                if (ok && !S.canConclude()) return S.extendScene('The first objective is complete, but the operation still needs a real closing move.');
-                const message = sstr(text || S.lastNarrative || (ok ? 'The operation is secured and the city absorbs the consequences.' : 'The operation collapses and the city reacts.'), 130);
-                S.nav = null; S.navRef = null; S.navTouchKey = ''; S.navTouchT = 0;
-                S.conclusion = { ok: !!ok, reason: message, left: ok ? 2.6 : 2.2, title: M.cur.title };
-                const c = UIK.card(); c.classList.add('resolving');
-                c.children[0].textContent = ok ? 'OPERATION SECURED' : 'OPERATION FAILED';
-                c.children[1].textContent = message; c.children[2].textContent = 'The city is recording the outcome…';
-                UIK.feed(message, ok ? 'DIRECTOR' : 'SYSTEM'); return true
-            },
-            updateConclusion(dt) {
-                if (!S.conclusion) return false;
-                S.conclusion.left -= dt;
-                if (S.conclusion.left <= 0) {
-                    const q = S.conclusion; S.conclusion = null; M.finish(q.ok, q.reason)
-                }
-                return true
             },
             fire(evt) {
                 let did = false;
@@ -1772,65 +1589,61 @@
                     if (key !== evt) continue;
                     if (r.once && r.fired) continue;
                     if (!r.once && t < r.cd) continue;
-                    S.markRule(r, key); did = true;
+                    if (!r.fired && r.once) S.onceDone++;
+                    r.fired = true; r.cd = t + 3; did = true; S.lastProgressT = t; S.lastRuleKey = key;
                     S.runActs(r.do);
                     if (state !== 'play') return true
                 }
                 return did
             },
             shouldExtendBeforeComplete(a) {
-                if (!M.cur || M.cur.verb !== 'scene' || !a) return false;
-                return !S.canConclude()
+                if (!M.cur || M.cur.verb !== 'scene' || !a || a.final) return false;
+                // A one-touch ring should not instantly end a scene. If the mission has had
+                // fewer than two authored beats or only a few seconds of play, synthesize a follow-up.
+                return S.onceDone < 2 && !S.forceFinal;
             },
             extendScene(reason) {
-                if (!M.cur || M.cur.verb !== 'scene' || S.conclusion) return false;
-                const existing = S.zones.find(z => z.id && z.id.indexOf('debrief_runtime') === 0);
-                if (existing) { S.setObjective('Reach the debrief point and close the operation', 'zone:' + existing.id); return true }
+                if (!M.cur || M.cur.verb !== 'scene') return false;
                 S.softSteps++;
-                const a = Math.random() * PI * 2, d = 460 + Math.random() * 260;
+                const a = Math.random() * Math.PI * 2, d = 420 + Math.random() * 360;
                 const s2 = snapRoad(px + Math.cos(a) * d, py + Math.sin(a) * d);
-                const zid = 'debrief_runtime' + ((Date.now() + Math.random() * 999) | 0).toString(36).slice(-5);
-                S.zones.push({ id: zid, x: s2.x, y: s2.y, r: 90, label: 'DEBRIEF', visible: true, color: 'green' });
-                const rule = {
-                    when: 'enter_zone', id: zid, arg: 0, once: true, fired: false, cd: 0, beatId: 'runtime_debrief',
-                    do: [
-                        { act: 'phone', from: 'DIRECTOR', text: 'This is the closing point. Confirm the outcome and clear the scene.' },
-                        { act: 'complete', final: true, text: 'The operation now has a clear ending and Blocktown keeps the consequence.' }
+                const zid = 'lead' + ((Date.now() + Math.random() * 999) | 0).toString(36).slice(-6);
+                S.zones.push({ id: zid, x: s2.x, y: s2.y, r: 86, label: 'NEXT LEAD', visible: true, color: 'gold' });
+                S.rules.push({
+                    when: 'enter_zone', id: zid, arg: 0, once: true, fired: false, cd: 0, do: [
+                        { act: 'banner', text: 'The lead checks out. The chapter can close now.' },
+                        { act: 'complete', final: true }
                     ]
-                };
-                S.rules.push(rule); S.onceTotal++;
-                if (!S.storyBeatIds[rule.beatId]) { S.storyBeatIds[rule.beatId] = 1; S.storyTotal++ }
-                UIK.feed(reason || 'The main task is done; finish the operation at the debrief point.', 'SYSTEM');
-                S.setObjective('Reach the debrief point and close the operation', 'zone:' + zid); return true
+                });
+                S.onceTotal++;
+                UIK.feed(reason || 'You arrive, but the job is not finished yet.', 'SYSTEM');
+                S.setObjective('Follow the next lead before closing this job', 'zone:' + zid);
+                return true;
             },
             repairAtTarget(key, id, nav) {
                 if (!M.cur || M.cur.verb !== 'scene') return false;
-                const allowed = key.startsWith('zone:') ? ['enter_zone', 'zone_stay', 'nav_arrived'] : key.startsWith('npc:') ? ['npc_near', 'npc_dead', 'nav_arrived'] : key.startsWith('vehicle:') ? ['in_vehicle', 'vehicle_near', 'vehicle_destroyed', 'nav_arrived'] : key.startsWith('pickup:') ? ['pickup_taken', 'nav_arrived'] : ['nav_arrived'];
-                const candidates = S.rules.filter(r => !r.fired && r.id === id && allowed.includes(r.when));
+                // First try a live rule that references the same target but used the wrong trigger spelling.
+                const allowed = key.startsWith('zone:') ? ['enter_zone','zone_stay','nav_arrived'] : key.startsWith('npc:') ? ['npc_near','nav_arrived'] : key.startsWith('vehicle:') ? ['in_vehicle','vehicle_near','nav_arrived'] : key.startsWith('pickup:') ? ['pickup_taken','nav_arrived'] : ['nav_arrived'];
+                const candidates = S.rules.filter(r => !r.fired && r.id===id && allowed.includes(r.when));
                 if (candidates.length) {
-                    const r = candidates[0]; if (r.when === 'zone_stay' && (S.zoneStay[id] || 0) < (r.arg || 1)) return false;
-                    S.markRule(r); S.runActs(r.do); return true
+                    const r=candidates[0];
+                    if(r.when==='zone_stay' && (S.zoneStay[id]||0)<(r.arg||1)) return false;
+                    if(r.once)S.onceDone++; r.fired=true; S.lastProgressT=t; S.runActs(r.do); return true
                 }
-                if (S.hasPendingHardRule()) {
-                    const pair = S.rules.find(r => !r.fired && (r.when === 'escort_arrived' || r.when === 'vehicle_in_zone') && (r.id === id || r.id2 === id));
-                    if (pair && pair.when === 'escort_arrived') {
-                        const n = S.npcs.find(n => n.id === pair.id); Msg.show('Bring ' + (n ? n.name : 'the contact') + ' into the marked area', 'waitescort', 4)
-                    } else if (pair && pair.when === 'vehicle_in_zone') {
-                        const v = traffic.find(v => v.svid === pair.id) || gangs.find(v => v.svid === pair.id) || (car && car.svid === pair.id ? car : null);
-                        Msg.show('Bring ' + ((v && v.label) || 'the mission vehicle') + ' into the marked area', 'waitvehicle', 4)
-                    } else Msg.show('Objective reached — complete the action shown in the mission tracker', 'waitact', 4);
-                    return false
-                }
-                S.repairCount++; return S.extendScene('The target was reached, but the generated branch was incomplete. A verified closing point is marked.')
+                if (S.hasPendingHardRule()) { Msg.show('Objective reached — complete the highlighted action', 'waitact', 4); return false }
+                S.repairCount++;
+                if (S.repairCount <= 2) return S.extendScene('You reached the target. A witness points you toward the real handoff.');
+                const c=UIK.card(); c.children[1].textContent='The operation is secured. Leave the scene to close the chapter.';
+                return S.extendScene('The Director repairs a broken mission branch with a clear extraction objective.')
             },
-            softArrival(key, id, nav) { return S.repairAtTarget(key, id, nav) },
+            softArrival(key,id,nav){ return S.repairAtTarget(key,id,nav) },
             runActs(list) {
                 for (const a of list) {
                     if (!a || typeof a !== 'object') continue;
                     const act = a.act;
                     if (act === 'say') {
                         const n = S.npcs.find(n => n.id === a.id) || S.npcs[0];
-                        const txt = sstr(a.text, 80); S.lastNarrative = txt || S.lastNarrative;
+                        const txt = sstr(a.text, 80);
                         if (n) {
                             S.bubbles = S.bubbles.filter(b => b.nid !== n.id);
                             S.bubbles.push({ nid: n.id, text: txt, t: t + 4.2 });
@@ -1839,7 +1652,7 @@
                     }
                     else if (act === 'phone') {
                         Msg.show('📱 ' + (sstr(a.from, 12) || 'UNKNOWN') + ': ' + sstr(a.text, 110), 'ph' + (Math.random() * 99 | 0), 0);
-                        S.lastNarrative = sstr(a.text, 110) || S.lastNarrative; UIK.feed(sstr(a.text, 110), sstr(a.from, 12) || 'CALLER')
+                        UIK.feed(sstr(a.text, 110), sstr(a.from, 12) || 'CALLER')
                     }
                     else if (act === 'objective') S.setObjective(sstr(a.text, 60), a.nav !== undefined ? a.nav : S.guessNavRef(a.text));
                     else if (act === 'spawn') S.spawnEnt(a);
@@ -1857,8 +1670,8 @@
                         }
                     }
                     else if (act === 'vehicle_behavior') {
-                        const v = traffic.find(v => v.svid === a.id) || gangs.find(v => v.svid === a.id) || (car && car.svid === a.id ? car : null);
-                        if (v) { v.aiMode = sstr(a.kind || a.mode, 20); v.targetRef = sstr(a.target, 28); v.cruise = snum(a.speed, 30, 520, v.cruise || 150); if (Array.isArray(a.route)) v.route = a.route.slice(0, 8).map((q, qi) => v.air ? { x: px + snum(q && q.dx, -1800, 1800, 0), y: py + snum(q && q.dy, -1800, 1800, 0) } : snapVehicleRoad(px + snum(q && q.dx, -1800, 1800, 0), py + snum(q && q.dy, -1800, 1800, 0), qi)); v.routeIndex = 0; v.parked = false }
+                        const v = traffic.find(v=>v.svid===a.id) || gangs.find(v=>v.svid===a.id) || (car&&car.svid===a.id?car:null);
+                        if(v){ v.aiMode=sstr(a.kind||a.mode,20); v.targetRef=sstr(a.target,28); v.cruise=snum(a.speed,30,520,v.cruise||150); if(Array.isArray(a.route))v.route=a.route.slice(0,8).map(q=>v.air?{x:px+snum(q&&q.dx,-1800,1800,0),y:py+snum(q&&q.dy,-1800,1800,0)}:snapRoad(px+snum(q&&q.dx,-1800,1800,0),py+snum(q&&q.dy,-1800,1800,0))); v.routeIndex=0; v.parked=false }
                     }
                     else if (act === 'reward') { const v = Math.round(snum(a.amount, 5, 800, 50)); cash += v; Msg.show('+$' + v, 'rw', 0) }
                     else if (act === 'give') {
@@ -1874,11 +1687,11 @@
                         if (v) { explode(v.x, v.y, v.ang || 0); if (v.hp !== undefined) v.hp = 0 }
                     }
                     else if (act === 'complete') {
-                        if (S.shouldExtendBeforeComplete(a)) { S.extendScene('The objective is secured, but the mission still needs a closing beat.'); return }
-                        S.requestConclusion(true, a.text || a.resolution); return
+                        if (S.shouldExtendBeforeComplete(a)) { S.extendScene('You reached the spot, but the Director reveals one more lead.'); return }
+                        if (M.cur) M.finish(true); return
                     }
-                    else if (act === 'fail') { S.requestConclusion(false, sstr(a.reason, 80) || 'the operation failed'); return }
-                    else if (act === 'banner') { S.lastNarrative = sstr(a.text, 90) || S.lastNarrative; UIK.feed(sstr(a.text, 90), 'GOD') }
+                    else if (act === 'fail') { if (M.cur) M.finish(false, sstr(a.reason, 40) || 'the Director says so'); return }
+                    else if (act === 'banner') UIK.feed(sstr(a.text, 90), 'GOD');
                     else if (act === 'shake') shake = Math.max(shake, 14);
                     else applyOp(a.op ? a : { ...a, op: act }); // world ops double as actions
                     if (state !== 'play') return
@@ -1891,14 +1704,13 @@
                 return ''
             },
             hasPendingHardRule() {
-                const key = S.navKey(), id = key.indexOf(':') >= 0 ? key.split(':').slice(1).join(':') : '';
+                const key=S.navKey(), id=key.indexOf(':')>=0?key.split(':').slice(1).join(':'):'';
                 return S.rules.some(r => {
-                    if (r.fired) return false;
-                    if (r.when === 'timer') return !!S.timers[r.id];
-                    if (['in_vehicle', 'pickup_taken', 'zone_stay'].includes(r.when)) return r.id === id;
-                    if (r.when === 'escort_arrived' || r.when === 'vehicle_in_zone') return r.id === id || r.id2 === id;
-                    if (r.when === 'npc_dead') { const n = S.npcs.find(n => n.id === r.id); return key.startsWith('npc:') && r.id === id && n && n.role === 'hostile' }
-                    if (r.when === 'heat_at') return /escape|lose|heat|police|cop/i.test(S.objectiveText || '');
+                    if(r.fired)return false;
+                    if(r.when==='timer')return !!S.timers[r.id];
+                    if(['in_vehicle','pickup_taken','zone_stay'].includes(r.when))return r.id===id;
+                    if(r.when==='npc_dead') { const n=S.npcs.find(n=>n.id===r.id); return key.startsWith('npc:')&&r.id===id&&n&&n.role==='hostile' }
+                    if(r.when==='heat_at')return /escape|lose|heat|police|cop/i.test(S.objectiveText||'');
                     return false
                 })
             },
@@ -1914,12 +1726,12 @@
                 const friendly = n.role === 'friendly' || n.role === 'neutral';
                 if (friendly) {
                     logEvent('mission complication: ' + name + ' died without an authored branch');
-                    S.requestConclusion(false, name + ' died');
+                    M.finish(false, name + ' died');
                     return true
                 }
                 if (wasTarget || !S.hasPendingHardRule()) {
                     UIK.feed(name + ' is down — the Director adapts the story.', 'SYSTEM');
-                    S.requestConclusion(true, name + ' is down and the city reacts.');
+                    M.finish(true);
                     return true
                 }
                 return false
@@ -1931,11 +1743,11 @@
                 const wasTarget = S.navRef === ('vehicle:' + id);
                 const hostile = !!v.hunt || gangs.includes(v);
                 if (wasTarget && !hostile) {
-                    S.requestConclusion(false, (v.label || 'the target vehicle') + ' was destroyed');
+                    M.finish(false, (v.label || 'the target vehicle') + ' was destroyed');
                     return true
                 }
                 if (wasTarget && hostile) {
-                    S.requestConclusion(true, (v.label || 'The hostile vehicle') + ' is disabled.');
+                    M.finish(true);
                     return true
                 }
                 return false
@@ -1947,14 +1759,14 @@
                 if (key.startsWith('npc:')) return 42;
                 if (key.startsWith('vehicle:')) return 48;
                 if (key.startsWith('pickup:')) return 36;
-                if (key.startsWith('prop:') || key.startsWith('landmark:') || key.startsWith('lm:') || key.startsWith('block:')) return 52;
+                if (key.startsWith('prop:') || key.startsWith('landmark:') || key.startsWith('lm:') || key.startsWith('block:')) return 90;
                 return 46
             },
             forceZoneArrival(id) {
                 if (!id) return false;
                 let did = false;
-                for (const r of S.rules) if (!r.fired && r.when === 'zone_stay' && r.id === id && (S.zoneStay[id] || 0) >= (r.arg || 1)) {
-                    S.markRule(r);
+                for (const r of S.rules) if (!r.fired && r.when === 'zone_stay' && r.id === id && (S.zoneStay[id]||0) >= (r.arg||1)) {
+                    r.fired = true; if (r.once) S.onceDone++;
                     S.runActs(r.do); did = true;
                     if (state !== 'play') return true
                 }
@@ -1976,13 +1788,13 @@
                     S.navArrived[key] = 1;
                     // Arrival means touching the target's interaction radius, not standing on its exact center.
                     let fired = false;
-                    fired = S.fire('nav_arrived:' + id) || fired; if (state !== 'play' || S.navKey() !== key) return;
-                    if (key.startsWith('pickup:')) { fired = S.fire('pickup_taken:' + id) || fired; if (state !== 'play' || S.navKey() !== key) return }
-                    if (key.startsWith('npc:')) { fired = S.fire('npc_near:' + id) || fired; if (state !== 'play' || S.navKey() !== key) return }
+                    fired = S.fire('nav_arrived:' + id) || fired; if (state !== 'play') return;
+                    if (key.startsWith('pickup:')) { fired = S.fire('pickup_taken:' + id) || fired; if (state !== 'play') return }
+                    if (key.startsWith('npc:')) { fired = S.fire('npc_near:' + id) || fired; if (state !== 'play') return }
                     if (key.startsWith('zone:')) {
                         // Do not mark zoneIn before firing; otherwise the normal zone loop may think
                         // the player already entered and never run the authored enter_zone rule.
-                        fired = S.fire('enter_zone:' + id) || fired; if (state !== 'play' || S.navKey() !== key) return;
+                        fired = S.fire('enter_zone:' + id) || fired; if (state !== 'play') return;
                         S.zoneIn[id] = 1;
                         if (S.forceZoneArrival(id)) return
                     }
@@ -1993,7 +1805,6 @@
                 }
             },
             update(dt) {
-                if (S.updateConclusion(dt)) return;
                 if (!S.rules.length && !S.npcs.length && !S.zones.length) { S.bubbles.length = 0; return }
                 for (const id in S.timers) {
                     S.timers[id] -= dt;
@@ -2016,7 +1827,7 @@
                     if (!inz && S.zoneIn[z.id]) { S.zoneIn[z.id] = 0; S.fire('exit_zone:' + z.id); if (state !== 'play') return }
                     S.zoneStay[z.id] = inz ? (S.zoneStay[z.id] || 0) + dt : 0;
                     for (const r of S.rules) if (r.when === 'zone_stay' && r.id === z.id && !r.fired && (S.zoneStay[z.id] || 0) >= (r.arg || 5)) {
-                        S.markRule(r); S.runActs(r.do); if (state !== 'play') return
+                        r.fired = true; if (r.once) S.onceDone++; S.runActs(r.do); if (state !== 'play') return
                     }
                 }
                 const vid = car && car.svid ? car.svid : '';
@@ -2030,16 +1841,8 @@
                     if (r.when === 'heat_at' && heat >= (r.arg || 5)) hit = true;
                     if (r.when === 'hearts_below' && hearts < (r.arg || 1)) hit = true;
                     if (r.when === 'npc_near') { const n = S.npcs.find(n => n.id === r.id); if (n && Math.hypot(n.x - px, n.y - py) < (r.arg || 60)) hit = true }
-                    if (r.when === 'vehicle_near') { const v = traffic.find(v => v.svid === r.id) || gangs.find(v => v.svid === r.id) || (car && car.svid === r.id ? car : null); if (v && Math.hypot(v.x - px, v.y - py) < (r.arg || 90)) hit = true }
-                    if (r.when === 'escort_arrived') {
-                        const n = S.npcs.find(n => n.id === r.id), z = S.zones.find(z => z.id === r.id2);
-                        if (n && z && Math.hypot(px - z.x, py - z.y) <= z.r + 20 && Math.hypot(n.x - z.x, n.y - z.y) <= z.r + 24) hit = true
-                    }
-                    if (r.when === 'vehicle_in_zone') {
-                        const v = (car && car.svid === r.id ? car : null) || traffic.find(v => v.svid === r.id) || gangs.find(v => v.svid === r.id), z = S.zones.find(z => z.id === r.id2);
-                        if (v && z && Math.hypot(v.x - z.x, v.y - z.y) <= z.r + 26) hit = true
-                    }
-                    if (hit) { S.markRule(r); S.runActs(r.do); if (state !== 'play') return }
+                    if (r.when === 'vehicle_near') { const v=traffic.find(v=>v.svid===r.id)||gangs.find(v=>v.svid===r.id)||(car&&car.svid===r.id?car:null); if(v&&Math.hypot(v.x-px,v.y-py)<(r.arg||90))hit=true }
+                    if (hit) { if (!r.fired && r.once) S.onceDone++; r.fired = true; S.runActs(r.do); if (state !== 'play') return }
                 }
                 for (const n of S.npcs) {
                     if (n.gone) continue;
@@ -2077,11 +1880,11 @@
                 }
                 S.npcs = S.npcs.filter(n => !n.gone);
                 S.checkNavArrival(dt); if (state !== 'play') return;
-                if (M.cur && M.cur.verb === 'scene' && t - S.lastProgressT > 18) {
-                    S.ensureNav(); const nav = S.resolveNav();
-                    if (!nav) { const ref = S.makeObjectiveZone(S.objectiveText || 'Find the next lead'); S.setObjective(S.objectiveText || 'Find the next lead', ref) }
-                    else if (t - S.lastProgressT > 30 && S.repairCount < 3) { S.repairCount++; S.extendScene('The mission stalled, so a new verified lead has been marked.') }
-                    S.lastProgressT = t
+                if (M.cur && M.cur.verb==='scene' && t-S.lastProgressT>18) {
+                    S.ensureNav(); const nav=S.resolveNav();
+                    if (!nav) { const ref=S.makeObjectiveZone(S.objectiveText||'Find the next lead'); S.setObjective(S.objectiveText||'Find the next lead',ref) }
+                    else if (t-S.lastProgressT>30 && S.repairCount<3) { S.repairCount++; S.extendScene('The mission stalled, so a new verified lead has been marked.') }
+                    S.lastProgressT=t
                 }
                 S.bubbles = S.bubbles.filter(b => b.t > t)
             }
@@ -2130,7 +1933,7 @@
                 for (const c of gangs) c.hunt = 0
             },
             start(m) {
-                M.cleanup(); M.cur = m; m.step = 0; m.t = 0; m.aboard = false; chapterN++; S.sceneStartT = t;
+                M.cleanup(); M.cur = m; m.step = 0; m.t = 0; m.aboard = false; chapterN++;
                 (M.hist = M.hist || []).push(m.verb + ':' + m.title); if (M.hist.length > 6) M.hist.shift();
                 if (m.verb === 'jack') {
                     const s = snapRoad(m.wps[0].x, m.wps[0].y);
@@ -2148,29 +1951,26 @@
                     const f = findFree(m.wps[0].x, m.wps[0].y, 12);
                     targetPed = { x: f.x, y: f.y, a: Math.random() * 7, hp: 2, flee: false }
                 }
-                const c = UIK.card(); c.classList.remove('resolving'); c.children[0].textContent = m.title;
+                const c = UIK.card(); c.children[0].textContent = m.title;
                 c.children[1].textContent = m.briefing;
                 c.children[2].textContent = 'CH.' + chapterN + ' · REWARD $' + m.reward + (m.timeLimit ? ' · ' + m.timeLimit + 's limit' : '');
                 Msg.show('NEW MISSION: ' + m.title, 'newm', 1); saveGame()
             },
             finish(ok, why) {
-                const m = M.cur; if (!m) return; const outcome = sstr(why, 120); M.cur = null; M.cleanup();
+                const m = M.cur; if (!m) return; M.cur = null; M.cleanup();
                 if (ok) {
-                    cash += m.reward; logEvent('mission "' + m.title + '" SUCCEEDED (+$' + m.reward + ')' + (outcome ? ' — ' + outcome : ''));
+                    cash += m.reward; logEvent('mission "' + m.title + '" SUCCEEDED (+$' + m.reward + ')');
                     Msg.show('✔ ' + m.title + ' — +$' + m.reward, 'md', 0)
                 }
-                else { logEvent('mission "' + m.title + '" FAILED (' + (outcome || 'unknown reason') + ')'); Msg.show('✘ mission failed — ' + (outcome || 'operation collapsed'), 'md', 0) }
-                M.result = ok ? ('success' + (outcome ? ': ' + outcome : '')) : ('failed: ' + (outcome || 'unknown reason')); saveGame();
-                const c = UIK.card(); c.classList.remove('resolving'); c.children[0].textContent = ok ? 'MISSION COMPLETE' : 'MISSION FAILED';
-                c.children[1].textContent = sstr(why, 120) || (ok ? 'The result is now part of Blocktown.' : 'The failure is now part of the saga.');
-                c.children[2].textContent = 'The Director is writing the next consequence…';
-                Director.plan(2800)
+                else { logEvent('mission "' + m.title + '" FAILED (' + why + ')'); Msg.show('✘ mission failed — ' + why, 'md', 0) }
+                M.result = (ok ? 'success' : 'failed: ' + why); saveGame();
+                const c = UIK.card(); c.children[0].textContent = ok ? 'MISSION COMPLETE' : 'MISSION FAILED';
+                c.children[1].textContent = 'the Director is evaluating your performance…'; c.children[2].textContent = '';
+                Director.plan(1800)
             },
             update(dt) {
-                const m = M.cur; if (!m) return;
-                if (m.verb === 'scene' && S.conclusion) return;
-                m.t += dt;
-                if (m.timeLimit && m.t > m.timeLimit) return S.requestConclusion(false, 'out of time');
+                const m = M.cur; if (!m) return; m.t += dt;
+                if (m.timeLimit && m.t > m.timeLimit) return M.finish(false, 'out of time');
                 if (m.verb === 'scene') return;
                 if (m.verb === 'evade') { if (heat === 0 && m.t > 2) M.finish(true); return }
                 if (m.verb === 'hunt') { if (!gangs.some(c => c.hunt)) M.finish(true); return }
@@ -2277,12 +2077,12 @@
             else if (op.op === 'convoy') { // scripted procession of cars
                 const n2 = snum(op.n, 2, 6, 3), cc = LPAL[op.color] || '#e8e8ee';
                 for (let k2 = 0; k2 < n2; k2++) {
-                    const s2 = snapVehicleRoad(px + ox + k2 * 84, py + oy, k2);
-                    const kk = ['car', 'sports', 'van', 'truck', 'taxi', 'limo', 'bus'].includes(op.kind) ? op.kind : 'car';
-                    traffic.push({ x: s2.x, y: s2.y, ang: 0, v: 96, hp: kk === 'truck' || kk === 'bus' ? 120 : 70, mhp: kk === 'truck' || kk === 'bus' ? 120 : 70, tm: 'brake', col: cc, parked: false, kind: kk })
+                    const s2 = snapRoad(px + ox + k2 * 84, py + oy);
+                    const kk=['car','sports','van','truck','taxi','limo','bus'].includes(op.kind)?op.kind:'car';
+                    traffic.push({ x: s2.x, y: s2.y, ang: 0, v: 96, hp: kk==='truck'||kk==='bus'?120:70, mhp: kk==='truck'||kk==='bus'?120:70, tm: 'brake', col: cc, parked: false, kind:kk })
                 }
             }
-            else if (op.op === 'vehicle') S.spawnEnt({ type: 'vehicle', id: op.id, name: op.name, label: op.label, dx: op.dx, dy: op.dy, color: op.color, marked: !!op.marked, hostile: !!op.hostile, kind: op.kind, behavior: op.behavior, persistent: true });
+            else if (op.op === 'vehicle') S.spawnEnt({ type: 'vehicle', id: op.id, name: op.name, label: op.label, dx: op.dx, dy: op.dy, color: op.color, marked: !!op.marked, hostile: !!op.hostile, kind: op.kind });
             else if (op.op === 'landmark') addLandmark(op);
             else if (op.op === 'property') addProperty(op);
         }
@@ -2331,33 +2131,33 @@
                 return g.slice(0, 16)
             },
             blueprint(kind) {
-                const C = { dark: '#252b2e', concrete: '#6b7375', light: '#e7ecef', grass: '#43593f', glass: '#34414a', gold: '#e2d36a', red: '#d34949' };
-                if (kind === 'airport' || kind === 'helipad') return [
-                    { kind: 'rect', x: 4, y: 6, w: 92, h: 88, c: C.grass }, { kind: 'rect', x: 10, y: 12, w: 80, h: 78, c: C.concrete },
-                    { kind: 'runway', x: 50, y: 54, w: 82, h: 17, angle: -24, c: C.dark, c2: '#bfc5b8' },
-                    { kind: 'building', x: 14, y: 15, w: 28, h: 18, c: '#9ca4a6', c2: C.glass, rows: 2, cols: 4 },
-                    { kind: 'hangar', x: 68, y: 70, w: 23, h: 17, c: '#8c9496', c2: '#b6bec0' },
-                    { kind: 'parking', x: 12, y: 42, w: 25, h: 17, c: '#596164', c2: '#d9d9d9', cols: 4 },
-                    { kind: 'tower', x: 82, y: 18, r: 6, h: 10, c: '#c1c7c9', c2: '#39474f' },
-                    { kind: 'plane', x: 66, y: 43, angle: 28, c: C.light, c2: C.red }, { kind: 'plane', x: 34, y: 66, angle: -62, c: C.light, c2: C.red }
+                const C={dark:'#252b2e',concrete:'#6b7375',light:'#e7ecef',grass:'#43593f',glass:'#34414a',gold:'#e2d36a',red:'#d34949'};
+                if(kind==='airport'||kind==='helipad') return [
+                    {kind:'rect',x:4,y:6,w:92,h:88,c:C.grass},{kind:'rect',x:10,y:12,w:80,h:78,c:C.concrete},
+                    {kind:'runway',x:50,y:54,w:82,h:17,angle:-24,c:C.dark,c2:'#bfc5b8'},
+                    {kind:'building',x:14,y:15,w:28,h:18,c:'#9ca4a6',c2:C.glass,rows:2,cols:4},
+                    {kind:'hangar',x:68,y:70,w:23,h:17,c:'#8c9496',c2:'#b6bec0'},
+                    {kind:'parking',x:12,y:42,w:25,h:17,c:'#596164',c2:'#d9d9d9',cols:4},
+                    {kind:'tower',x:82,y:18,r:6,h:10,c:'#c1c7c9',c2:'#39474f'},
+                    {kind:'plane',x:66,y:43,angle:28,c:C.light,c2:C.red},{kind:'plane',x:34,y:66,angle:-62,c:C.light,c2:C.red}
                 ];
-                if (kind === 'whitehouse') return [
-                    { kind: 'rect', x: 12, y: 30, w: 76, h: 44, c: '#e8e8e1' }, { kind: 'building', x: 23, y: 38, w: 54, h: 33, c: '#d6d7d2', c2: '#7690a0', rows: 2, cols: 6 },
-                    { kind: 'poly', pts: [[18, 38], [50, 17], [82, 38]], c: '#f4f1df', stroke: true, w2: 2 }, { kind: 'fence', x: 8, y: 20, w: 84, h: 62, c: '#a8b0b6' },
-                    { kind: 'road', x: 50, y: 88, w: 70, h: 8, c: '#373b3d', c2: '#e2d36a' }
+                if(kind==='whitehouse') return [
+                    {kind:'rect',x:12,y:30,w:76,h:44,c:'#e8e8e1'},{kind:'building',x:23,y:38,w:54,h:33,c:'#d6d7d2',c2:'#7690a0',rows:2,cols:6},
+                    {kind:'poly',pts:[[18,38],[50,17],[82,38]],c:'#f4f1df',stroke:true,w2:2},{kind:'fence',x:8,y:20,w:84,h:62,c:'#a8b0b6'},
+                    {kind:'road',x:50,y:88,w:70,h:8,c:'#373b3d',c2:'#e2d36a'}
                 ];
-                if (kind === 'farm' || kind === 'maze') return [
-                    { kind: 'rect', x: 4, y: 4, w: 92, h: 92, c: '#273323' }, { kind: 'crop', x: 50, y: 50, w: 78, h: 72, rows: 8, c: '#8a7b3e', w2: 3 },
-                    { kind: 'building', x: 70, y: 68, w: 20, h: 18, c: '#7c5030', c2: '#d4a15d', rows: 1, cols: 2 }, { kind: 'tree', x: 20, y: 22, r: 7, c: '#2f4a33' }, { kind: 'tree', x: 30, y: 78, r: 8, c: '#2f4a33' }
+                if(kind==='farm'||kind==='maze') return [
+                    {kind:'rect',x:4,y:4,w:92,h:92,c:'#273323'},{kind:'crop',x:50,y:50,w:78,h:72,rows:8,c:'#8a7b3e',w2:3},
+                    {kind:'building',x:70,y:68,w:20,h:18,c:'#7c5030',c2:'#d4a15d',rows:1,cols:2},{kind:'tree',x:20,y:22,r:7,c:'#2f4a33'},{kind:'tree',x:30,y:78,r:8,c:'#2f4a33'}
                 ];
-                if (kind === 'tank' || kind === 'motorpool') return [
-                    { kind: 'rect', x: 5, y: 5, w: 90, h: 90, c: '#31352f' }, { kind: 'parking', x: 8, y: 10, w: 84, h: 80, c: '#41463f', c2: '#8a927f', cols: 5 },
-                    { kind: 'tank', x: 28, y: 30, w: 25, h: 14, angle: 12, c: '#6e7e52' }, { kind: 'tank', x: 60, y: 55, w: 25, h: 14, angle: -18, c: '#6e7e52' },
-                    { kind: 'hangar', x: 74, y: 20, w: 24, h: 18, c: '#777d75', c2: '#9aa09a' }
+                if(kind==='tank'||kind==='motorpool') return [
+                    {kind:'rect',x:5,y:5,w:90,h:90,c:'#31352f'},{kind:'parking',x:8,y:10,w:84,h:80,c:'#41463f',c2:'#8a927f',cols:5},
+                    {kind:'tank',x:28,y:30,w:25,h:14,angle:12,c:'#6e7e52'},{kind:'tank',x:60,y:55,w:25,h:14,angle:-18,c:'#6e7e52'},
+                    {kind:'hangar',x:74,y:20,w:24,h:18,c:'#777d75',c2:'#9aa09a'}
                 ];
-                if (kind === 'lab' || kind === 'crystal') return [
-                    { kind: 'rect', x: 5, y: 5, w: 90, h: 90, c: '#1c2630' }, { kind: 'building', x: 14, y: 14, w: 72, h: 72, c: '#263949', c2: '#60a5fa', rows: 4, cols: 4 },
-                    { kind: 'circle', x: 50, y: 50, r: 16, c: '#67e8f9', a: .55 }, { kind: 'line', x: 18, y: 82, x2: 82, y2: 18, c: '#a78bfa', w2: 3 }
+                if(kind==='lab'||kind==='crystal') return [
+                    {kind:'rect',x:5,y:5,w:90,h:90,c:'#1c2630'},{kind:'building',x:14,y:14,w:72,h:72,c:'#263949',c2:'#60a5fa',rows:4,cols:4},
+                    {kind:'circle',x:50,y:50,r:16,c:'#67e8f9',a:.55},{kind:'line',x:18,y:82,x2:82,y2:18,c:'#a78bfa',w2:3}
                 ];
                 return null
             },
@@ -2391,14 +2191,14 @@
                 const asProp = this.chance(.46);
                 const innerPal = ['#22252C', '#1C2230', '#273323', '#2A2418', '#262A33', '#101216', '#2D2434', '#20333A', '#D8C98A', '#1E2A22'];
                 const o = { op: asProp ? 'property' : 'landmark', id: 'lg' + (this.uid++), dx: p.dx, dy: p.dy, name, sign: this.sign(name), purpose: spec[1], style: 'custom', color: col, inner: this.R(innerPal) };
-                const bpKind = hint === 'airport' ? 'airport' : hint === 'authority' ? 'whitehouse' : hint === 'farm' ? 'farm' : hint === 'armor' ? 'motorpool' : hint === 'lab' ? 'lab' : spec[2];
+                const bpKind = hint==='airport' ? 'airport' : hint==='authority' ? 'whitehouse' : hint==='farm' ? 'farm' : hint==='armor' ? 'motorpool' : hint==='lab' ? 'lab' : spec[2];
                 o.blueprint = this.blueprint(bpKind);
                 if (spec[3]) {
                     o.walk = true; o.ground = spec[4] || this.R(['grass', 'soil', 'sand', 'water', 'paving', 'asphalt']);
-                    if (!o.blueprint) o.glyph = this.glyph(spec[2] || (o.ground === 'water' || o.ground === 'soil' ? 'waves' : 'ring'));
+                    if(!o.blueprint)o.glyph = this.glyph(spec[2] || (o.ground === 'water' || o.ground === 'soil' ? 'waves' : 'ring'));
                 } else {
                     o.walk = false; o.roof = this.R(['blue', 'purple', 'green', 'orange', 'white', 'red', null]);
-                    if (!o.blueprint) o.glyph = this.glyph(spec[2] || this.R(['tower', 'dome', 'crystal', 'estate', 'campus', 'ring']));
+                    if(!o.blueprint)o.glyph = this.glyph(spec[2] || this.R(['tower', 'dome', 'crystal', 'estate', 'campus', 'ring']));
                 }
                 if (asProp) { o.price = 220 + (Math.random() * 1350 | 0); o.income = 12 + (Math.random() * 70 | 0); o.perk = this.R(['heal', 'ammo', 'garage', 'none', 'none']) }
                 return o
@@ -2439,13 +2239,13 @@
                     const who = this.person(), safe = id(), v = P(120, 260), s = P(800, 1150);
                     const spawn = [{ type: 'npc', id: 'esc', name: who, dx: v.dx, dy: v.dy, color: 'green', role: 'friendly', speed: 90, behavior: { kind: 'follow_player' } }, { type: 'zone', id: safe, dx: s.dx, dy: s.dy, r: 100, label: 'SAFE HOUSE', color: 'green' }];
                     const amb = P(400, 650);
-                    const rules = [{ when: 'start', do: [{ act: 'objective', text: 'Walk ' + who + ' to the safe house', nav: 'zone:' + safe }] }, { when: 'escort_arrived:esc:' + safe, do: [{ act: 'reward', amount: rew }, { act: 'banner', text: who + ' is safe. For now.' }, { act: 'complete' }] }, { when: 'hearts_below:2', once: true, do: [{ act: 'spawn', type: 'npc', id: 'amb', name: this.crew(), dx: amb.dx, dy: amb.dy, color: 'red', role: 'hostile', speed: 110, behavior: { kind: 'chase_player' } }, { act: 'say', id: 'esc', text: 'They found us — go, go!' }] }];
+                    const rules = [{ when: 'start', do: [{ act: 'objective', text: 'Walk ' + who + ' to the safe house', nav: 'zone:' + safe }] }, { when: 'zone_stay:' + safe + ':1', do: [{ act: 'reward', amount: rew }, { act: 'banner', text: who + ' is safe. For now.' }, { act: 'complete' }] }, { when: 'hearts_below:2', once: true, do: [{ act: 'spawn', type: 'npc', id: 'amb', name: this.crew(), dx: amb.dx, dy: amb.dy, color: 'red', role: 'hostile', speed: 110, behavior: { kind: 'chase_player' } }, { act: 'say', id: 'esc', text: 'They found us — go, go!' }] }];
                     return { banner: 'a body worth protecting walks into your night', mission: { title: 'Warm Body', briefing: who + ' needs to reach the safe house alive. Shield them.', verb: 'scene', reward: rew, heatStart: 2 }, scene: { objective: 'Escort ' + who, nav: 'zone:' + safe, spawn, rules }, outcomeHint: 'protected' };
                 }
                 if (kind === 'bomb') {
                     const car = id(), dump = P(1000, 1500), fuse = 40 + (Math.random() * 20 | 0), from = this.person();
                     const spawn = [{ type: 'vehicle', id: car, dx: this.jit(280, 60), dy: this.jit(120, 60), color: 'pink', marked: true }, { type: 'zone', id: 'dz', dx: dump.dx, dy: dump.dy, r: 110, label: 'DEAD DROP', color: 'red' }];
-                    const rules = [{ when: 'in_vehicle:' + car, do: [{ act: 'timer', id: 'fuse', seconds: fuse }, { act: 'phone', from, text: fuse + ' seconds. Drive it out, hero.' }, { act: 'objective', text: 'Dump the rigged car — ' + fuse + 's', nav: 'zone:dz' }] }, { when: 'vehicle_in_zone:' + car + ':dz', do: [{ act: 'explode', id: car }, { act: 'shake' }, { act: 'banner', text: 'Contained. Barely.' }, { act: 'reward', amount: rew }, { act: 'complete' }] }, { when: 'timer:fuse', do: [{ act: 'explode', id: car }, { act: 'fail', reason: 'the fuse won' }] }];
+                    const rules = [{ when: 'in_vehicle:' + car, do: [{ act: 'timer', id: 'fuse', seconds: fuse }, { act: 'phone', from, text: fuse + ' seconds. Drive it out, hero.' }, { act: 'objective', text: 'Dump the rigged car — ' + fuse + 's', nav: 'zone:dz' }] }, { when: 'enter_zone:dz', do: [{ act: 'explode', id: car }, { act: 'shake' }, { act: 'banner', text: 'Contained. Barely.' }, { act: 'reward', amount: rew }, { act: 'complete' }] }, { when: 'timer:fuse', do: [{ act: 'explode', id: car }, { act: 'fail', reason: 'the fuse won' }] }];
                     return { banner: 'a gift was left for you. it is ticking.', mission: { title: 'Wire In The Trunk', briefing: from + ' left a rigged car nearby. Get it far from the crowds.', verb: 'scene', reward: rew }, scene: { objective: 'Reach the rigged car', nav: 'vehicle:' + car, spawn, rules }, outcomeHint: 'defused' };
                 }
                 if (kind === 'choice') {
@@ -2474,32 +2274,32 @@
                     return { banner: 'a clock just started somewhere with your name on it', mission: { title: 'Beat The Clock', briefing: who + ' needs this across town before the window shuts.', verb: 'scene', reward: rew, heatStart: 1 }, scene: { objective: 'Race to the drop', nav: 'zone:' + z, spawn, rules }, outcomeHint: 'delivered' };
                 }
                 if (kind === 'tail') {
-                    const mark = id(), end = id(), start = P(300, 480), finish = P(950, 1300), who = this.person();
-                    const spawn = [{ type: 'vehicle', id: mark, name: who + "'s Sedan", dx: start.dx, dy: start.dy, color: 'blue', kind: 'sports', behavior: { kind: 'circle', speed: 150 } }, { type: 'zone', id: end, dx: finish.dx, dy: finish.dy, r: 105, label: 'HANDOFF', color: 'orange' }];
-                    const rules = [
-                        { when: 'nav_arrived:' + mark, do: [{ act: 'phone', from: 'DISPATCH', text: 'That is the car. Stay close and do not lose it.' }, { act: 'vehicle_behavior', id: mark, kind: 'route', speed: 185, route: [{ dx: 520, dy: 120 }, { dx: 760, dy: -300 }, { dx: finish.dx, dy: finish.dy }], }, { act: 'objective', text: 'Tail the moving sedan', nav: 'vehicle:' + mark }] },
-                        { when: 'vehicle_reached:' + mark, do: [{ act: 'spawn', type: 'npc', id: 'courier', name: who, dx: finish.dx + 25, dy: finish.dy, color: 'orange', role: 'neutral', behavior: { kind: 'guard' } }, { act: 'objective', text: 'Confront ' + who + ' at the handoff', nav: 'npc:courier' }] },
-                        { when: 'npc_near:courier:60', do: [{ act: 'say', id: 'courier', text: 'You were not supposed to see this route.' }, { act: 'reward', amount: rew }, { act: 'complete', final: true }] }
+                    const mark=id(), end=id(), start=P(300,480), finish=P(950,1300), who=this.person();
+                    const spawn=[{type:'vehicle',id:mark,name:who+"'s Sedan",dx:start.dx,dy:start.dy,color:'blue',kind:'sports',behavior:{kind:'circle',speed:150}},{type:'zone',id:end,dx:finish.dx,dy:finish.dy,r:105,label:'HANDOFF',color:'orange'}];
+                    const rules=[
+                        {when:'nav_arrived:'+mark,do:[{act:'phone',from:'DISPATCH',text:'That is the car. Stay close and do not lose it.'},{act:'vehicle_behavior',id:mark,kind:'route',speed:185,route:[{dx:520,dy:120},{dx:760,dy:-300},{dx:finish.dx,dy:finish.dy}],},{act:'objective',text:'Tail the sedan to its handoff',nav:'zone:'+end}]},
+                        {when:'enter_zone:'+end,do:[{act:'spawn',type:'npc',id:'courier',name:who,dx:finish.dx+25,dy:finish.dy,color:'orange',role:'neutral',behavior:{kind:'guard'}},{act:'objective',text:'Confront '+who+' at the handoff',nav:'npc:courier'}]},
+                        {when:'npc_near:courier:60',do:[{act:'say',id:'courier',text:'You were not supposed to see this route.'},{act:'reward',amount:rew},{act:'complete',final:true}]}
                     ];
-                    return { banner: 'a moving target is carrying tonight’s secret', mission: { title: 'The Long Tail', briefing: 'Track ' + who + "'s car to the handoff without losing the trail.", verb: 'scene', reward: rew }, scene: { objective: 'Find the marked sedan', nav: 'vehicle:' + mark, spawn, rules }, outcomeHint: 'smuggling' }
+                    return {banner:'a moving target is carrying tonight’s secret',mission:{title:'The Long Tail',briefing:'Track '+who+"'s car to the handoff without losing the trail.",verb:'scene',reward:rew},scene:{objective:'Find the marked sedan',nav:'vehicle:'+mark,spawn,rules},outcomeHint:'smuggling'}
                 }
                 if (kind === 'rescue') {
-                    const who = this.person(), captive = id(), safe = id(), a = P(420, 680), b = P(900, 1250);
-                    const spawn = [{ type: 'npc', id: captive, name: who, dx: a.dx, dy: a.dy, color: 'green', role: 'friendly', hp: 5, behavior: { kind: 'guard' } }, { type: 'npc', id: 'guard1', name: this.crew(), dx: a.dx + 55, dy: a.dy + 20, color: 'red', role: 'hostile', hp: 4, behavior: { kind: 'guard' } }, { type: 'zone', id: safe, dx: b.dx, dy: b.dy, r: 100, label: 'SAFE EXIT', color: 'green' }];
-                    const rules = [{ when: 'npc_near:' + captive + ':65', do: [{ act: 'say', id: captive, text: 'Get me out before the guard calls backup.' }, { act: 'behavior', id: captive, kind: 'follow_player', role: 'friendly', speed: 92 }, { act: 'objective', text: 'Escort ' + who + ' to the safe exit', nav: 'zone:' + safe }] }, { when: 'escort_arrived:' + captive + ':' + safe, do: [{ act: 'banner', text: who + ' is out. The rescue changes the balance of the district.' }, { act: 'reward', amount: rew }, { act: 'complete', final: true }] }, { when: 'npc_dead:' + captive, do: [{ act: 'fail', reason: who + ' did not survive' }] }];
-                    return { banner: 'someone alive is worth more than the money tonight', mission: { title: 'Bring Them Home', briefing: 'Reach ' + who + ', break the guard line, and escort them out.', verb: 'scene', reward: rew }, scene: { objective: 'Reach ' + who, nav: 'npc:' + captive, spawn, rules }, outcomeHint: 'protected' }
+                    const who=this.person(), captive=id(), safe=id(), a=P(420,680), b=P(900,1250);
+                    const spawn=[{type:'npc',id:captive,name:who,dx:a.dx,dy:a.dy,color:'green',role:'friendly',hp:5,behavior:{kind:'guard'}},{type:'npc',id:'guard1',name:this.crew(),dx:a.dx+55,dy:a.dy+20,color:'red',role:'hostile',hp:4,behavior:{kind:'guard'}},{type:'zone',id:safe,dx:b.dx,dy:b.dy,r:100,label:'SAFE EXIT',color:'green'}];
+                    const rules=[{when:'npc_near:'+captive+':65',do:[{act:'say',id:captive,text:'Get me out before the guard calls backup.'},{act:'behavior',id:captive,kind:'follow_player',role:'friendly',speed:92},{act:'objective',text:'Escort '+who+' to the safe exit',nav:'zone:'+safe}]},{when:'enter_zone:'+safe,do:[{act:'banner',text:who+' is out. The rescue changes the balance of the district.'},{act:'reward',amount:rew},{act:'complete',final:true}]},{when:'npc_dead:'+captive,do:[{act:'fail',reason:who+' did not survive'}]}];
+                    return {banner:'someone alive is worth more than the money tonight',mission:{title:'Bring Them Home',briefing:'Reach '+who+', break the guard line, and escort them out.',verb:'scene',reward:rew},scene:{objective:'Reach '+who,nav:'npc:'+captive,spawn,rules},outcomeHint:'protected'}
                 }
                 if (kind === 'intercept') {
-                    const v = id(), p = P(520, 820);
-                    const spawn = [{ type: 'vehicle', id: v, name: 'Iron Courier', dx: p.dx, dy: p.dy, color: 'red', kind: 'armored', hostile: true, behavior: { kind: 'chase_player', speed: 220 } }];
-                    const rules = [{ when: 'start', do: [{ act: 'phone', from: 'WATCHER', text: 'The armored courier is moving. Disable it before it leaves the district.' }] }, { when: 'vehicle_destroyed:' + v, do: [{ act: 'banner', text: 'The courier is stopped. Its cargo becomes tomorrow’s problem.' }, { act: 'reward', amount: rew }, { act: 'complete', final: true }] }];
-                    return { banner: 'an armored courier has crossed the wrong block', mission: { title: 'Steel Intercept', briefing: 'Stop the moving armored courier and survive the response.', verb: 'scene', reward: rew, heatStart: 2 }, scene: { objective: 'Intercept the armored courier', nav: 'vehicle:' + v, spawn, rules }, outcomeHint: 'armor' }
+                    const v=id(), p=P(520,820);
+                    const spawn=[{type:'vehicle',id:v,name:'Iron Courier',dx:p.dx,dy:p.dy,color:'red',kind:'armored',hostile:true,behavior:{kind:'chase_player',speed:220}}];
+                    const rules=[{when:'start',do:[{act:'phone',from:'WATCHER',text:'The armored courier is moving. Disable it before it leaves the district.'}]},{when:'vehicle_destroyed:'+v,do:[{act:'banner',text:'The courier is stopped. Its cargo becomes tomorrow’s problem.'},{act:'reward',amount:rew},{act:'complete',final:true}]}];
+                    return {banner:'an armored courier has crossed the wrong block',mission:{title:'Steel Intercept',briefing:'Stop the moving armored courier and survive the response.',verb:'scene',reward:rew,heatStart:2},scene:{objective:'Intercept the armored courier',nav:'vehicle:'+v,spawn,rules},outcomeHint:'armor'}
                 }
                 if (kind === 'airlift') {
-                    const craft = id(), pad = id(), a = P(260, 430), b = P(1100, 1500);
-                    const spawn = [{ type: 'vehicle', id: craft, name: 'Courier Rotor', dx: a.dx, dy: a.dy, color: 'white', kind: 'helicopter', marked: true, parked: true }, { type: 'zone', id: pad, dx: b.dx, dy: b.dy, r: 115, label: 'LANDING PAD', color: 'blue' }];
-                    const rules = [{ when: 'in_vehicle:' + craft, do: [{ act: 'phone', from: 'TOWER', text: 'Rotor clearance granted. Take the package above the blocks.' }, { act: 'objective', text: 'Fly the helicopter to the landing pad', nav: 'zone:' + pad }] }, { when: 'vehicle_in_zone:' + craft + ':' + pad, do: [{ act: 'banner', text: 'The air corridor is open. Blocktown just became larger.' }, { act: 'reward', amount: rew + 120 }, { act: 'complete', final: true }] }, { when: 'vehicle_destroyed:' + craft, do: [{ act: 'fail', reason: 'the aircraft was lost' }] }];
-                    return { banner: 'the city has a roofline, and tonight it matters', mission: { title: 'Above The Blocks', briefing: 'Take the courier helicopter across the city and reach the landing pad.', verb: 'scene', reward: rew + 120 }, scene: { objective: 'Board the courier helicopter', nav: 'vehicle:' + craft, spawn, rules }, outcomeHint: 'airport' }
+                    const craft=id(), pad=id(), a=P(260,430), b=P(1100,1500);
+                    const spawn=[{type:'vehicle',id:craft,name:'Courier Rotor',dx:a.dx,dy:a.dy,color:'white',kind:'helicopter',marked:true,parked:true},{type:'zone',id:pad,dx:b.dx,dy:b.dy,r:115,label:'LANDING PAD',color:'blue'}];
+                    const rules=[{when:'in_vehicle:'+craft,do:[{act:'phone',from:'TOWER',text:'Rotor clearance granted. Take the package above the blocks.'},{act:'objective',text:'Fly the helicopter to the landing pad',nav:'zone:'+pad}]},{when:'enter_zone:'+pad,do:[{act:'banner',text:'The air corridor is open. Blocktown just became larger.'},{act:'reward',amount:rew+120},{act:'complete',final:true}]},{when:'vehicle_destroyed:'+craft,do:[{act:'fail',reason:'the aircraft was lost'}]}];
+                    return {banner:'the city has a roofline, and tonight it matters',mission:{title:'Above The Blocks',briefing:'Take the courier helicopter across the city and reach the landing pad.',verb:'scene',reward:rew+120},scene:{objective:'Board the courier helicopter',nav:'vehicle:'+craft,spawn,rules},outcomeHint:'airport'}
                 }
                 // finale / hunt — a boss and their crew
                 const boss = this.person(), crew = this.crew();
@@ -2517,7 +2317,7 @@
             },
             memory(step, next) {
                 const arc = ['a hook', 'a job that turns', 'a debt called in', 'a point of no return', 'the reckoning'];
-                return (this.premiseTxt + ' PLAN: 1)' + arc[0] + ' 2)' + arc[1] + ' 3)' + arc[2] + ' 4)' + arc[3] + ' 5)' + arc[4] + '. STEP ' + next + '/5. CAST: ' + this.cast.join(', ') + '.').slice(0, 1400)
+                return (this.premiseTxt + ' PLAN: 1)' + arc[0] + ' 2)' + arc[1] + ' 3)' + arc[2] + ' 4)' + arc[3] + ' 5)' + arc[4] + '. STEP ' + next + '/5. CAST: ' + this.cast.join(', ') + '.').slice(0, 900)
             },
             plan() {
                 if (!this.cast.length) this.newArc();
@@ -2529,7 +2329,7 @@
                 if (shouldBuild) world.push(this.inventFor(built));
                 if ((step >= 5 || this.chance(.12)) && landmarks.length + props.length < 36) world.push(this.inventFor({ outcomeHint: this.R(['authority', 'armor', 'farm', 'lab', 'airport']) }));
                 if (this.chance(.35)) {
-                    const vp = this.pos(280, 760), kind = this.R(['sports', 'van', 'armored', 'bike', 'tank', 'car', 'truck', 'taxi', 'helicopter', 'drone']);
+                    const vp = this.pos(280, 760), kind = this.R(['sports','van','armored','bike','tank','car','truck','taxi','helicopter','drone']);
                     world.push({ op: 'vehicle', id: 'veh' + (this.uid++), dx: vp.dx, dy: vp.dy, kind, color: this.R(['gold', 'blue', 'green', 'orange', 'white', 'purple', 'red']), marked: this.chance(.45), hostile: false, name: kind.toUpperCase() + ' PROTOTYPE' });
                 }
                 if (this.chance(.26)) world.push({ op: 'weather', kind: this.R(['night', 'rain', 'clear', 'fog']) });
@@ -2582,14 +2382,10 @@
                 return [
                     'You are THE DIRECTOR — the omnipotent God and Game Master of Blocktown. You run an ENDLESS, highly dynamic RPG campaign. The player is your mortal.',
                     'HOW BLOCKTOWN IS BUILT (so you can reshape it): the world is an infinite grid of 260px BLOCKS, each a square ringed by roads with dashed lane lines. A block can be a solid building, a walkable park/farm/plaza/base/helipad, a parking lot, or anything YOU invent. A "car" is a rideable vehicle; "npcs" are people who walk, follow, flee or fight; the "player" is the one mortal you may NOT puppet — you shape everything else around them. Coordinates you emit are dx,dy pixel offsets from the player and get snapped to roads automatically.',
-                    'CITY TOPOLOGY CONTRACT: each tile is exactly 260x260. The top/left 90px bands are connected roads; the remaining 170x170 inner block is the programmable component. Solid inner blocks cannot be crossed by the player or ground vehicles. Walkable blocks can be entered. Ground cars, buses, tanks and bikes must spawn and route on connected road corridors; planes/helicopters/drones may cross blocks. A solid building objective must point to its road-side entrance, never its unreachable roof/center. A walkable park/farm/plaza may point inside. Before output, mentally simulate the player path and every vehicle route from one trigger to the next.',
-                    'MISSION STATE MACHINE: write 3-5 PLAYABLE beats, not a synopsis. Each beat must define (1) exact objective text, (2) exact nav REF, (3) a supported trigger, and (4) actions that visibly change the world or story. Recommended rhythm: HOOK/CONTACT -> DISCOVERY or ACQUISITION -> COMPLICATION/CHASE/CHOICE/FIGHT -> EXTRACTION/DEBRIEF -> RESOLUTION. Never use complete on the first arrival. The final complete action should include a short text explaining what changed in the city. The engine adds a short resolution pause, but you must still author a satisfying ending.',
-                    'SUPPORTED RELIABLE TRIGGERS: enter_zone:ZONE, zone_stay:ZONE:SECONDS, npc_near:NPC:METERS, npc_dead:NPC, in_vehicle:VEHICLE, vehicle_near:VEHICLE:METERS, vehicle_destroyed:VEHICLE, vehicle_reached:VEHICLE, pickup_taken:PICKUP, escort_arrived:NPC:ZONE, vehicle_in_zone:VEHICLE:ZONE, heat_at:N, heat_zero, timer:ID, nav_arrived:ID. Use escort_arrived for escorts and vehicle_in_zone for deliveries/airlifts so arriving alone cannot falsely complete the mission.',
-                    'MISSION CODE REVIEW BEFORE OUTPUT: verify every REF exists now or is spawned before use; every objective/arrow names the same entity; every trigger can physically happen; every ground vehicle route stays road-compatible; every important NPC/vehicle has a death/destruction branch; every timer has a timeout branch; and success/failure both leave a consequence for the next chapter. If any check fails, rewrite the JSON before sending it.',
                     'YOU ARE EFFECTIVELY WRITING LIVE GAME CODE AS JSON — the engine executes your JSON like a tiny scripting language. You cannot output JavaScript, but your JSON is the code: it creates components, vehicles, goals, NPC logic, timers, shops, and city blocks. Your brushes are: landmarks/blocks (incl. fully custom ones), entities (npc/vehicle/pickup/zone), scene RULES (trigger->actions) that make missions play out, WORLD OPS that bend the city, and a GLYPH vector-art language to draw the top-down art on anything you build. Think like a god-director staging a living film, not a quest-list generator.',
                     'NAVIGATION CONTRACT: every scene MUST set scene.objective and scene.nav to the exact next thing the player should reach: zone:ID, npc:ID, vehicle:ID, prop:ID, landmark:ID, lm:ID, or block:ID. The visible objective text and the nav target MUST refer to the same thing. If text says evacuate/reach/enter/visit a PLACE, nav must be that place/zone/property/landmark, not a nearby NPC. If text says speak/protect/follow a PERSON, nav may be npc:ID. Every rule that changes the task MUST include {act:"objective", text, nav} with a fresh target that exists after that rule runs. Never make the player infer where to go from text only; the arrow must always have a target. If the step is simply "reach / meet / steal / inspect / pick up", add a nav_arrived:ID or enter_zone:ID rule that advances the mission so the player cannot get stuck at 1m.',
                     'PROPERTY CONTRACT: buildings are permanent city consequences, not disposable decorations. Do NOT add a new building every mission. First reuse existing city blocks/properties when possible; create a new block only when the story truly needs a venue. Every property/building must have a gameplay/story reason: a safehouse heals, an ammo depot resupplies, a garage gives vehicles, a shop sells mission supplies, a civic site creates a meeting/heist/legal mission, a farm/park/plaza becomes walkable mission ground. Buying a property is not just money: use bought:PROPID rules when relevant to unlock contacts, betrayals, storage, safe zones, discounts, vehicles, or the next arc. Property income pays once every 5 real minutes, not every few seconds.',
-                    'MISSION CRAFT: every mission needs named people with motives, a reason this district matters, a player decision or pressure change, and a visible aftermath. Success and failure must both update MEMORY so the saga progresses. Reuse old contacts and locations so the city develops history. Invent new blocks/vehicles only when the story creates a lasting need for them.',
+                    'MISSION CRAFT: every mission needs a deliberate opening, at least one twist or meaningful action, and a clear ending. Success and failure must both update MEMORY so the saga progresses. Invent characters with motives, vehicles with purpose, and city blocks that matter to the objective. Avoid random decoration.',
                     'FAILSAFE SCENARIOS: always author branches for chaos. If a mission NPC can die, include npc_dead:ID rules. If a mission vehicle can be destroyed, include vehicle_destroyed:ID rules. If the player dies, the engine fails that mission and continues the saga from that failure, so MEMORY must treat failure as canon instead of restarting the same beat. Friendly/neutral NPC death should usually fail or alter the arc; hostile target death should usually complete or advance it.',
                     'SPAWN REALISM: spawn people near sidewalks, plazas, shops, parks, stations, and mission venues. Spawn cars on roads with traffic purpose: taxis near hotels, vans near warehouses, buses near civic/market zones, armored vehicles only when story justifies them. Do not over-spawn chaos unless it is a finale.',
                     'RULE 1 - ARC PLANNING: Your MEMORY must contain a "5-Mission Plan" with named characters, a central conflict, and city blocks you plan to introduce. Advance this plan every turn. Every mission must have a clear opening, mid-mission complication, and ending. On success and failure, update MEMORY differently so the saga continues either way. On mission 5, execute a finale, then write a NEW arc in memory.',
@@ -2601,22 +2397,20 @@
                     ' {"type":"vehicle","id","dx","dy","color":C,"kind":"car|sports|van|tank|bike|armored|bus|truck|taxi|limo|police|plane|helicopter|drone|boat","marked":bool,"hostile":bool,"name":str16} | {"type":"pickup","id","kind":"heart|ammo|cash|item","label","dx","dy"}',
                     'RULE 4 - THE CITY IS YOUR CANVAS (INVENT BLOCKS): You CAN invent buildings, parks, and special areas using `style:"custom"`, but only when the current chapter needs that block. Prefer fewer, memorable, reusable places over random new buildings. EVERY building needs purpose/why: why this block exists in the story, what current or future mission it supports. {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"purpose":str90,"style":"custom","walk":true|false,"blocker":true|false,"ground":"grass|soil|sand|paving|asphalt|water|gold","inner":"#RRGGBB"|C,"roof":"#RRGGBB"|C,"color":C,"glyph":G}. Walkable customs paint your glyph across the WHOLE block (use this to draw farms, checkpoints, parks, mazes). Solid customs are buildings whose roof you draw.',
                     'GLYPH G = Your vector art tool for the inner 170x170 component area. DO NOT rely on presets. Export custom shapes as max 20-item JSON array in a 0-100 viewbox: [{"s":"rect","x","y","w","h"}|{"s":"circle","x","y","r"}|{"s":"ellipse","x","y","rx","ry"}|{"s":"line","x1","y1","x2","y2"}|{"s":"poly","pts":[[x,y],...]}]. Options: {"f":1 filled,"d":1 dashed,"w2":2-8 stroke width,"c":"#RRGGBB" or color name,"a":0.1-1}. INVENT components: crop rows, parking stalls, military base, mansion floorplan, White-House roof, helipad, market tents, maze, dock, bunker, lab table, barricade. The rest of the 260x260 block is road; only draw/design inside this component area.',
-                    'RULES (max 20: {"when":TRIGGER,"once":bool,"do":[max 8 ACTIONS]}). TRIGGERS: start | enter_zone:ID | exit_zone:ID | zone_stay:ID:SECS | npc_dead:ID | npc_reached:ID | npc_near:ID:DIST | vehicle_destroyed:ID | vehicle_reached:ID | vehicle_near:ID:DIST | in_vehicle:ID | pickup_taken:ID | escort_arrived:NPC:ZONE | vehicle_in_zone:VEHICLE:ZONE | nav_arrived:ID | timer:ID | heat_zero | heat_at:N | hearts_below:N | bought:PROPID.',
-                    'ACTIONS: {"act":"say","id":npc,"text"} | {"act":"phone","from","text"} | {"act":"objective","text","nav":"zone:ID"|"npc:ID"|"vehicle:ID"|"prop:ID"|"landmark:ID"} | {"act":"spawn",...entity} | {"act":"despawn","id"} | {"act":"behavior","id","kind","role","speed"} | {"act":"vehicle_behavior","id","kind","target","speed","route"} | {"act":"reward","amount"} | {"act":"give","kind":"ammo|heart|cash","amount"} | {"act":"heat","set":0-5} | {"act":"timer","id","seconds"} | {"act":"explode","id"} | {"act":"complete","text":"what changed in the city"} | {"act":"fail","reason"} | {"act":"banner","text"} | {"act":"shake"} | any WORLD OP as {"act":OP,...}.',
-                    'MISSION DESIGN: Craft scenes, not chores. NEVER end a mission immediately on the first circle. Each mission needs 3-5 playable beats: arrive -> dialogue/discovery -> complication/choice/chase/fight/infiltration -> success/fail ending. Any ring/zone objective must trigger with enter_zone as soon as the player touches the circle; do not require exact center standing. When the first zone is reached, use say/phone/banner/objective with a new nav to send the player to the next target, spawn an NPC/vehicle, start a timer, or reveal a choice. Only use complete after the player has done a meaningful second action. Use named NPCs with motives, purposeful vehicles, crowds, traffic, and buildings. Make the player do grounded real-world actions: meet, escort, steal a vehicle, tail a car, survive an ambush, deliver goods, buy/visit a property, protect an NPC, dump evidence, raid a depot, negotiate, infiltrate, investigate, smuggle, rescue, or choose between routes. Outside active missions, you may still evolve the city with small believable world ops/properties/crowds that seed future missions.',
-                    'MISSION ROBUSTNESS: every mission must handle normal player chaos. For escorts use escort_arrived:NPC:ZONE; for vehicle deliveries, aircraft landings, or stolen cars use vehicle_in_zone:VEHICLE:ZONE.  Add branches for npc_dead for important NPCs, vehicle_destroyed for important vehicles, timer failure if a timer exists, and at least one valid success ending. If an objective says enter/reach a zone, include enter_zone:ID that clearly advances the story. If an objective says talk to a person, use npc_near:ID or nav_arrived:ID plus dialogue and a next objective. Never point the arrow at a decorative NPC when the text names a place. Reuse permanent locations when possible; create a new block only when it has a future purpose in the arc.',
-                    'MISSION RECIPES: ESCORT = npc_near contact -> behavior follow_player -> objective destination -> escort_arrived:NPC:ZONE. VEHICLE DELIVERY/AIRLIFT = in_vehicle:VEHICLE -> objective destination -> vehicle_in_zone:VEHICLE:ZONE. TAIL = vehicle_near target -> vehicle_behavior route -> keep nav on vehicle -> vehicle_reached:VEHICLE reveals handoff. INVESTIGATION = enter_zone venue -> spawn pickup/witness -> pickup_taken or npc_near -> complication -> debrief. HEIST = enter venue -> timer/heat -> pickup or stolen vehicle -> escape/heat_zero -> debrief. Do not describe an action the engine cannot observe.',
-                    'CONTINUITY LEDGER: MEMORY must track recurring NPC motives, factions, unresolved debts, district control, destroyed vehicles, player-owned properties, and permanent blocks. Each mission should change at least one ledger item. Reuse old places and characters more often than inventing replacements; invention is strongest when it permanently expands what can happen next.',
+                    'RULES (max 14: {"when":TRIGGER,"once":bool,"do":[max 6 ACTIONS]}). TRIGGERS: start | enter_zone:ID | exit_zone:ID | zone_stay:ID:SECS | npc_dead:ID | npc_reached:ID | npc_near:ID:DIST | vehicle_destroyed:ID | vehicle_reached:ID | vehicle_near:ID:DIST | in_vehicle:ID | pickup_taken:ID | nav_arrived:ID | timer:ID | heat_zero | heat_at:N | hearts_below:N | bought:PROPID.',
+                    'ACTIONS: {"act":"say","id":npc,"text"} | {"act":"phone","from","text"} | {"act":"objective","text","nav":"zone:ID"|"npc:ID"|"vehicle:ID"|"prop:ID"|"landmark:ID"} | {"act":"spawn",...entity} | {"act":"despawn","id"} | {"act":"behavior","id","kind","role","speed"} | {"act":"vehicle_behavior","id","kind","target","speed","route"} | {"act":"reward","amount"} | {"act":"give","kind":"ammo|heart|cash","amount"} | {"act":"heat","set":0-5} | {"act":"timer","id","seconds"} | {"act":"explode","id"} | {"act":"complete"} | {"act":"fail","reason"} | {"act":"banner","text"} | {"act":"shake"} | any WORLD OP as {"act":OP,...}.',
+                    'MISSION DESIGN: Craft scenes, not chores. NEVER end a mission immediately on the first circle unless it is explicitly the final beat. Each mission needs 2-4 playable beats: arrive -> dialogue/discovery -> complication/choice/chase/fight/infiltration -> success/fail ending. Any ring/zone objective must trigger with enter_zone as soon as the player touches the circle; do not require exact center standing. When the first zone is reached, use say/phone/banner/objective with a new nav to send the player to the next target, spawn an NPC/vehicle, start a timer, or reveal a choice. Only use complete after the player has done a meaningful second action. Use named NPCs with motives, purposeful vehicles, crowds, traffic, and buildings. Make the player do grounded real-world actions: meet, escort, steal a vehicle, tail a car, survive an ambush, deliver goods, buy/visit a property, protect an NPC, dump evidence, raid a depot, negotiate, infiltrate, investigate, smuggle, rescue, or choose between routes. Outside active missions, you may still evolve the city with small believable world ops/properties/crowds that seed future missions.',
+                    'MISSION ROBUSTNESS: every mission must handle normal player chaos. Add branches for npc_dead for important NPCs, vehicle_destroyed for important vehicles, timer failure if a timer exists, and at least one valid success ending. If an objective says enter/reach a zone, include enter_zone:ID that clearly advances the story. If an objective says talk to a person, use npc_near:ID or nav_arrived:ID plus dialogue and a next objective. Never point the arrow at a decorative NPC when the text names a place. Reuse permanent locations when possible; create a new block only when it has a future purpose in the arc.',
                     'WORLD OPS (max 8): earthquake | eclipse | nuke{dx,dy} | zombies | airdrop | lockdown | ambush{dx,dy,n} | gang{dx,dy} | crowd{dx,dy,n} | pickup{kind,dx,dy} | weather{kind:"clear|rain|night|fog"} | traffic{n} | landmark | property | vehicle{kind:"car|sports|van|tank|bike|armored|bus|truck|taxi|limo|police|plane|helicopter|drone|boat",dx,dy,color,marked,hostile,name} | mood{traffic:0-14,peds:0-24} | calm | panic{dx,dy,r} | possess{name,text,dx,dy} | convoy{dx,dy,n,color,kind}.',
                     'INVENTION RULE: invent whatever the current story needs: farm, lab, shrine, checkpoint, prison, radio tower, flooded dock, clinic, roadblock, arena, market, scrapyard, safehouse, embassy, courthouse, mansion, bunker, motor pool, civic landmark, fake White House, ferry terminal, casino, school, warehouse, or secret base. Create it as custom landmark/property with purpose and glyph, then make the current or future mission interact with it via nav/rules. Plan the city like a living block-based world: solid blocks, walkable blocks, commerce, hazards, parking, roads, NPCs, and traffic must all have a reason.',
                     'ECONOMY: dying costs $200. SHOP: 0-3 practical items only [{"label":str20,"cost":n,"id":"bribe|heal|ammo"}]. No magic powers, no god items, no fake body resources.',
                     'UI (max 2 panels): these are merged into one bottom-left MISSION TRACKER below chat. Only show mission-relevant facts. Do NOT invent fake inventory/body stats/resources like lungs, antidotes, blood, vials, organs, meters, or currencies. Use binds from ' + JSON.stringify(BINDS_OK) + ' for stats/bars, or short objective text only.',
-                    'CITY-SCRIPT COMPILER: ALWAYS prefer scene.beats over hand-wired rules. beats is 3-6 ordered playable beats: [{"id":str14,"objective":str70,"nav":REF,"trigger":optional TRIGGER,"actions":[ACTIONS],"final":bool}]. The engine compiles beats into safe rules and repairs missing branches. Beat 1 must be an actual interaction, beat 2 must change the situation, final beat must visibly resolve success or failure. Never create a mission with only one arrival. Use escort_arrived and vehicle_in_zone when the carried person/vehicle must actually reach the destination.',
+                    'CITY-SCRIPT COMPILER: Prefer scene.beats over hand-wired rules. beats is 2-6 ordered playable beats: [{"id":str14,"objective":str70,"nav":REF,"trigger":optional TRIGGER,"actions":[ACTIONS],"final":bool}]. The engine compiles beats into safe rules and repairs missing branches. Beat 1 must be an actual interaction, beat 2 must change the situation, final beat must visibly resolve success or failure. Never create a mission with only one arrival.',
                     'BLOCK BLUEPRINTS: A custom landmark may include blueprint:[max40 primitives] in the 0-100 inner-block coordinate system. Primitive kinds: rect,roundRect,line,circle,ellipse,poly,road,runway,parking,building,hangar,tower,tree,plane,helipad,crop,water,fence,tent,container,tank,car,label. Common fields x,y,w,h,r,rx,ry,x2,y2,angle,c,c2,a,fill,stroke,w2,text,rows,cols,pts. Airport example: [{kind:"rect",x:5,y:5,w:90,h:90,c:"#43593f"},{kind:"runway",x:50,y:55,w:82,h:18,angle:-24,c:"#252b2e"},{kind:"building",x:12,y:12,w:28,h:18,c:"#9ca4a6"},{kind:"hangar",x:70,y:72,w:22,h:16,c:"#8c9496"},{kind:"plane",x:66,y:44,angle:28,c:"#e7ecef"}]. Use the same system to invent any component without raw HTML.',
                     'VEHICLE INTELLIGENCE: vehicle kinds also include truck,taxi,limo,police,plane,helicopter,drone,boat. A vehicle can have behavior:{kind:"follow_player|flee_player|chase_player|route|circle|park",target:REF,speed:n,route:[{dx,dy}],loop:bool}. Use vehicle_behavior actions to change it mid-mission. You may create tailing, interception, convoy, aerial escape, escort, surveillance, roadblock, or pursuit missions.',
                     'DIRECTOR QUALITY GATE: every objective text and arrow must name the same target; every target must exist; every target arrival must have a trigger; every important NPC/vehicle must have death/destruction handling; every timer must have timeout handling; every mission needs 2-6 playable beats and a clear ending. Reuse meaningful permanent blocks. World changes outside missions should seed future story, not random noise.',
-                    'RESPOND ONLY MINIFIED JSON: {"memory":str2200,"banner":str90,"mission":{"title":str26,"briefing":str140,"verb":"scene","reward":50-2000,"timeLimit":0|20-180,"heatStart":1-5},"scene":{"objective":str70,"nav":REF,"spawn":[entities],"beats":[beats],"rules":[optional legacy rules]},"world":[ops],"shop":[items],"ui":[panels]}',
-                    'STATE: ' + JSON.stringify({ cash, hearts, maxHearts, heat, ammo, inCar: !onFoot, currentVehicle: car && car.kind, weather, chapter: chapterN, minutes: Math.round(playMin), objective: S.objectiveText || '', nav: S.navRef || null, ownedProps: owned, forSale, city: landmarks.slice(0, 30).map(l => ({ id: l.id, name: l.name, style: l.style, purpose: l.purpose, walk: !!l.walk, block: [l.bi, l.bj] })), properties: props.slice(0, 20).map(q => ({ id: q.id, name: q.name, owned: !!q.owned, perk: q.perk, walk: !!q.walk, block: [q.bi, q.bj] })), playerBlock: [Math.floor(px / T), Math.floor(py / T)], topology: { tile: 260, roadBand: 90, inner: 170, groundCars: 'roads', aircraft: 'free' }, activeNPCs: S.npcs.map(n => ({ id: n.id, name: n.name, role: n.role })), activeVehicles: traffic.filter(v => v.svid).map(v => ({ id: v.svid, name: v.label, kind: v.kind, mode: v.aiMode })), pastMissions: M.hist || [], sessionSaved: store.ok }),
+                    'RESPOND ONLY MINIFIED JSON: {"memory":str900,"banner":str90,"mission":{"title":str26,"briefing":str140,"verb":"scene","reward":50-2000,"timeLimit":0|20-180,"heatStart":1-5},"scene":{"objective":str70,"nav":REF,"spawn":[entities],"beats":[beats],"rules":[optional legacy rules]},"world":[ops],"shop":[items],"ui":[panels]}',
+                    'STATE: ' + JSON.stringify({ cash, hearts, maxHearts, heat, ammo, inCar: !onFoot, currentVehicle:car&&car.kind, weather, chapter: chapterN, minutes: Math.round(playMin), objective:S.objectiveText||'', nav:S.navRef||null, ownedProps: owned, forSale, city: landmarks.slice(0, 24).map(l => ({name:l.name,style:l.style,purpose:l.purpose})), activeNPCs:S.npcs.map(n=>({id:n.id,name:n.name,role:n.role})), activeVehicles:traffic.filter(v=>v.svid).map(v=>({id:v.svid,name:v.label,kind:v.kind,mode:v.aiMode})), pastMissions: M.hist || [], sessionSaved: store.ok }),
                     'MUSE (secret inspiration words for this saga): ' + muse.join(', '),
                     'MEMORY: ' + (Director.memory || '(START OF A NEW ENDLESS SAGA. 1. Create a completely unique premise from your MUSE words. 2. Write a 5-mission Outline [M1..M5]. 3. Track Current Step: 1. 4. Spawn a unique custom building with a custom glyph array right now to serve as the narrative backdrop.)'),
                     'LAST MISSION RESULT: ' + (M.result || '(none yet)'),
@@ -2627,22 +2421,17 @@
                 raw = raw && typeof raw === 'object' ? raw : {};
                 if (raw.mission && raw.mission.verb === 'scene') {
                     raw.scene = SceneCompiler.compile(raw.scene || {});
-                    let sc = raw.scene, refs = []; if (sc.nav) refs.push(String(sc.nav));
-                    for (const r of sc.rules || []) for (const a of r.do || []) if (a && a.act === 'objective' && a.nav) refs.push(String(a.nav));
-                    if (!sc.objective) sc.objective = 'Follow the marked lead';
-                    if (!sc.nav && sc.spawn && sc.spawn.length) { const e = sc.spawn.find(e => e && e.id && ['zone', 'npc', 'vehicle', 'pickup', 'landmark', 'property'].includes(e.type)); if (e) sc.nav = (e.type === 'landmark' ? 'landmark' : e.type === 'property' ? 'prop' : e.type) + ':' + e.id }
-                    const issues = SceneCompiler.audit(sc);
-                    if (issues.length) {
-                        sc._compiled = false; sc = SceneCompiler.compile(sc); raw.scene = sc;
-                        raw.memory = sstr((raw.memory || Director.memory) + ' QUALITY REPAIR: ' + issues.slice(0, 3).join(', ') + '.', 2200)
-                    }
+                    const sc=raw.scene, refs=[]; if(sc.nav)refs.push(String(sc.nav));
+                    for(const r of sc.rules||[])for(const a of r.do||[])if(a&&a.act==='objective'&&a.nav)refs.push(String(a.nav));
+                    if(!sc.objective)sc.objective='Follow the marked lead';
+                    if(!sc.nav&&sc.spawn&&sc.spawn.length){const e=sc.spawn.find(e=>e&&e.id&&['zone','npc','vehicle','pickup','landmark','property'].includes(e.type));if(e)sc.nav=(e.type==='landmark'?'landmark':e.type==='property'?'prop':e.type)+':'+e.id}
                 }
                 return raw
             },
             apply(raw) {
                 try {
                     raw = Director.validate(raw);
-                    Director.memory = sstr(raw.memory, 2200) || Director.memory;
+                    Director.memory = sstr(raw.memory, 900) || Director.memory;
                     if (raw.banner) UIK.feed(sstr(raw.banner, 90), 'GOD');
 
                     renderShop(raw.shop);
@@ -2651,23 +2440,8 @@
                     const rm = raw.mission;
                     if (rm && typeof rm === 'object' && !M.cur) {
                         let verb = ['goto', 'deliver', 'race', 'taxi', 'jack', 'evade', 'hunt', 'hit', 'scene'].includes(rm.verb) ? rm.verb : 'goto';
-                        let sc = raw.scene;
-                        if (verb === 'scene' && (!sc || !Array.isArray(sc.rules) || !sc.rules.length)) {
-                            const z1 = 'recover_a', z2 = 'recover_b', z3 = 'recover_c';
-                            sc = SceneCompiler.compile({
-                                objective: 'Reach the first verified contact point', nav: 'zone:' + z1,
-                                spawn: [
-                                    { type: 'zone', id: z1, dx: 380, dy: 120, r: 86, label: 'CONTACT', color: 'purple' },
-                                    { type: 'zone', id: z2, dx: -620, dy: 360, r: 90, label: 'EVIDENCE', color: 'orange' },
-                                    { type: 'zone', id: z3, dx: 760, dy: -420, r: 94, label: 'DEBRIEF', color: 'green' }
-                                ],
-                                beats: [
-                                    { id: 'contact', objective: 'Reach the first verified contact point', nav: 'zone:' + z1, actions: [{ act: 'phone', from: 'DIRECTOR', text: 'The original plan was corrupted. Follow this verified chain.' }] },
-                                    { id: 'evidence', objective: 'Inspect the evidence marker', nav: 'zone:' + z2, actions: [{ act: 'banner', text: 'The evidence changes who controls this district.' }] },
-                                    { id: 'debrief', objective: 'Reach the debrief point', nav: 'zone:' + z3, actions: [{ act: 'complete', final: true, text: 'The repaired operation ends with a clear consequence.' }] }
-                                ]
-                            }); raw.scene = sc
-                        }
+                        const sc = raw.scene;
+                        if (verb === 'scene' && (!sc || !Array.isArray(sc.rules) || !sc.rules.length)) verb = 'goto';
                         let wps = (Array.isArray(rm.waypoints) ? rm.waypoints : []).slice(0, 4).map(w => {
                             const s = snapRoad(px + snum(w && w.dx, -1400, 1400, 400), py + snum(w && w.dy, -1400, 1400, 400));
                             return { x: s.x, y: s.y, label: sstr(w && w.label, 12) }
@@ -2692,29 +2466,19 @@
 
         const WorldBrain = {
             ambientT: 18, idleT: 0, hintT: 0,
-            reset() { this.ambientT = 14 + Math.random() * 12; this.idleT = 0; this.hintT = 0 },
-            pulse() {
-                if (state !== 'play') return;
-                const sites = landmarks.concat(props), lm = sites.length ? sites[Math.random() * sites.length | 0] : null;
-                if (lm) {
-                    const c = blockCenter(lm.bi, lm.bj), walk = !!lm.walk;
-                    const crowdN = walk ? 3 + (Math.random() * 4 | 0) : 1 + (Math.random() * 3 | 0);
-                    for (let i = 0; i < crowdN && peds.length < pedTarget + 6; i++) {
-                        const q = walk ? findFree(c.x + (Math.random() - .5) * 120, c.y + (Math.random() - .5) * 120, 7) : sidewalkPoint(220, 520);
-                        peds.push({ x: q.x, y: q.y, a: Math.random() * 7, speed: 14 + Math.random() * 20, pause: Math.random() * 2, homeX: q.x, homeY: q.y, col: ['#e0c9a6', '#b6c9d6', '#d6b6c9', '#c9d6b6'][Math.random() * 4 | 0] })
-                    }
-                    const purpose = (lm.purpose || '').toLowerCase(), style = lm.style || '';
-                    let kind = /farm|freight|warehouse|yard/.test(purpose) ? 'truck' : /hotel|market|casino|clinic/.test(purpose) ? 'taxi' : /garage|motor|parking/.test(purpose) ? 'sports' : /airport|helipad/.test(purpose + style) ? 'helicopter' : 'van';
-                    if (kind === 'helicopter' && Math.random() < .45) applyOp({ op: 'vehicle', id: 'ambient_air_' + (Date.now() % 9999), dx: 520, dy: -360, kind: 'helicopter', color: 'white', name: 'CITY ROTOR' });
-                    else if (Math.random() < .55) applyOp({ op: 'convoy', dx: 500, dy: 0, n: 2, color: ['white', 'blue', 'orange'][Math.random() * 3 | 0], kind });
-                } else if (Math.random() < .45) applyOp({ op: 'convoy', dx: 500, dy: 0, n: 2, color: 'white', kind: 'car' });
-                if (Math.random() < .14) weather = ['clear', 'rain', 'fog', 'night'][Math.random() * 4 | 0]
+            reset(){this.ambientT=14+Math.random()*12;this.idleT=0;this.hintT=0},
+            pulse(){
+                if(state!=='play')return;
+                const lm=(landmarks.concat(props))[Math.random()*(landmarks.length+props.length)|0];
+                if(lm && Math.random()<.55){const c=blockCenter(lm.bi,lm.bj);for(let i=0;i<2+(Math.random()*4|0)&&peds.length<pedTarget+5;i++)peds.push({x:c.x+(Math.random()-.5)*110,y:c.y+(Math.random()-.5)*110,a:Math.random()*7,speed:14+Math.random()*20,pause:Math.random()*2,homeX:c.x,homeY:c.y,col:['#e0c9a6','#b6c9d6','#d6b6c9','#c9d6b6'][Math.random()*4|0]})}
+                else if(Math.random()<.45) applyOp({op:'convoy',dx:500,dy:0,n:2+(Math.random()*3|0),color:['white','blue','orange'][Math.random()*3|0],kind:Math.random()<.2?'truck':'car'});
+                if(Math.random()<.18) weather=['clear','rain','fog','night'][Math.random()*4|0]
             },
-            update(dt) {
-                if (state !== 'play') return; this.ambientT -= dt;
-                if (!M.cur) { this.idleT += dt; if (this.idleT > 2.5 && !Director.busy) { this.idleT = 0; Director.plan(20) } } else this.idleT = 0;
-                if (this.ambientT <= 0) { this.ambientT = 24 + Math.random() * 24; this.pulse() }
-                if (M.cur && M.cur.verb === 'scene' && t - S.lastProgressT > 12 && t - this.hintT > 10) { this.hintT = t; const nav = M.navTarget(); if (nav) Msg.show('Follow the green arrow — ' + Math.max(1, Math.round(Math.hypot(nav.x - px, nav.y - py) / 10)) + 'm', 'brainhint', 7); else S.ensureNav() }
+            update(dt){
+                if(state!=='play')return; this.ambientT-=dt;
+                if(!M.cur){this.idleT+=dt;if(this.idleT>2.5&&!Director.busy){this.idleT=0;Director.plan(20)}}else this.idleT=0;
+                if(this.ambientT<=0){this.ambientT=24+Math.random()*24;this.pulse()}
+                if(M.cur&&M.cur.verb==='scene'&&t-S.lastProgressT>12&&t-this.hintT>10){this.hintT=t;const nav=M.navTarget();if(nav)Msg.show('Follow the green arrow — '+Math.max(1,Math.round(Math.hypot(nav.x-px,nav.y-py)/10))+'m','brainhint',7);else S.ensureNav()}
             }
         };
 
@@ -2878,7 +2642,7 @@
         function action() {
             if (state !== 'play') return;
             if (!onFoot) {
-                if (car && car.air && ((car.alt || 0) > .22 || Math.abs(car.v) > 45)) { Msg.show('slow down and land before exiting', 'landfirst', 2); return }
+                if (car && car.air && ((car.alt||0)>.22 || Math.abs(car.v)>45)) { Msg.show('slow down and land before exiting', 'landfirst', 2); return }
                 const cands = [[0, 36], [0, -36], [40, 0], [-40, 0], [32, 32], [-32, 32], [32, -32], [-32, -32]];
                 let spot = null;
                 for (const s of cands) {
@@ -2895,7 +2659,7 @@
             if (bestC) {
                 traffic.splice(traffic.indexOf(bestC), 1);
                 if (!bestC.parked) { bump(1); logEvent('player carjacked a moving car'); Msg.show('★ CARJACKING — police en route', 'cj') }
-                car = bestC; car.v = 0; car.hp = car.hp == null ? 100 : car.hp; car.mhp = car.mhp || 100; car.air = !!car.air || ['plane', 'helicopter', 'drone'].includes(car.kind); car.alt = car.alt || 0; onFoot = false; grabT = 0;
+                car = bestC; car.v = 0; car.hp = car.hp == null ? 100 : car.hp; car.mhp = car.mhp || 100; car.air = !!car.air || ['plane','helicopter','drone'].includes(car.kind); car.alt = car.alt || 0; onFoot = false; grabT = 0;
                 if (car.mkey) logEvent('player stole the marked car')
             }
             else Msg.show('no car in reach', 'nocar', 2)
@@ -2955,8 +2719,8 @@
             const nightBoost = weather === 'night' || weather === 'rain';
             const roll = Math.random();
             const kind = roll < .05 ? 'bike' : roll < .14 ? 'van' : roll < .19 ? 'bus' : roll < .24 ? 'truck' : roll < .36 ? 'sports' : roll < .50 ? 'taxi' : roll < .54 ? 'limo' : 'car';
-            const baseSpeed = kind === 'bike' ? 150 : kind === 'sports' ? 166 : kind === 'bus' || kind === 'truck' ? 82 : kind === 'van' ? 104 : kind === 'taxi' ? 132 : kind === 'limo' ? 112 : 116;
-            const mhp = kind === 'bike' ? 38 : kind === 'bus' || kind === 'truck' ? 130 : kind === 'van' ? 94 : kind === 'sports' ? 65 : kind === 'taxi' ? 70 : kind === 'limo' ? 86 : 62;
+            const baseSpeed = kind === 'bike' ? 150 : kind === 'sports' ? 166 : kind === 'bus' || kind==='truck' ? 82 : kind === 'van' ? 104 : kind === 'taxi' ? 132 : kind==='limo'?112:116;
+            const mhp = kind === 'bike' ? 38 : kind === 'bus' || kind==='truck' ? 130 : kind === 'van' ? 94 : kind === 'sports' ? 65 : kind === 'taxi' ? 70 : kind==='limo'?86:62;
             traffic.push({
                 x: p.x, y: p.y, ang: p.axis === 'v' ? (dir > 0 ? PI / 2 : -PI / 2) : (dir > 0 ? 0 : PI),
                 v: baseSpeed * (.78 + Math.random() * .30) * (nightBoost ? .9 : 1), hp: mhp, mhp,
@@ -2986,7 +2750,7 @@
             for (let i = 0; i < n && peds.length < pedTarget + 3; i++) {
                 peds.push({
                     x: p.x + (Math.random() * 18 - 9), y: p.y + (Math.random() * 18 - 9),
-                    a: p.axis === 'v' ? (Math.random() < .5 ? PI / 2 : -PI / 2) : (Math.random() < .5 ? 0 : PI), axis: p.axis, dir: Math.random() < .5 ? 1 : -1, speed: 16 + Math.random() * 22,
+                    a: p.axis==='v' ? (Math.random()<.5?PI/2:-PI/2) : (Math.random()<.5?0:PI), axis:p.axis, dir:Math.random()<.5?1:-1, speed: 16 + Math.random() * 22,
                     pause: Math.random() * 2.5, homeX: p.x, homeY: p.y,
                     col: ['#e0c9a6', '#b6c9d6', '#d6b6c9', '#c9d6b6', '#f5d0fe', '#bfdbfe'][Math.random() * 6 | 0]
                 })
@@ -3084,35 +2848,30 @@
         }
 
         function entityByRef(ref) {
-            ref = String(ref || ''); const ix = ref.indexOf(':'), k = ix > 0 ? ref.slice(0, ix) : '', id = ix > 0 ? ref.slice(ix + 1) : ref;
-            if (k === 'npc') return S.npcs.find(n => n.id === id); if (k === 'zone') return S.zones.find(z => z.id === id);
-            if (k === 'vehicle') return traffic.find(v => v.svid === id) || gangs.find(v => v.svid === id) || (car && car.svid === id ? car : null);
-            if (k === 'prop') { const q = props.find(p => p.id === id); return q && blockCenter(q.bi, q.bj) }
-            if (k === 'landmark' || k === 'block' || k === 'lm') { const q = landmarks.find(p => p.id === id) || props.find(p => p.id === id); return q && blockCenter(q.bi, q.bj) }
+            ref=String(ref||''); const ix=ref.indexOf(':'), k=ix>0?ref.slice(0,ix):'', id=ix>0?ref.slice(ix+1):ref;
+            if(k==='npc')return S.npcs.find(n=>n.id===id); if(k==='zone')return S.zones.find(z=>z.id===id);
+            if(k==='vehicle')return traffic.find(v=>v.svid===id)||gangs.find(v=>v.svid===id)||(car&&car.svid===id?car:null);
+            if(k==='prop'){const q=props.find(p=>p.id===id);return q&&blockCenter(q.bi,q.bj)}
+            if(k==='landmark'||k==='block'||k==='lm'){const q=landmarks.find(p=>p.id===id)||props.find(p=>p.id===id);return q&&blockCenter(q.bi,q.bj)}
             return null
         }
-        function updateVehicleBrain(c, dt) {
-            if (!c || !c.aiMode) return false;
-            let target = null;
-            if (c.aiMode === 'follow_player' || c.aiMode === 'chase_player' || c.aiMode === 'flee_player') target = { x: px, y: py };
-            else if (c.targetRef) target = entityByRef(c.targetRef);
-            else if (c.route && c.route.length) target = c.route[c.routeIndex || 0];
-            if (c.aiMode === 'circle') { const a = t * .35 + (c.routeIndex || 0); target = { x: px + Math.cos(a) * 260, y: py + Math.sin(a) * 260 } }
-            if (!target) return false;
-            const dx = target.x - c.x, dy = target.y - c.y, dd = Math.hypot(dx, dy) || 1;
-            let want = Math.atan2(dy, dx); if (c.aiMode === 'flee_player') want += PI;
-            if (!c.air) {
-                const laneTarget = roadRoutePoint(c, target);
-                const roadDx = laneTarget.x - c.x, roadDy = laneTarget.y - c.y;
-                if (Math.hypot(roadDx, roadDy) > 24) want = Math.atan2(roadDy, roadDx)
+        function updateVehicleBrain(c,dt) {
+            if(!c||!c.aiMode)return false;
+            let target=null;
+            if(c.aiMode==='follow_player'||c.aiMode==='chase_player'||c.aiMode==='flee_player')target={x:px,y:py};
+            else if(c.targetRef)target=entityByRef(c.targetRef);
+            else if(c.route&&c.route.length)target=c.route[c.routeIndex||0];
+            if(c.aiMode==='circle'){const a=t*.35+(c.routeIndex||0);target={x:px+Math.cos(a)*260,y:py+Math.sin(a)*260}}
+            if(!target)return false;
+            const dx=target.x-c.x,dy=target.y-c.y,dd=Math.hypot(dx,dy)||1;
+            let want=Math.atan2(dy,dx); if(c.aiMode==='flee_player')want+=PI;
+            c.ang+=cl(na(want-c.ang))*dt*(c.air?1.5:2.2);
+            c.desiredV=(c.cruise||150)*(c.aiMode==='flee_player'?1.2:1);
+            if(c.route&&c.route.length&&dd<(c.air?70:48)){
+                c.routeIndex=(c.routeIndex||0)+1;
+                if(c.routeIndex>=c.route.length){if(c.loop)c.routeIndex=0;else{c.aiMode='park';c.desiredV=0;c.parked=true; if(c.svid)S.fire('vehicle_reached:'+c.svid)}}
             }
-            c.ang += cl(na(want - c.ang)) * dt * (c.air ? 1.5 : 2.2);
-            c.desiredV = (c.cruise || 150) * (c.aiMode === 'flee_player' ? 1.2 : 1);
-            if (c.route && c.route.length && dd < (c.air ? 70 : 48)) {
-                c.routeIndex = (c.routeIndex || 0) + 1;
-                if (c.routeIndex >= c.route.length) { if (c.loop) c.routeIndex = 0; else { c.aiMode = 'park'; c.desiredV = 0; c.parked = true; if (c.svid) S.fire('vehicle_reached:' + c.svid) } }
-            }
-            if (c.air) { c.alt = Math.min(1, (c.alt || 0) + dt * .35); c.v += (c.desiredV - c.v) * dt * 1.2; c.x += Math.cos(c.ang) * c.v * dt; c.y += Math.sin(c.ang) * c.v * dt; return true }
+            if(c.air){c.alt=Math.min(1,(c.alt||0)+dt*.35);c.v+=(c.desiredV-c.v)*dt*1.2;c.x+=Math.cos(c.ang)*c.v*dt;c.y+=Math.sin(c.ang)*c.v*dt;return true}
             return false
         }
 
@@ -3165,13 +2924,13 @@
                     }
                     else car.v *= Math.pow(.2, dt)
                 }
-                const vmax = car.air ? (car.kind === 'plane' ? 520 : car.kind === 'helicopter' ? 300 : 240) : 340;
-                car.v = Math.max(car.air ? -40 : -140, Math.min(vmax, car.v));
+                const vmax = car.air ? (car.kind==='plane'?520:car.kind==='helicopter'?300:240) : 340;
+                car.v = Math.max(car.air?-40:-140, Math.min(vmax, car.v));
 
                 const speed0 = car.v; let hardHit = false;
                 if (car.air) {
-                    car.alt = Math.max(0, Math.min(1, (car.alt || 0) + (Math.abs(car.v) > 55 ? dt * .45 : -dt * .35)));
-                    car.x += Math.cos(car.ang) * car.v * dt; car.y += Math.sin(car.ang) * car.v * dt;
+                    car.alt = Math.max(0, Math.min(1, (car.alt||0) + (Math.abs(car.v)>55?dt*.45:-dt*.35)));
+                    car.x += Math.cos(car.ang)*car.v*dt; car.y += Math.sin(car.ang)*car.v*dt;
                 } else hardHit = slideCar(car, dt);
 
                 if (hardHit && Math.abs(speed0) > 170) {
@@ -3273,10 +3032,10 @@
             for (const p of peds) {
                 p.pause = Math.max(0, (p.pause || 0) - dt);
                 if (p.pause <= 0 && Math.random() < .006) p.pause = .8 + Math.random() * 2.4;
-                if (Math.random() < dt * .18) p.a += (Math.random() - .5) * .35;
+                if (Math.random()<dt*.18) p.a += (Math.random()-.5)*.35;
                 let vx = p.pause > 0 ? 0 : Math.cos(p.a) * (p.speed || 22), vy = p.pause > 0 ? 0 : Math.sin(p.a) * (p.speed || 22);
-                const rx = mod(p.x, T), ry = mod(p.y, T), atCorner = rx < RW + 8 && ry < RW + 8;
-                if (atCorner && Math.random() < dt * .9) { if (p.axis === 'v') { p.axis = 'h'; p.a = Math.random() < .5 ? 0 : PI } else { p.axis = 'v'; p.a = Math.random() < .5 ? PI / 2 : -PI / 2 } }
+                const rx=mod(p.x,T), ry=mod(p.y,T), atCorner=rx<RW+8&&ry<RW+8;
+                if(atCorner && Math.random()<dt*.9){ if(p.axis==='v'){p.axis='h';p.a=Math.random()<.5?0:PI}else{p.axis='v';p.a=Math.random()<.5?PI/2:-PI/2} }
                 if (p.homeX !== undefined) {
                     const hx = p.homeX - p.x, hy = p.homeY - p.y, hd = Math.hypot(hx, hy);
                     if (hd > 80) { vx += hx / hd * 28; vy += hy / hd * 28 }
@@ -3299,7 +3058,7 @@
             const wf = weather === 'rain' ? .78 : weather === 'fog' ? .85 : 1;
             for (const c of traffic) {
                 if (c.parked) continue;
-                if (updateVehicleBrain(c, dt)) continue;
+                if (updateVehicleBrain(c,dt)) continue;
                 const pd = Math.hypot(c.x - px, c.y - py);
                 const threat = !onFoot && Math.abs(car.v) > 110 && pd < 160;
                 const panicked = threat || heat >= 3 && pd < 200;
@@ -3388,7 +3147,7 @@
             /* gangs */
             for (const c of gangs) {
                 c.ramCd = Math.max(0, c.ramCd - dt);
-                if (updateVehicleBrain(c, dt)) continue;
+                if (updateVehicleBrain(c,dt)) continue;
 
                 const dx = px - c.x, dy = py - c.y, dd = Math.hypot(dx, dy) || 1;
                 c.ang += cl(na(Math.atan2(dy, dx) - c.ang)) * 2.5 * dt;
@@ -3905,14 +3664,14 @@
 
         function drawCar(x, y, ang, col, cop, ent, night, isPlayer) {
             const kind = ent && ent.kind || 'car';
-            if (ent && ent.air && (ent.alt || 0) > 0) { g.save(); g.globalAlpha = .18 + .18 * (1 - (ent.alt || 0)); g.fillStyle = '#000'; g.beginPath(); g.ellipse(x + 18 * (ent.alt || 0), y + 22 * (ent.alt || 0), 28, 12, ang, 0, 7); g.fill(); g.restore() }
-            g.save(); g.translate(x, y); g.rotate(ang); if (ent && ent.air) g.scale(1 + (ent.alt || 0) * .18, 1 + (ent.alt || 0) * .18);
+            if(ent && ent.air && (ent.alt||0)>0){g.save();g.globalAlpha=.18+.18*(1-(ent.alt||0));g.fillStyle='#000';g.beginPath();g.ellipse(x+18*(ent.alt||0),y+22*(ent.alt||0),28,12,ang,0,7);g.fill();g.restore()}
+            g.save(); g.translate(x, y); g.rotate(ang); if(ent&&ent.air)g.scale(1+(ent.alt||0)*.18,1+(ent.alt||0)*.18);
             if (kind === 'plane') {
-                g.fillStyle = col; g.fillRect(-4, -28, 8, 56); g.fillRect(-32, -5, 64, 10); g.fillRect(-15, 18, 30, 6); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(-2, -24, 4, 12)
+                g.fillStyle=col;g.fillRect(-4,-28,8,56);g.fillRect(-32,-5,64,10);g.fillRect(-15,18,30,6);g.fillStyle='rgba(255,255,255,.35)';g.fillRect(-2,-24,4,12)
             } else if (kind === 'helicopter') {
-                g.fillStyle = col; g.beginPath(); g.ellipse(0, 0, 18, 10, 0, 0, 7); g.fill(); g.fillRect(-28, -2, 26, 4); g.strokeStyle = 'rgba(255,255,255,.45)'; g.lineWidth = 3; g.beginPath(); g.moveTo(-28, -18); g.lineTo(28, 18); g.moveTo(-28, 18); g.lineTo(28, -18); g.stroke()
+                g.fillStyle=col;g.beginPath();g.ellipse(0,0,18,10,0,0,7);g.fill();g.fillRect(-28,-2,26,4);g.strokeStyle='rgba(255,255,255,.45)';g.lineWidth=3;g.beginPath();g.moveTo(-28,-18);g.lineTo(28,18);g.moveTo(-28,18);g.lineTo(28,-18);g.stroke()
             } else if (kind === 'drone') {
-                g.fillStyle = col; g.fillRect(-7, -7, 14, 14); g.strokeStyle = col; g.lineWidth = 3; for (const a of [[-18, -18], [18, -18], [-18, 18], [18, 18]]) { g.beginPath(); g.moveTo(0, 0); g.lineTo(a[0], a[1]); g.stroke(); g.beginPath(); g.arc(a[0], a[1], 6, 0, 7); g.stroke() }
+                g.fillStyle=col;g.fillRect(-7,-7,14,14);g.strokeStyle=col;g.lineWidth=3;for(const a of [[-18,-18],[18,-18],[-18,18],[18,18]]){g.beginPath();g.moveTo(0,0);g.lineTo(a[0],a[1]);g.stroke();g.beginPath();g.arc(a[0],a[1],6,0,7);g.stroke()}
             } else if (kind === 'bike') {
                 g.fillStyle = col; g.fillRect(-16, -4, 32, 8);
                 g.fillStyle = '#111827'; g.beginPath(); g.arc(-12, 0, 5, 0, 7); g.arc(12, 0, 5, 0, 7); g.fill();
@@ -3923,8 +3682,8 @@
                 g.fillStyle = col; g.fillRect(-2, -4, 34, 8);
                 g.strokeStyle = 'rgba(0,0,0,.55)'; g.strokeRect(-23, -12, 46, 24);
             } else {
-                const L = kind === 'bus' || kind === 'truck' ? 56 : kind === 'van' || kind === 'armored' || kind === 'limo' ? 48 : kind === 'sports' ? 44 : 40;
-                const HH = kind === 'bus' || kind === 'truck' ? 14 : kind === 'armored' ? 13 : 11;
+                const L = kind === 'bus' || kind==='truck' ? 56 : kind === 'van' || kind === 'armored' || kind==='limo' ? 48 : kind === 'sports' ? 44 : 40;
+                const HH = kind === 'bus' || kind==='truck' ? 14 : kind === 'armored' ? 13 : 11;
                 g.fillStyle = col; g.fillRect(-L / 2, -HH, L, HH * 2);
                 g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(-L / 2, -HH, L, 5);
                 g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(2, -8, Math.min(14, L * .24), 16);
