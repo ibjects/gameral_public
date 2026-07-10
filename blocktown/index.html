@@ -821,34 +821,113 @@
             return { x: Math.round(x / T) * T + RW / 2, y: Math.round(y / T) * T + RW / 2 };
         }
         function snapRoad(x, y) { return { x: Math.round(x / T) * T + RW / 2, y: Math.round(y / T) * T + RW / 2 } }
+        const ROAD_LANE_A = RW * .29, ROAD_LANE_B = RW * .71;
         function isRoadAt(x, y) { return mod(x, T) < RW || mod(y, T) < RW }
+        function nearestLaneCoord(v, seed) {
+            const base = Math.floor(v / T), out = [];
+            for (let k = base - 1; k <= base + 1; k++) {
+                out.push(k * T + ROAD_LANE_A, k * T + ROAD_LANE_B)
+            }
+            out.sort((a, b) => Math.abs(a - v) - Math.abs(b - v));
+            if (out.length > 1 && Math.abs(out[0] - v) === Math.abs(out[1] - v) && (seed || 0) % 2) return out[1];
+            return out[0]
+        }
+        function laneForDirection(v, positive) {
+            const cell = Math.floor(v / T);
+            return cell * T + (positive ? ROAD_LANE_A : ROAD_LANE_B)
+        }
+        function cardinalAngle(axis, positive) { return axis === 'h' ? (positive ? 0 : PI) : (positive ? PI / 2 : -PI / 2) }
+        function inferRoadAxis(c) {
+            if (c && (c.roadAxis === 'h' || c.roadAxis === 'v')) return c.roadAxis;
+            const onV = c ? mod(c.x, T) < RW : false, onH = c ? mod(c.y, T) < RW : false;
+            if (onV && !onH) return 'v';
+            if (onH && !onV) return 'h';
+            return c && Math.abs(Math.cos(c.ang || 0)) >= Math.abs(Math.sin(c.ang || 0)) ? 'h' : 'v'
+        }
         function snapVehicleRoad(x, y, seed) {
             const vxCell = Math.round((x - RW / 2) / T), hyCell = Math.round((y - RW / 2) / T);
             const vx = vxCell * T + RW / 2, hy = hyCell * T + RW / 2;
-            const laneA = RW * .29, laneB = RW * .71;
-            const lane = hsh(vxCell, hyCell, seed || 31) < .5 ? laneA : laneB;
+            const lane = hsh(vxCell, hyCell, seed || 31) < .5 ? ROAD_LANE_A : ROAD_LANE_B;
             if (Math.abs(x - vx) <= Math.abs(y - hy)) return { x: vxCell * T + lane, y, axis: 'v' };
             return { x, y: hyCell * T + lane, axis: 'h' }
         }
-        function roadRoutePoint(c, target) {
+        function vehicleClearAt(x, y, r) {
+            r = r || 15;
+            return isRoadAt(x, y) && clearAt(x, y, r)
+        }
+        function findRoadFree(x, y, r, seed) {
+            r = r || 15;
+            const candidates = [];
+            const add = (qx, qy, qs) => {
+                const a = snapVehicleRoad(qx, qy, qs);
+                candidates.push(a);
+                // Also try the crossing lane. This prevents a mission vehicle from being
+                // pushed into a park/building when the nearest lane is occupied.
+                const b = a.axis === 'h'
+                    ? { x: nearestLaneCoord(qx, (qs || 0) + 7), y: a.y, axis: 'v' }
+                    : { x: a.x, y: nearestLaneCoord(qy, (qs || 0) + 11), axis: 'h' };
+                candidates.push(b)
+            };
+            add(x, y, seed || 1);
+            for (let d = 60; d <= 720; d += 60) for (let a = 0; a < 6.28; a += PI / 4) add(x + Math.cos(a) * d, y + Math.sin(a) * d, (seed || 1) + d + a * 10);
+            for (const q of candidates) {
+                if (!vehicleClearAt(q.x, q.y, r)) continue;
+                const busy = typeof traffic !== 'undefined' && traffic.concat(gangs || [], cops || []).some(v => v && Math.hypot(v.x - q.x, v.y - q.y) < 58);
+                if (!busy) return q
+            }
+            return snapVehicleRoad(x, y, seed || 1)
+        }
+        function vehicleTarget(c) {
+            if (!c) return null;
+            if (c.aiMode === 'follow_player' || c.aiMode === 'chase_player' || c.aiMode === 'flee_player') return { x: px, y: py };
+            if (c.targetRef) return entityByRef(c.targetRef);
+            if (c.route && c.route.length) return c.route[c.routeIndex || 0];
+            return null
+        }
+        function recoverVehicleToRoad(c, target, reason) {
+            if (!c || c.air) return;
+            const q = findRoadFree(c.x, c.y, 16, (c.routeIndex || 0) + (c.svid ? c.svid.length : 3));
+            c.x = q.x; c.y = q.y; c.roadAxis = q.axis;
+            const dst = target ? snapVehicleRoad(target.x, target.y, c.routeIndex || 0) : null;
+            const positive = q.axis === 'h' ? (!dst || dst.x >= c.x) : (!dst || dst.y >= c.y);
+            c.ang = cardinalAngle(q.axis, positive); c.v = Math.min(55, Math.max(12, Math.abs(c.v || 0) * .25));
+            c.desiredV = Math.min(c.desiredV || c.cruise || 110, 85); c.stuckT = 0; c.wallHits = 0; c.turningAngle = null;
+            if (reason && c.svid) logEvent('traffic controller recovered ' + (c.label || c.svid) + ' (' + reason + ')')
+        }
+        function roadRoutePoint(c, target, dt) {
             const dst = snapVehicleRoad(target.x, target.y, c.routeIndex || 0);
-            const onV = mod(c.x, T) < RW, onH = mod(c.y, T) < RW;
-            const targetV = Math.round((target.x - RW / 2) / T) * T + RW / 2;
-            const targetH = Math.round((target.y - RW / 2) / T) * T + RW / 2;
-            if (onV && Math.abs(c.x - targetV) < RW * .65) return { x: c.x, y: target.y };
-            if (onH && Math.abs(c.y - targetH) < RW * .65) return { x: target.x, y: c.y };
-            if (onV && !onH) {
-                if (Math.abs(c.y - targetH) > 28) return { x: c.x, y: targetH };
-                return { x: dst.x, y: targetH }
+            let axis = inferRoadAxis(c); c.roadAxis = axis;
+            const positive = axis === 'h' ? Math.cos(c.ang || 0) >= 0 : Math.sin(c.ang || 0) >= 0;
+            const lane = laneForDirection(axis === 'h' ? c.y : c.x, positive);
+            if (axis === 'h') c.y += (lane - c.y) * Math.min(1, (dt || .016) * 8);
+            else c.x += (lane - c.x) * Math.min(1, (dt || .016) * 8);
+
+            if (c.turningAngle !== null && c.turningAngle !== undefined) {
+                return { x: c.x + Math.cos(c.turningAngle) * 100, y: c.y + Math.sin(c.turningAngle) * 100, axis, turning: true }
             }
-            if (onH && !onV) {
-                if (Math.abs(c.x - targetV) > 28) return { x: targetV, y: c.y };
-                return { x: targetV, y: dst.y }
+
+            if (axis === 'h') {
+                const sameRoad = dst.axis === 'h' && Math.abs(dst.y - c.y) < 24;
+                if (sameRoad) return { x: dst.x, y: c.y, axis: 'h' };
+                const turnX = dst.axis === 'v' ? dst.x : nearestLaneCoord(dst.x, c.routeIndex || 0);
+                const threshold = Math.max(15, Math.abs(c.v || 0) * (dt || .016) * 1.8);
+                if (Math.abs(c.x - turnX) <= threshold) {
+                    c.x = turnX; c.y = lane; c.roadAxis = 'v';
+                    c.turningAngle = cardinalAngle('v', dst.y >= c.y);
+                    return { x: c.x, y: c.y + (dst.y >= c.y ? 100 : -100), axis: 'v', turning: true }
+                }
+                return { x: turnX, y: c.y, axis: 'h' }
             }
-            // At an intersection, choose a legal road axis before turning toward the next corridor.
-            return Math.abs(target.x - c.x) > Math.abs(target.y - c.y)
-                ? { x: targetV, y: c.y }
-                : { x: c.x, y: targetH }
+            const sameRoad = dst.axis === 'v' && Math.abs(dst.x - c.x) < 24;
+            if (sameRoad) return { x: c.x, y: dst.y, axis: 'v' };
+            const turnY = dst.axis === 'h' ? dst.y : nearestLaneCoord(dst.y, c.routeIndex || 0);
+            const threshold = Math.max(15, Math.abs(c.v || 0) * (dt || .016) * 1.8);
+            if (Math.abs(c.y - turnY) <= threshold) {
+                c.y = turnY; c.x = lane; c.roadAxis = 'h';
+                c.turningAngle = cardinalAngle('h', dst.x >= c.x);
+                return { x: c.x + (dst.x >= c.x ? 100 : -100), y: c.y, axis: 'h', turning: true }
+            }
+            return { x: c.x, y: turnY, axis: 'v' }
         }
         function blockAccessPoint(bi, bj, fromX, fromY) {
             const c = blockCenter(bi, bj), fx = isFinite(fromX) ? fromX : px, fy = isFinite(fromY) ? fromY : py;
@@ -1584,15 +1663,17 @@
                     })
                 }
                 else if (e.type === 'vehicle') {
-                    const s2 = snapVehicleRoad(px + ox, py + oy, S.npcs.length + traffic.length), f = findFree(s2.x, s2.y, 16);
+                    const f = findRoadFree(px + ox, py + oy, 16, S.npcs.length + traffic.length), s2 = f;
                     const col = LPAL[e.color] || sColor(e.color, '#f472b6'), svid = sstr(e.id, 14) || ('v' + (Math.random() * 999 | 0));
-                    const kinds = ['car', 'sports', 'van', 'tank', 'bike', 'armored', 'bus', 'truck', 'taxi', 'limo', 'police', 'plane', 'helicopter', 'drone', 'boat'];
-                    const kind = kinds.includes(e.kind) ? e.kind : 'car';
-                    const air = ['plane', 'helicopter', 'drone'].includes(kind);
+                    const kinds = ['car', 'sports', 'van', 'tank', 'bike', 'armored', 'bus', 'truck', 'taxi', 'limo', 'police', 'plane', 'helicopter', 'drone', 'boat', 'custom'];
+                    const customDesign = sBlueprint(e.blueprint || e.design);
+                    const kind = kinds.includes(e.kind) ? e.kind : (customDesign ? 'custom' : 'car');
+                    const air = e.air === true || ['plane', 'helicopter', 'drone'].includes(kind);
                     const mhp = kind === 'tank' ? 180 : kind === 'armored' ? 130 : kind === 'bus' || kind === 'truck' ? 120 : kind === 'bike' || kind === 'drone' ? 45 : 90;
                     const bh = e.behavior || {}; const aiMode = sstr(bh.kind || e.ai || (e.hostile ? 'chase_player' : ''), 20);
                     const route = (Array.isArray(e.route || bh.route) ? (e.route || bh.route) : []).slice(0, 8).map(q => { const qx = px + snum(q && q.dx, -1800, 1800, 0), qy = py + snum(q && q.dy, -1800, 1800, 0); return air ? { x: qx, y: qy } : snapVehicleRoad(qx, qy, route.length) });
-                    const base = { x: f.x, y: f.y, v: 0, ang: snum(e.angle, -7, 7, 0), hp: mhp, mhp, ramCd: 0, svid, kind, col, air, alt: air ? .15 : 0, aiMode, route, routeIndex: 0, loop: bh.loop !== false, targetRef: sstr(bh.target || e.target, 28), cruise: snum(bh.speed || e.speed, 30, 520, kind === 'plane' ? 360 : kind === 'helicopter' ? 220 : 150), label: sstr(e.name || e.label, 16), persistent: !!e.persistent };
+                    const spawnAng = isFinite(+e.angle) ? snum(e.angle, -7, 7, 0) : (air ? 0 : cardinalAngle(f.axis || 'h', hsh(Math.floor(f.x / T), Math.floor(f.y / T), svid.length) < .5));
+                    const base = { x: f.x, y: f.y, v: 0, ang: spawnAng, hp: mhp, mhp, ramCd: 0, svid, kind, col, air, alt: air ? .15 : 0, aiMode, route, routeIndex: 0, loop: bh.loop !== false, targetRef: sstr(bh.target || e.target, 28), cruise: snum(bh.speed || e.speed, 30, 520, kind === 'plane' ? 360 : kind === 'helicopter' ? 220 : 150), label: sstr(e.name || e.label, 16), persistent: !!e.persistent, roadAxis: f.axis, blueprint: customDesign, designScale: snum(e.designScale, 28, 90, 54) };
                     if (e.hostile && gangs.length < 7) gangs.push({ ...base, hunt: 1, parked: false });
                     else traffic.push({ ...base, parked: aiMode ? false : e.parked !== false, mkey: e.marked ? 1 : 0 })
                 }
@@ -2279,10 +2360,10 @@
                 for (let k2 = 0; k2 < n2; k2++) {
                     const s2 = snapVehicleRoad(px + ox + k2 * 84, py + oy, k2);
                     const kk = ['car', 'sports', 'van', 'truck', 'taxi', 'limo', 'bus'].includes(op.kind) ? op.kind : 'car';
-                    traffic.push({ x: s2.x, y: s2.y, ang: 0, v: 96, hp: kk === 'truck' || kk === 'bus' ? 120 : 70, mhp: kk === 'truck' || kk === 'bus' ? 120 : 70, tm: 'brake', col: cc, parked: false, kind: kk })
+                    traffic.push({ x: s2.x, y: s2.y, ang: cardinalAngle(s2.axis || 'h', true), v: 96, hp: kk === 'truck' || kk === 'bus' ? 120 : 70, mhp: kk === 'truck' || kk === 'bus' ? 120 : 70, tm: 'brake', col: cc, parked: false, kind: kk, roadAxis: s2.axis, stuckT: 0 })
                 }
             }
-            else if (op.op === 'vehicle') S.spawnEnt({ type: 'vehicle', id: op.id, name: op.name, label: op.label, dx: op.dx, dy: op.dy, color: op.color, marked: !!op.marked, hostile: !!op.hostile, kind: op.kind, behavior: op.behavior, persistent: true });
+            else if (op.op === 'vehicle') S.spawnEnt({ type: 'vehicle', id: op.id, name: op.name, label: op.label, dx: op.dx, dy: op.dy, color: op.color, marked: !!op.marked, hostile: !!op.hostile, kind: op.kind, blueprint: op.blueprint || op.design, designScale: op.designScale, behavior: op.behavior, persistent: !!op.persistent });
             else if (op.op === 'landmark') addLandmark(op);
             else if (op.op === 'property') addProperty(op);
         }
@@ -2591,7 +2672,9 @@
                     'PROPERTY CONTRACT: buildings are permanent city consequences, not disposable decorations. Do NOT add a new building every mission. First reuse existing city blocks/properties when possible; create a new block only when the story truly needs a venue. Every property/building must have a gameplay/story reason: a safehouse heals, an ammo depot resupplies, a garage gives vehicles, a shop sells mission supplies, a civic site creates a meeting/heist/legal mission, a farm/park/plaza becomes walkable mission ground. Buying a property is not just money: use bought:PROPID rules when relevant to unlock contacts, betrayals, storage, safe zones, discounts, vehicles, or the next arc. Property income pays once every 5 real minutes, not every few seconds.',
                     'MISSION CRAFT: every mission needs named people with motives, a reason this district matters, a player decision or pressure change, and a visible aftermath. Success and failure must both update MEMORY so the saga progresses. Reuse old contacts and locations so the city develops history. Invent new blocks/vehicles only when the story creates a lasting need for them.',
                     'FAILSAFE SCENARIOS: always author branches for chaos. If a mission NPC can die, include npc_dead:ID rules. If a mission vehicle can be destroyed, include vehicle_destroyed:ID rules. If the player dies, the engine fails that mission and continues the saga from that failure, so MEMORY must treat failure as canon instead of restarting the same beat. Friendly/neutral NPC death should usually fail or alter the arc; hostile target death should usually complete or advance it.',
-                    'SPAWN REALISM: spawn people near sidewalks, plazas, shops, parks, stations, and mission venues. Spawn cars on roads with traffic purpose: taxis near hotels, vans near warehouses, buses near civic/market zones, armored vehicles only when story justifies them. Do not over-spawn chaos unless it is a finale.',
+                    'SPAWN REALISM: spawn people near sidewalks, plazas, shops, parks, stations, and mission venues. Spawn cars on roads with traffic purpose: taxis near hotels, vans near warehouses, buses near civic/market zones, armored vehicles only when story justifies them. Ground vehicle routes are Manhattan road journeys: use route points as district intentions, not diagonal driving instructions; the engine snaps them to lanes and turns only at intersections. Do not over-spawn chaos unless it is a finale.',
+                    'INVENTION EXECUTION CONTRACT: You may invent any noun, vehicle, institution, machine, venue, faction ritual, public event, or city service, but it must become PLAYABLE CODE using the existing DSL. First decide what the player can physically observe and do; then represent the invention as (a) a custom 170x170 landmark/property blueprint, (b) a custom vehicle blueprint plus behavior, (c) NPCs/zones/pickups, and (d) rules that observe the player action. Never invent a capability only in prose. Example: inventing a mobile radio telescope means draw it as a custom vehicle blueprint, give it a road route, make the player intercept or escort it, and trigger progress with vehicle_near/vehicle_reached/vehicle_in_zone.',
+                    'MISSION-FIRST THINKING: Before creating buildings or spectacle, choose one strong core interaction for this chapter and one escalation. Ask: what exactly will the player do with movement, carjacking, driving, shooting, proximity, holding a zone, collecting an item, escorting a person, tailing a vehicle, losing heat, or landing an aircraft? Build only the city components required to make that interaction clear. Every invented component must either be used now or be recorded in MEMORY with a concrete future purpose.',
                     'RULE 1 - ARC PLANNING: Your MEMORY must contain a "5-Mission Plan" with named characters, a central conflict, and city blocks you plan to introduce. Advance this plan every turn. Every mission must have a clear opening, mid-mission complication, and ending. On success and failure, update MEMORY differently so the saga continues either way. On mission 5, execute a finale, then write a NEW arc in memory.',
                     'RULE 2 - ABSOLUTELY NO REPETITION: CRITICAL: DO NOT use generic names like "Vex", "Lucky Wok", "Pyramid", "Ghost", or "Giza". INVENT 100% original names, companies, and architecture. If you used a name or objective in a past mission, discard it.',
                     'RULE 3 - FIRST MISSION MUST BE A SCENE: NEVER start with a generic "sprint" or "deliver" mission. Chapter 1 MUST be a unique narrative hook (verb: "scene") with named NPCs and dialogue.',
@@ -2607,13 +2690,13 @@
                     'MISSION ROBUSTNESS: every mission must handle normal player chaos. For escorts use escort_arrived:NPC:ZONE; for vehicle deliveries, aircraft landings, or stolen cars use vehicle_in_zone:VEHICLE:ZONE.  Add branches for npc_dead for important NPCs, vehicle_destroyed for important vehicles, timer failure if a timer exists, and at least one valid success ending. If an objective says enter/reach a zone, include enter_zone:ID that clearly advances the story. If an objective says talk to a person, use npc_near:ID or nav_arrived:ID plus dialogue and a next objective. Never point the arrow at a decorative NPC when the text names a place. Reuse permanent locations when possible; create a new block only when it has a future purpose in the arc.',
                     'MISSION RECIPES: ESCORT = npc_near contact -> behavior follow_player -> objective destination -> escort_arrived:NPC:ZONE. VEHICLE DELIVERY/AIRLIFT = in_vehicle:VEHICLE -> objective destination -> vehicle_in_zone:VEHICLE:ZONE. TAIL = vehicle_near target -> vehicle_behavior route -> keep nav on vehicle -> vehicle_reached:VEHICLE reveals handoff. INVESTIGATION = enter_zone venue -> spawn pickup/witness -> pickup_taken or npc_near -> complication -> debrief. HEIST = enter venue -> timer/heat -> pickup or stolen vehicle -> escape/heat_zero -> debrief. Do not describe an action the engine cannot observe.',
                     'CONTINUITY LEDGER: MEMORY must track recurring NPC motives, factions, unresolved debts, district control, destroyed vehicles, player-owned properties, and permanent blocks. Each mission should change at least one ledger item. Reuse old places and characters more often than inventing replacements; invention is strongest when it permanently expands what can happen next.',
-                    'WORLD OPS (max 8): earthquake | eclipse | nuke{dx,dy} | zombies | airdrop | lockdown | ambush{dx,dy,n} | gang{dx,dy} | crowd{dx,dy,n} | pickup{kind,dx,dy} | weather{kind:"clear|rain|night|fog"} | traffic{n} | landmark | property | vehicle{kind:"car|sports|van|tank|bike|armored|bus|truck|taxi|limo|police|plane|helicopter|drone|boat",dx,dy,color,marked,hostile,name} | mood{traffic:0-14,peds:0-24} | calm | panic{dx,dy,r} | possess{name,text,dx,dy} | convoy{dx,dy,n,color,kind}.',
+                    'WORLD OPS (max 8): earthquake | eclipse | nuke{dx,dy} | zombies | airdrop | lockdown | ambush{dx,dy,n} | gang{dx,dy} | crowd{dx,dy,n} | pickup{kind,dx,dy} | weather{kind:"clear|rain|night|fog"} | traffic{n} | landmark | property | vehicle{kind:"car|sports|van|tank|bike|armored|bus|truck|taxi|limo|police|plane|helicopter|drone|boat|custom",air:bool,dx,dy,color,marked,hostile,name,persistent,behavior,blueprint,designScale} | mood{traffic:0-14,peds:0-24} | calm | panic{dx,dy,r} | possess{name,text,dx,dy} | convoy{dx,dy,n,color,kind}.',
                     'INVENTION RULE: invent whatever the current story needs: farm, lab, shrine, checkpoint, prison, radio tower, flooded dock, clinic, roadblock, arena, market, scrapyard, safehouse, embassy, courthouse, mansion, bunker, motor pool, civic landmark, fake White House, ferry terminal, casino, school, warehouse, or secret base. Create it as custom landmark/property with purpose and glyph, then make the current or future mission interact with it via nav/rules. Plan the city like a living block-based world: solid blocks, walkable blocks, commerce, hazards, parking, roads, NPCs, and traffic must all have a reason.',
                     'ECONOMY: dying costs $200. SHOP: 0-3 practical items only [{"label":str20,"cost":n,"id":"bribe|heal|ammo"}]. No magic powers, no god items, no fake body resources.',
                     'UI (max 2 panels): these are merged into one bottom-left MISSION TRACKER below chat. Only show mission-relevant facts. Do NOT invent fake inventory/body stats/resources like lungs, antidotes, blood, vials, organs, meters, or currencies. Use binds from ' + JSON.stringify(BINDS_OK) + ' for stats/bars, or short objective text only.',
                     'CITY-SCRIPT COMPILER: ALWAYS prefer scene.beats over hand-wired rules. beats is 3-6 ordered playable beats: [{"id":str14,"objective":str70,"nav":REF,"trigger":optional TRIGGER,"actions":[ACTIONS],"final":bool}]. The engine compiles beats into safe rules and repairs missing branches. Beat 1 must be an actual interaction, beat 2 must change the situation, final beat must visibly resolve success or failure. Never create a mission with only one arrival. Use escort_arrived and vehicle_in_zone when the carried person/vehicle must actually reach the destination.',
-                    'BLOCK BLUEPRINTS: A custom landmark may include blueprint:[max40 primitives] in the 0-100 inner-block coordinate system. Primitive kinds: rect,roundRect,line,circle,ellipse,poly,road,runway,parking,building,hangar,tower,tree,plane,helipad,crop,water,fence,tent,container,tank,car,label. Common fields x,y,w,h,r,rx,ry,x2,y2,angle,c,c2,a,fill,stroke,w2,text,rows,cols,pts. Airport example: [{kind:"rect",x:5,y:5,w:90,h:90,c:"#43593f"},{kind:"runway",x:50,y:55,w:82,h:18,angle:-24,c:"#252b2e"},{kind:"building",x:12,y:12,w:28,h:18,c:"#9ca4a6"},{kind:"hangar",x:70,y:72,w:22,h:16,c:"#8c9496"},{kind:"plane",x:66,y:44,angle:28,c:"#e7ecef"}]. Use the same system to invent any component without raw HTML.',
-                    'VEHICLE INTELLIGENCE: vehicle kinds also include truck,taxi,limo,police,plane,helicopter,drone,boat. A vehicle can have behavior:{kind:"follow_player|flee_player|chase_player|route|circle|park",target:REF,speed:n,route:[{dx,dy}],loop:bool}. Use vehicle_behavior actions to change it mid-mission. You may create tailing, interception, convoy, aerial escape, escort, surveillance, roadblock, or pursuit missions.',
+                    'BLOCK BLUEPRINTS: A custom landmark may include blueprint:[max40 primitives] in the 0-100 inner-block coordinate system. This is the safe programmable equivalent of drawing a 170x170 DIV: compose any top-down component from rect,roundRect,line,circle,ellipse,poly,road,runway,parking,building,hangar,tower,tree,plane,helipad,crop,water,fence,tent,container,tank,car,label. Common fields x,y,w,h,r,rx,ry,x2,y2,angle,c,c2,a,fill,stroke,w2,text,rows,cols,pts. Airport example: [{kind:"rect",x:5,y:5,w:90,h:90,c:"#43593f"},{kind:"runway",x:50,y:55,w:82,h:18,angle:-24,c:"#252b2e"},{kind:"building",x:12,y:12,w:28,h:18,c:"#9ca4a6"},{kind:"hangar",x:70,y:72,w:22,h:16,c:"#8c9496"},{kind:"plane",x:66,y:44,angle:28,c:"#e7ecef"}]. Do not copy the airport unless the story needs one; invent a new composition that visually communicates the venue function.',
+                    'VEHICLE INTELLIGENCE: vehicle kinds include truck,taxi,limo,police,plane,helicopter,drone,boat and custom. A custom vehicle may include blueprint plus designScale to draw a completely new top-down machine. Any vehicle can have behavior:{kind:"follow_player|flee_player|chase_player|route|circle|park",target:REF,speed:n,route:[{dx,dy}],loop:bool}. Ground vehicles stay on roads and turn at intersections; aircraft move freely. Use vehicle_behavior actions to change it mid-mission. You may create tailing, interception, convoy, aerial escape, escort, surveillance, roadblock, mobile-market, broadcast-truck, armored-courier, or pursuit missions.',
                     'DIRECTOR QUALITY GATE: every objective text and arrow must name the same target; every target must exist; every target arrival must have a trigger; every important NPC/vehicle must have death/destruction handling; every timer must have timeout handling; every mission needs 2-6 playable beats and a clear ending. Reuse meaningful permanent blocks. World changes outside missions should seed future story, not random noise.',
                     'RESPOND ONLY MINIFIED JSON: {"memory":str2200,"banner":str90,"mission":{"title":str26,"briefing":str140,"verb":"scene","reward":50-2000,"timeLimit":0|20-180,"heatStart":1-5},"scene":{"objective":str70,"nav":REF,"spawn":[entities],"beats":[beats],"rules":[optional legacy rules]},"world":[ops],"shop":[items],"ui":[panels]}',
                     'STATE: ' + JSON.stringify({ cash, hearts, maxHearts, heat, ammo, inCar: !onFoot, currentVehicle: car && car.kind, weather, chapter: chapterN, minutes: Math.round(playMin), objective: S.objectiveText || '', nav: S.navRef || null, ownedProps: owned, forSale, city: landmarks.slice(0, 30).map(l => ({ id: l.id, name: l.name, style: l.style, purpose: l.purpose, walk: !!l.walk, block: [l.bi, l.bj] })), properties: props.slice(0, 20).map(q => ({ id: q.id, name: q.name, owned: !!q.owned, perk: q.perk, walk: !!q.walk, block: [q.bi, q.bj] })), playerBlock: [Math.floor(px / T), Math.floor(py / T)], topology: { tile: 260, roadBand: 90, inner: 170, groundCars: 'roads', aircraft: 'free' }, activeNPCs: S.npcs.map(n => ({ id: n.id, name: n.name, role: n.role })), activeVehicles: traffic.filter(v => v.svid).map(v => ({ id: v.svid, name: v.label, kind: v.kind, mode: v.aiMode })), pastMissions: M.hist || [], sessionSaved: store.ok }),
@@ -2961,7 +3044,7 @@
                 x: p.x, y: p.y, ang: p.axis === 'v' ? (dir > 0 ? PI / 2 : -PI / 2) : (dir > 0 ? 0 : PI),
                 v: baseSpeed * (.78 + Math.random() * .30) * (nightBoost ? .9 : 1), hp: mhp, mhp,
                 tm: Math.random() < .62 ? 'brake' : 'flee', laneBias: Math.random() * .8 - .4,
-                col: kind === 'taxi' ? '#eab308' : ['#c8553d', '#588b8b', '#f2d492', '#7d80da', '#94a89a', '#9ca3af', '#d97706'][Math.random() * 7 | 0], parked: false, kind
+                col: kind === 'taxi' ? '#eab308' : ['#c8553d', '#588b8b', '#f2d492', '#7d80da', '#94a89a', '#9ca3af', '#d97706'][Math.random() * 7 | 0], parked: false, kind, roadAxis: p.axis, stuckT: 0
             })
         }
         function sidewalkPoint(min, max) {
@@ -3060,27 +3143,33 @@
         }
 
         function slideCar(c, dt) {
-            const dx = Math.cos(c.ang) * c.v * dt;
-            const dy = Math.sin(c.ang) * c.v * dt;
-            let hitX = false, hitY = false;
-
-            for (const s of [[19, 0], [-19, 0], [0, 10], [0, -10]]) {
-                let rotX = Math.cos(c.ang) * s[0] - Math.sin(c.ang) * s[1];
-                let rotY = Math.sin(c.ang) * s[0] + Math.cos(c.ang) * s[1];
-                if (solidAt(c.x + dx + rotX, c.y + rotY)) hitX = true;
-                if (solidAt(c.x + rotX, c.y + dy + rotY)) hitY = true;
+            // Sub-stepping prevents fast or AI-steered vehicles from tunnelling into the
+            // 170x170 solid block area. The old single-step collision was the main reason
+            // mission cars could become half-buried against a building.
+            const total = Math.abs((c.v || 0) * dt), steps = Math.max(1, Math.ceil(total / 7));
+            let anyHit = false;
+            for (let step = 0; step < steps; step++) {
+                const dx = Math.cos(c.ang) * c.v * dt / steps;
+                const dy = Math.sin(c.ang) * c.v * dt / steps;
+                let hitX = false, hitY = false;
+                const L = c.kind === 'bus' || c.kind === 'truck' ? 25 : c.kind === 'bike' ? 15 : 20;
+                const H = c.kind === 'bus' || c.kind === 'truck' ? 13 : c.kind === 'tank' ? 15 : 10;
+                for (const p2 of [[L, 0], [-L, 0], [0, H], [0, -H], [L * .72, H * .72], [L * .72, -H * .72], [-L * .72, H * .72], [-L * .72, -H * .72]]) {
+                    const rotX = Math.cos(c.ang) * p2[0] - Math.sin(c.ang) * p2[1];
+                    const rotY = Math.sin(c.ang) * p2[0] + Math.cos(c.ang) * p2[1];
+                    if (solidAt(c.x + dx + rotX, c.y + rotY)) hitX = true;
+                    if (solidAt(c.x + rotX, c.y + dy + rotY)) hitY = true
+                }
+                if (hitX && hitY) {
+                    c.v *= -.18; anyHit = true; break
+                }
+                if (hitX) { c.v *= .72; c.y += dy; anyHit = true }
+                else if (hitY) { c.v *= .72; c.x += dx; anyHit = true }
+                else { c.x += dx; c.y += dy }
             }
-
-            const speed0 = c.v;
-            if (hitX && hitY) {
-                c.v *= -.32;
-                return true;
-            } else {
-                if (hitX) { c.v *= 0.8; c.y += dy; }
-                else if (hitY) { c.v *= 0.8; c.x += dx; }
-                else { c.x += dx; c.y += dy; }
-                return hitX || hitY;
-            }
+            if (anyHit) c.wallHits = (c.wallHits || 0) + 1;
+            else c.wallHits = Math.max(0, (c.wallHits || 0) - 1);
+            return anyHit
         }
 
         function entityByRef(ref) {
@@ -3093,27 +3182,43 @@
         }
         function updateVehicleBrain(c, dt) {
             if (!c || !c.aiMode) return false;
-            let target = null;
-            if (c.aiMode === 'follow_player' || c.aiMode === 'chase_player' || c.aiMode === 'flee_player') target = { x: px, y: py };
-            else if (c.targetRef) target = entityByRef(c.targetRef);
-            else if (c.route && c.route.length) target = c.route[c.routeIndex || 0];
+            let target = vehicleTarget(c);
             if (c.aiMode === 'circle') { const a = t * .35 + (c.routeIndex || 0); target = { x: px + Math.cos(a) * 260, y: py + Math.sin(a) * 260 } }
-            if (!target) return false;
+            if (!target) { if (c.aiMode === 'park') { c.desiredV = 0; c.parked = true } return false }
             const dx = target.x - c.x, dy = target.y - c.y, dd = Math.hypot(dx, dy) || 1;
             let want = Math.atan2(dy, dx); if (c.aiMode === 'flee_player') want += PI;
             if (!c.air) {
-                const laneTarget = roadRoutePoint(c, target);
+                const laneTarget = roadRoutePoint(c, target, dt);
                 const roadDx = laneTarget.x - c.x, roadDy = laneTarget.y - c.y;
-                if (Math.hypot(roadDx, roadDy) > 24) want = Math.atan2(roadDy, roadDx)
+                want = Math.atan2(roadDy, roadDx);
+                if (c.turningAngle !== null && c.turningAngle !== undefined) {
+                    want = c.turningAngle;
+                    c.desiredV = Math.min(42, c.cruise || 150);
+                    c.ang += cl(na(want - c.ang)) * dt * 7;
+                    if (Math.abs(na(want - c.ang)) < .07) { c.ang = want; c.turningAngle = null }
+                    return false
+                }
             }
-            c.ang += cl(na(want - c.ang)) * dt * (c.air ? 1.5 : 2.2);
+            c.ang += cl(na(want - c.ang)) * dt * (c.air ? 1.5 : 3.6);
             c.desiredV = (c.cruise || 150) * (c.aiMode === 'flee_player' ? 1.2 : 1);
-            if (c.route && c.route.length && dd < (c.air ? 70 : 48)) {
+            if (!c.air && Math.abs(na(want - c.ang)) > .6) c.desiredV = Math.min(c.desiredV, 70);
+            if (c.route && c.route.length && dd < (c.air ? 70 : 52)) {
                 c.routeIndex = (c.routeIndex || 0) + 1;
-                if (c.routeIndex >= c.route.length) { if (c.loop) c.routeIndex = 0; else { c.aiMode = 'park'; c.desiredV = 0; c.parked = true; if (c.svid) S.fire('vehicle_reached:' + c.svid) } }
+                if (c.routeIndex >= c.route.length) { if (c.loop) c.routeIndex = 0; else { c.aiMode = 'park'; c.desiredV = 0; c.v = 0; c.parked = true; if (c.svid) S.fire('vehicle_reached:' + c.svid) } }
             }
             if (c.air) { c.alt = Math.min(1, (c.alt || 0) + dt * .35); c.v += (c.desiredV - c.v) * dt * 1.2; c.x += Math.cos(c.ang) * c.v * dt; c.y += Math.sin(c.ang) * c.v * dt; return true }
             return false
+        }
+        function trafficAheadLimit(c) {
+            const axis = inferRoadAxis(c), forwardX = Math.cos(c.ang), forwardY = Math.sin(c.ang);
+            let limit = Infinity;
+            for (const o of traffic.concat(gangs, cops)) {
+                if (!o || o === c || o.parked || o.air) continue;
+                const dx = o.x - c.x, dy = o.y - c.y, ahead = dx * forwardX + dy * forwardY;
+                const lateral = Math.abs(-dx * forwardY + dy * forwardX);
+                if (ahead > 0 && ahead < 115 && lateral < 22 && inferRoadAxis(o) === axis) limit = Math.min(limit, Math.max(0, (o.v || 0) - (115 - ahead) * 1.6))
+            }
+            return limit
         }
 
         function update(dt) {
@@ -3304,11 +3409,19 @@
                 const threat = !onFoot && Math.abs(car.v) > 110 && pd < 160;
                 const panicked = threat || heat >= 3 && pd < 200;
                 let vt = c.desiredV || 118 * wf;
+                const leadLimit = trafficAheadLimit(c); if (isFinite(leadLimit)) vt = Math.min(vt, leadLimit);
                 if (panicked) vt = c.tm === 'flee' ? 238 : 6;
-                c.v += (vt - c.v) * dt * (panicked ? 4 : 1.2);
+                c.v += (vt - c.v) * dt * (panicked ? 4 : 1.8);
                 if (panicked && c.tm === 'brake' && pd > 1) { c.x += (c.x - px) / pd * 26 * dt; c.y += (c.y - py) / pd * 26 * dt }
 
-                slideCar(c, dt);
+                const oldVX = c.x, oldVY = c.y, hitWall = slideCar(c, dt);
+                const moved = Math.hypot(c.x - oldVX, c.y - oldVY);
+                if ((hitWall || moved < .45) && Math.abs(c.v) > 18) c.stuckT = (c.stuckT || 0) + dt;
+                else c.stuckT = Math.max(0, (c.stuckT || 0) - dt * 2.5);
+                if (!isRoadAt(c.x, c.y) || !clearAt(c.x, c.y, c.kind === 'bus' || c.kind === 'truck' ? 18 : 13) || c.stuckT > .75 || (c.wallHits || 0) > 5) {
+                    recoverVehicleToRoad(c, vehicleTarget(c), c.stuckT > .75 ? 'stuck' : 'left road');
+                    continue
+                }
 
                 if (!onFoot) {
                     const dd = Math.hypot(c.x - car.x, c.y - car.y);
@@ -3356,16 +3469,19 @@
                 c.ramCd = Math.max(0, c.ramCd - dt);
 
                 const dx = px - c.x, dy = py - c.y, dd = Math.hypot(dx, dy) || 1;
-                c.ang += cl(na(Math.atan2(dy, dx) - c.ang)) * 2.5 * dt;
-                c.v += ((280 + heat * 16) * wf - c.v) * dt * 1.5;
+                const copRoad = roadRoutePoint(c, { x: px, y: py }, dt), cdx = copRoad.x - c.x, cdy = copRoad.y - c.y;
+                const copWant = Math.atan2(cdy, cdx);
+                if (c.turningAngle !== null && c.turningAngle !== undefined) {
+                    c.ang += cl(na(c.turningAngle - c.ang)) * dt * 7;
+                    if (Math.abs(na(c.turningAngle - c.ang)) < .07) { c.ang = c.turningAngle; c.turningAngle = null }
+                } else c.ang += cl(na(copWant - c.ang)) * 3.8 * dt;
+                const copTurnSlow = Math.abs(na(copWant - c.ang)) > .55 ? 92 : (280 + heat * 16);
+                c.v += (copTurnSlow * wf - c.v) * dt * 1.8;
 
-                const oldX = c.x, oldY = c.y;
-                slideCar(c, dt);
+                const oldX = c.x, oldY = c.y, copHit = slideCar(c, dt);
 
-                if (Math.hypot(c.x - oldX, c.y - oldY) < 1) c.stuck += dt; else c.stuck = 0;
-                if (c.stuck > 1.5) {
-                    const f = findFree(c.x, c.y, 14); c.x = f.x; c.y = f.y; c.v = -100; c.stuck = 0;
-                }
+                if (copHit || Math.hypot(c.x - oldX, c.y - oldY) < .6) c.stuck = (c.stuck || 0) + dt; else c.stuck = Math.max(0, (c.stuck || 0) - dt * 2);
+                if (c.stuck > .85 || !isRoadAt(c.x, c.y) || !clearAt(c.x, c.y, 14)) recoverVehicleToRoad(c, { x: px, y: py }, 'police routing');
 
                 if (dd < 380) copNear = true;
                 if (onFoot && dd < 30) return gameOver('BUSTED');
@@ -3388,17 +3504,23 @@
             /* gangs */
             for (const c of gangs) {
                 c.ramCd = Math.max(0, c.ramCd - dt);
+                const scriptedGang = !!c.aiMode;
                 if (updateVehicleBrain(c, dt)) continue;
 
                 const dx = px - c.x, dy = py - c.y, dd = Math.hypot(dx, dy) || 1;
-                c.ang += cl(na(Math.atan2(dy, dx) - c.ang)) * 2.5 * dt;
-                c.v += (265 * wf - c.v) * dt * 1.5;
+                if (!scriptedGang) {
+                    const gangRoad = roadRoutePoint(c, { x: px, y: py }, dt), gdx = gangRoad.x - c.x, gdy = gangRoad.y - c.y, gangWant = Math.atan2(gdy, gdx);
+                    if (c.turningAngle !== null && c.turningAngle !== undefined) { c.ang += cl(na(c.turningAngle - c.ang)) * dt * 7; if (Math.abs(na(c.turningAngle - c.ang)) < .07) { c.ang = c.turningAngle; c.turningAngle = null } }
+                    else c.ang += cl(na(gangWant - c.ang)) * 3.8 * dt;
+                    c.desiredV = Math.abs(na(gangWant - c.ang)) > .55 ? 88 : 265
+                }
+                const gangLead = trafficAheadLimit(c), gangSpeed = isFinite(gangLead) ? Math.min(c.desiredV || 265, gangLead) : (c.desiredV || 265);
+                c.v += (gangSpeed * wf - c.v) * dt * 1.8;
 
-                const oldX = c.x, oldY = c.y;
-                slideCar(c, dt);
+                const oldX = c.x, oldY = c.y, gangHit = slideCar(c, dt);
 
-                if (Math.hypot(c.x - oldX, c.y - oldY) < 1) c.stuck = (c.stuck || 0) + dt; else c.stuck = 0;
-                if (c.stuck > 1.5) { const f = findFree(c.x, c.y, 14); c.x = f.x; c.y = f.y; c.v = -100; c.stuck = 0; }
+                if (gangHit || Math.hypot(c.x - oldX, c.y - oldY) < .6) c.stuck = (c.stuck || 0) + dt; else c.stuck = Math.max(0, (c.stuck || 0) - dt * 2);
+                if (c.stuck > .85 || !isRoadAt(c.x, c.y) || !clearAt(c.x, c.y, 14)) recoverVehicleToRoad(c, vehicleTarget(c) || { x: px, y: py }, 'gang routing');
 
                 if (!onFoot && dd < 40 && c.ramCd <= 0) {
                     c.ramCd = .8; car.hp -= 10; car.v *= .8; boom((c.x + px) / 2, (c.y + py) / 2, 6); shake = Math.max(shake, 3);
@@ -3906,6 +4028,12 @@
         function drawCar(x, y, ang, col, cop, ent, night, isPlayer) {
             const kind = ent && ent.kind || 'car';
             if (ent && ent.air && (ent.alt || 0) > 0) { g.save(); g.globalAlpha = .18 + .18 * (1 - (ent.alt || 0)); g.fillStyle = '#000'; g.beginPath(); g.ellipse(x + 18 * (ent.alt || 0), y + 22 * (ent.alt || 0), 28, 12, ang, 0, 7); g.fill(); g.restore() }
+            if (ent && ent.blueprint && ent.blueprint.length) {
+                g.save(); g.translate(x, y); g.rotate(ang); if (ent.air) g.scale(1 + (ent.alt || 0) * .18, 1 + (ent.alt || 0) * .18);
+                drawBlueprint(0, 0, ent.designScale || 54, ent.blueprint, col);
+                if (night) { g.fillStyle = '#fff7d6'; g.fillRect(22, -7, 3, 4); g.fillRect(22, 4, 3, 4) }
+                g.restore(); return
+            }
             g.save(); g.translate(x, y); g.rotate(ang); if (ent && ent.air) g.scale(1 + (ent.alt || 0) * .18, 1 + (ent.alt || 0) * .18);
             if (kind === 'plane') {
                 g.fillStyle = col; g.fillRect(-4, -28, 8, 56); g.fillRect(-32, -5, 64, 10); g.fillRect(-15, 18, 30, 6); g.fillStyle = 'rgba(255,255,255,.35)'; g.fillRect(-2, -24, 4, 12)
