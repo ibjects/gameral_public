@@ -772,7 +772,7 @@
         <button id="hudtoggle" class="a-btn ui-int">HUD</button>
         <button id="actbtn" class="a-btn ui-int">JACK</button>
         <div class="credit ui-int"><span class="credit-full">By: </span><span class="credit-short">By: </span><a
-                href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.4.0
+                href="https://chaudhrytalha.carrd.co/" target="_blank" rel="noopener noreferrer">Chaudhry</a> - v0.3.2
         </div>
     </div>
     <div id="modal"></div>
@@ -864,8 +864,8 @@
             muse = Array.isArray(sv.muse) && sv.muse.length ? sv.muse.slice(0, 3).map(w => sstr(w, 14)) : (muse.length ? muse : pickMuse());
             events = Array.isArray(sv.events) ? sv.events.slice(-10).map(e => sstr(e, 120)) : [];
             landmarks = []; props = []; tileOv = {}; lmIdx = {};
-            for (const lm of (Array.isArray(sv.landmarks) ? sv.landmarks : []).slice(0, 60)) addLandmark(lm, true);
-            for (const pr of (Array.isArray(sv.props) ? sv.props : []).slice(0, 30)) addProperty(pr, true);
+            for (const lm of (Array.isArray(sv.landmarks) ? sv.landmarks : []).slice(0, 14)) addLandmark(lm, true);
+            for (const pr of (Array.isArray(sv.props) ? sv.props : []).slice(0, 10)) addProperty(pr, true);
             if (!clearAt(px, py, 9.5)) ({ x: px, y: py } = findFree(px, py, 12));
             logEvent('SESSION RESUMED at chapter ' + chapterN + ' (' + Math.round(playMin) + ' min lifetime)');
         }
@@ -1113,102 +1113,12 @@
             }
             g.setLineDash([]); g.globalAlpha = 1; g.restore()
         }
-        function sBlueprint(bp) {
-            if (!Array.isArray(bp)) return null;
-            const out = [];
-            const kinds = ['rect','roundRect','line','circle','ellipse','poly','road','runway','parking','building','hangar','tower','tree','plane','helipad','crop','water','fence','tent','container','tank','car','label'];
-            const n = (v, d=50) => snum(v, -20, 120, d);
-            for (const raw of bp.slice(0, 40)) {
-                if (!raw || typeof raw !== 'object' || !kinds.includes(raw.kind)) continue;
-                const o = {
-                    kind: raw.kind, x: n(raw.x), y: n(raw.y), w: snum(raw.w, 1, 140, 20), h: snum(raw.h, 1, 140, 20),
-                    r: snum(raw.r, 0, 50, 4), rx: snum(raw.rx, 1, 60, 12), ry: snum(raw.ry, 1, 60, 8),
-                    x2: n(raw.x2), y2: n(raw.y2), angle: snum(raw.angle, -360, 360, 0),
-                    c: sColor(raw.c, null), c2: sColor(raw.c2, null), a: snum(raw.a, .05, 1, 1),
-                    fill: raw.fill !== false, stroke: raw.stroke === true, w2: snum(raw.w2, 1, 10, 2),
-                    text: sstr(raw.text, 18), rows: Math.round(snum(raw.rows, 1, 14, 5)), cols: Math.round(snum(raw.cols, 1, 14, 5))
-                };
-                if (raw.kind === 'poly' && Array.isArray(raw.pts)) o.pts = raw.pts.slice(0, 14).map(q => [n(q && q[0]), n(q && q[1])]);
-                out.push(o)
-            }
-            return out.length ? out : null
-        }
-        function drawBlueprint(cx, cy, size, bp, fallback) {
-            if (!Array.isArray(bp) || !bp.length) return;
-            const sc = size / 100, ox = cx - size / 2, oy = cy - size / 2;
-            const X = v => ox + v * sc, Y = v => oy + v * sc;
-            const rotated = (it, fn) => {
-                g.save();
-                const rx = X(it.x), ry = Y(it.y);
-                g.translate(rx, ry); g.rotate((it.angle || 0) * PI / 180); g.translate(-rx, -ry);
-                fn(); g.restore()
-            };
-            g.save(); g.lineJoin = 'round'; g.lineCap = 'round';
-            for (const it of bp) {
-                const c = it.c || fallback || '#e8e8ee', c2 = it.c2 || 'rgba(255,255,255,.18)';
-                g.globalAlpha = it.a == null ? 1 : it.a; g.fillStyle = c; g.strokeStyle = c; g.lineWidth = (it.w2 || 2) * sc;
-                rotated(it, () => {
-                    const x=X(it.x), y=Y(it.y), w=it.w*sc, h=it.h*sc;
-                    if (it.kind === 'rect' || it.kind === 'roundRect') {
-                        g.beginPath();
-                        if (it.kind === 'roundRect' && g.roundRect) g.roundRect(x,y,w,h,(it.r||4)*sc); else g.rect(x,y,w,h);
-                        if (it.fill) g.fill(); if (it.stroke) g.stroke()
-                    } else if (it.kind === 'line') {
-                        g.beginPath(); g.moveTo(x,y); g.lineTo(X(it.x2),Y(it.y2)); g.stroke()
-                    } else if (it.kind === 'circle') {
-                        g.beginPath(); g.arc(x,y,it.r*sc,0,7); if(it.fill)g.fill(); if(it.stroke)g.stroke()
-                    } else if (it.kind === 'ellipse') {
-                        g.beginPath(); g.ellipse(x,y,it.rx*sc,it.ry*sc,0,0,7); if(it.fill)g.fill(); if(it.stroke)g.stroke()
-                    } else if (it.kind === 'poly' && it.pts && it.pts.length>2) {
-                        g.beginPath(); g.moveTo(X(it.pts[0][0]),Y(it.pts[0][1])); for(let i=1;i<it.pts.length;i++)g.lineTo(X(it.pts[i][0]),Y(it.pts[i][1])); g.closePath(); if(it.fill)g.fill(); if(it.stroke)g.stroke()
-                    } else if (it.kind === 'road' || it.kind === 'runway') {
-                        g.fillStyle = c; g.fillRect(x-w/2,y-h/2,w,h);
-                        g.strokeStyle = c2; g.lineWidth = Math.max(1,1.4*sc); g.strokeRect(x-w/2,y-h/2,w,h);
-                        g.fillStyle = it.kind==='runway' ? '#e8e8d8' : '#e2d36a';
-                        const count=Math.max(3,Math.floor(it.w/12)); for(let q=0;q<count;q++) g.fillRect(x-w/2+6*sc+q*(w-12*sc)/count,y-1.5*sc,6*sc,3*sc)
-                    } else if (it.kind === 'parking') {
-                        g.fillStyle=c; g.fillRect(x,y,w,h); g.strokeStyle=c2; g.lineWidth=1.5*sc;
-                        const cols=Math.max(2,it.cols||5); for(let q=1;q<cols;q++){g.beginPath();g.moveTo(x+w*q/cols,y+4*sc);g.lineTo(x+w*q/cols,y+h-4*sc);g.stroke()}
-                    } else if (it.kind === 'building') {
-                        g.fillStyle='rgba(0,0,0,.28)'; g.fillRect(x+4*sc,y+5*sc,w,h); g.fillStyle=c; g.fillRect(x,y,w,h);
-                        g.fillStyle=c2; g.fillRect(x,y,w,4*sc); for(let yy=0;yy<Math.max(1,it.rows);yy++)for(let xx=0;xx<Math.max(1,it.cols);xx++) if((xx+yy)%2) g.fillRect(x+7*sc+xx*(w-14*sc)/it.cols,y+10*sc+yy*(h-16*sc)/it.rows,3*sc,4*sc)
-                    } else if (it.kind === 'hangar') {
-                        g.fillStyle=c; g.fillRect(x-w/2,y-h/2,w,h); g.fillStyle=c2; g.beginPath(); g.ellipse(x,y-h/2,w/2,h*.45,0,PI,0,true); g.fill()
-                    } else if (it.kind === 'tower') {
-                        g.fillStyle=c; g.beginPath(); g.arc(x,y,it.r*sc,0,7); g.fill(); g.fillStyle=c2; g.beginPath(); g.arc(x,y,it.r*.55*sc,0,7); g.fill(); g.fillStyle=c; g.fillRect(x-3*sc,y+it.r*sc,6*sc,it.h*sc)
-                    } else if (it.kind === 'tree') {
-                        g.fillStyle='rgba(0,0,0,.25)'; g.beginPath(); g.arc(x+3*sc,y+4*sc,it.r*sc,0,7); g.fill(); g.fillStyle=c; g.beginPath(); g.arc(x,y,it.r*sc,0,7); g.fill()
-                    } else if (it.kind === 'plane') {
-                        g.fillStyle=c; g.fillRect(x-2*sc,y-13*sc,4*sc,26*sc); g.fillRect(x-15*sc,y-2*sc,30*sc,4*sc); g.fillRect(x-7*sc,y+8*sc,14*sc,3*sc); g.fillStyle=c2; g.beginPath(); g.arc(x,y-14*sc,2.4*sc,0,7); g.fill()
-                    } else if (it.kind === 'helipad') {
-                        g.strokeStyle=c; g.lineWidth=4*sc; g.beginPath(); g.arc(x,y,it.r*sc,0,7); g.stroke(); g.beginPath(); g.moveTo(x-8*sc,y-14*sc);g.lineTo(x-8*sc,y+14*sc);g.moveTo(x+8*sc,y-14*sc);g.lineTo(x+8*sc,y+14*sc);g.moveTo(x-8*sc,y);g.lineTo(x+8*sc,y);g.stroke()
-                    } else if (it.kind === 'crop' || it.kind === 'water') {
-                        g.strokeStyle=c; g.lineWidth=(it.w2||2)*sc; const rows=Math.max(2,it.rows||6);
-                        for(let q=0;q<rows;q++){const yy=y-h/2+q*h/(rows-1);g.beginPath();g.moveTo(x-w/2,yy); if(it.kind==='water'){for(let xx=0;xx<=8;xx++)g.lineTo(x-w/2+xx*w/8,yy+Math.sin(xx*PI/2)*2*sc)}else g.lineTo(x+w/2,yy);g.stroke()}
-                    } else if (it.kind === 'fence') {
-                        g.strokeStyle=c; g.setLineDash([5*sc,4*sc]); g.strokeRect(x,y,w,h); g.setLineDash([])
-                    } else if (it.kind === 'tent') {
-                        g.fillStyle=c; g.beginPath(); g.moveTo(x,y-h/2);g.lineTo(x+w/2,y+h/2);g.lineTo(x-w/2,y+h/2);g.closePath();g.fill();g.strokeStyle=c2;g.stroke()
-                    } else if (it.kind === 'container') {
-                        g.fillStyle=c;g.fillRect(x,y,w,h);g.strokeStyle=c2;g.strokeRect(x,y,w,h);for(let q=1;q<5;q++){g.beginPath();g.moveTo(x+w*q/5,y);g.lineTo(x+w*q/5,y+h);g.stroke()}
-                    } else if (it.kind === 'tank') {
-                        g.fillStyle='#111827';g.fillRect(x-w/2,y-h/2,w,h);g.fillStyle=c;g.fillRect(x-w*.42,y-h*.38,w*.84,h*.76);g.fillRect(x,y-2*sc,w*.7,4*sc);g.beginPath();g.arc(x,y,6*sc,0,7);g.fill()
-                    } else if (it.kind === 'car') {
-                        g.fillStyle=c;g.fillRect(x-w/2,y-h/2,w,h);g.fillStyle=c2;g.fillRect(x-w*.08,y-h*.35,w*.28,h*.7)
-                    } else if (it.kind === 'label' && it.text) {
-                        g.font='bold '+Math.max(6,it.h*sc)+'px ui-monospace';g.textAlign='center';g.textBaseline='middle';g.fillStyle=c;g.fillText(it.text,x,y)
-                    }
-                })
-            }
-            g.globalAlpha=1; g.restore()
-        }
-
         function blockCenter(bi, bj) { return { x: bi * T + RW + BS / 2, y: bj * T + RW + BS / 2 } }
         function pickLot(dx, dy) {
             const wx = px + snum(dx, -1600, 1600, 400), wy = py + snum(dy, -1600, 1600, 300);
             const bi = Math.floor(wx / T), bj = Math.floor(wy / T);
             const pi = Math.floor(px / T), pj = Math.floor(py / T);
-            for (let r = 0; r < 12; r++)for (let a = 0; a < 9; a++) {
+            for (let r = 0; r < 6; r++)for (let a = 0; a < 9; a++) {
                 const ci = bi + [0, 1, -1, 0, 0, 1, -1, 1, -1][a] * r, cj = bj + [0, 0, 0, 1, -1, 1, 1, -1, -1][a] * r;
                 if ((ci === pi && cj === pj) || lmIdx[ci + ',' + cj]) continue;
                 return { bi: ci, bj: cj }
@@ -1216,7 +1126,7 @@
             return null
         }
         function addLandmark(spec, restoring) {
-            if (!spec || landmarks.length >= 60) return null;
+            if (!spec || landmarks.length >= 14) return null;
             let bi = spec.bi, bj = spec.bj;
             if (bi === undefined || bj === undefined) { const lot = pickLot(spec.dx, spec.dy); if (!lot) return null; bi = lot.bi; bj = lot.bj }
             if (lmIdx[bi + ',' + bj]) return null;
@@ -1226,7 +1136,7 @@
                 purpose: sstr(spec.purpose || spec.why || '', 90),
                 style: LM_STYLES.includes(spec.style) ? spec.style : 'shop',
                 color: LPAL[spec.color] ? spec.color : 'gold',
-                glyph: sGlyph(spec.glyph), blueprint: sBlueprint(spec.blueprint || spec.components), gold: !!spec.gold,
+                glyph: sGlyph(spec.glyph), gold: !!spec.gold,
                 walk: spec.blocker === false ? true : !!spec.walk, ground: sGround(spec.ground),
                 inner: sColor(spec.inner || spec.base || spec.fill || spec.groundColor, null),
                 roof: sColor(spec.roof, null)
@@ -1241,12 +1151,12 @@
             return lm
         }
         function addProperty(spec, restoring) {
-            if (!spec || props.length >= 30) return null;
+            if (!spec || props.length >= 10) return null;
             const lm = addLandmark(spec, true); if (!lm) return null;
             landmarks.splice(landmarks.indexOf(lm), 1); // it lives in props instead
             const pr = {
                 id: lm.id, bi: lm.bi, bj: lm.bj, name: lm.name, sign: lm.sign, purpose: lm.purpose, style: lm.style, color: lm.color,
-                glyph: lm.glyph, blueprint: lm.blueprint, walk: lm.walk, ground: lm.ground, inner: lm.inner, roof: lm.roof,
+                glyph: lm.glyph, walk: lm.walk, ground: lm.ground, inner: lm.inner, roof: lm.roof,
                 price: Math.round(snum(spec.price, 100, 5000, 600)), income: Math.round(snum(spec.income, 0, 150, 20)),
                 perk: ['heal', 'ammo', 'garage', 'none'].includes(spec.perk) ? spec.perk : 'none',
                 owned: !!spec.owned, visitCd: 0, healT: 0
@@ -1311,84 +1221,6 @@
             UIK.button('BUY PROPERTY', () => buyProp(near), buyNode)
         }
 
-        const SceneCompiler = {
-            triggerFor(ref, event) {
-                ref = String(ref || ''); const ix = ref.indexOf(':'), k = ix > 0 ? ref.slice(0, ix) : '', id = ix > 0 ? ref.slice(ix + 1) : ref;
-                if (event) return String(event);
-                if (k === 'zone') return 'enter_zone:' + id;
-                if (k === 'npc') return 'npc_near:' + id + ':64';
-                if (k === 'vehicle') return 'in_vehicle:' + id;
-                if (k === 'pickup') return 'pickup_taken:' + id;
-                if (['prop','landmark','lm','block'].includes(k)) return 'nav_arrived:' + id;
-                return 'nav_arrived:' + id
-            },
-            hasTerminal(actions) { return (actions || []).some(a => a && ['complete','fail'].includes(a.act)) },
-            compile(scene) {
-                scene = scene && typeof scene === 'object' ? scene : {};
-                scene.spawn = Array.isArray(scene.spawn) ? scene.spawn.slice(0, 24) : [];
-                scene.rules = Array.isArray(scene.rules) ? scene.rules.slice(0, 24) : [];
-                const beats = Array.isArray(scene.beats) ? scene.beats.slice(0, 6) : [];
-                if (beats.length) {
-                    const clean = beats.map((b,i) => ({
-                        id: sstr((b && b.id) || ('beat'+(i+1)), 14), objective: sstr(b && b.objective, 70), nav: b && b.nav,
-                        trigger: sstr(b && b.trigger, 50), actions: Array.isArray(b && (b.actions || b.do)) ? (b.actions || b.do).slice(0,8) : [],
-                        final: !!(b && b.final), fail: !!(b && b.fail)
-                    }));
-                    scene.objective = clean[0].objective || scene.objective || 'Follow the lead'; scene.nav = clean[0].nav || scene.nav;
-                    const starts = scene.rules.filter(r => r && r.when === 'start');
-                    const compiled = [];
-                    clean.forEach((b,i) => {
-                        const next = clean[i+1]; const acts = b.actions.slice();
-                        if (!this.hasTerminal(acts)) {
-                            if (next) acts.push({ act:'objective', text:next.objective || 'Continue the operation', nav:next.nav });
-                            else acts.push(b.fail ? {act:'fail',reason:'the operation collapsed'} : {act:'complete',final:true})
-                        }
-                        compiled.push({ when:b.trigger || this.triggerFor(b.nav), once:true, beatId:b.id, do:acts })
-                    });
-                    const extras = scene.rules.filter(r => r && r.when !== 'start' && !compiled.some(c => String(c.when) === String(r.when)));
-                    scene.rules = starts.concat(compiled).concat(extras)
-                }
-                const navRefs = [];
-                if (scene.nav) navRefs.push(String(scene.nav));
-                for (const r of scene.rules) for (const a of (Array.isArray(r && r.do) ? r.do : [])) if (a && a.act === 'objective' && a.nav) navRefs.push(String(a.nav));
-                const keyFor = ref => this.triggerFor(ref).split(':').slice(0,2).join(':');
-                const hasRuleFor = ref => { const k=keyFor(ref), id=String(ref).split(':').slice(1).join(':'); return scene.rules.some(r => { const p=String(r.when||'').split(':'); return (p[0]+':'+(p[1]||''))===k || (p[0]==='nav_arrived' && p[1]===id) }) };
-                const targets = new Set(navRefs);
-                for (const ref of navRefs) if (ref && !hasRuleFor(ref)) {
-                    scene.rules.push({ when:this.triggerFor(ref), once:true, repaired:true, do:[{act:'banner',text:'The lead reacts as you arrive.'},{act:'complete',final:true}] })
-                }
-                // A one-touch scene is too abrupt. Convert its ending into a short extraction beat.
-                const meaningful = scene.rules.filter(r => r && r.when !== 'start');
-                if (meaningful.length < 2 && meaningful.length) {
-                    const zid='extract_'+Math.random().toString(36).slice(2,8);
-                    scene.spawn.push({type:'zone',id:zid,dx:520,dy:-320,r:88,label:'CLEAR AREA',color:'green'});
-                    const first=meaningful[0], acts=Array.isArray(first.do)?first.do:[];
-                    const idx=acts.findIndex(a=>a&&a.act==='complete');
-                    if(idx>=0) acts.splice(idx,1,{act:'objective',text:'Leave the area and confirm the operation',nav:'zone:'+zid});
-                    else if(!this.hasTerminal(acts)) acts.push({act:'objective',text:'Leave the area and confirm the operation',nav:'zone:'+zid});
-                    scene.rules.push({when:'enter_zone:'+zid,once:true,beatId:'extraction',do:[{act:'banner',text:'The operation closes with a clean exit.'},{act:'complete',final:true}]})
-                }
-                const referenced = new Set(navRefs.map(r => String(r).split(':').slice(1).join(':')));
-                const has = (when,id) => scene.rules.some(r => {const p=String(r.when||'').split(':');return p[0]===when && p[1]===id});
-                for (const e of scene.spawn) {
-                    if (!e || !e.id || !referenced.has(String(e.id))) continue;
-                    if (e.type==='npc' && !has('npc_dead',String(e.id))) {
-                        scene.rules.push({when:'npc_dead:'+e.id,once:true,do:[e.role==='hostile'?{act:'complete',final:true}:{act:'fail',reason:(e.name||'the contact')+' died'}]})
-                    }
-                    if (e.type==='vehicle' && !has('vehicle_destroyed',String(e.id))) {
-                        scene.rules.push({when:'vehicle_destroyed:'+e.id,once:true,do:[e.hostile?{act:'complete',final:true}:{act:'fail',reason:(e.name||'the mission vehicle')+' was destroyed'}]})
-                    }
-                }
-                const timers=[]; for(const r of scene.rules)for(const a of (r.do||[]))if(a&&a.act==='timer'&&a.id)timers.push(String(a.id));
-                for(const id of timers) if(!has('timer',id)) scene.rules.push({when:'timer:'+id,once:true,do:[{act:'fail',reason:'time ran out'}]});
-                if (!scene.rules.some(r => (r.do||[]).some(a => a && a.act==='complete'))) {
-                    const last=scene.rules.filter(r=>r&&r.when!=='start').slice(-1)[0]; if(last) (last.do||(last.do=[])).push({act:'complete',final:true})
-                }
-                scene.rules=scene.rules.slice(0,28); scene.spawn=scene.spawn.slice(0,28); scene.beats=beats;
-                return scene
-            }
-        };
-
         /* ================= SCENE ENGINE — the Director's city-script system =================
            The AI doesn't pick mission types anymore; it SCRIPTS scenes: named NPCs with
            dialogue & behaviors, trigger zones, vehicles, timers — wired by when→do rules.
@@ -1403,7 +1235,6 @@
                 S.zones = []; S.npcs = []; S.bubbles = []; S.rules = []; S.timers = {}; S.items = [];
                 S.nav = null; S.navRef = null; S.zoneIn = {}; S.zoneStay = {}; S.prevInVeh = '';
                 S.navTouchKey = ''; S.navTouchT = 0; S.navArrived = {}; S.softSteps = 0; S.forceFinal = false; S.objectiveText = '';
-                S.lastProgressT = t; S.lastObjectiveT = t; S.lastRuleKey = ''; S.repairCount = 0; S.compiledBeats = [];
                 S.onceTotal = 0; S.onceDone = 0; S.hadHeat = false
             },
             progress() { return S.onceTotal ? S.onceDone / S.onceTotal : 0 },
@@ -1438,16 +1269,11 @@
                 }
                 else if (e.type === 'vehicle') {
                     const s2 = snapRoad(px + ox, py + oy), f = findFree(s2.x, s2.y, 16);
-                    const col = LPAL[e.color] || sColor(e.color, '#f472b6'), svid = sstr(e.id, 14) || ('v' + (Math.random() * 999 | 0));
-                    const kinds = ['car','sports','van','tank','bike','armored','bus','truck','taxi','limo','police','plane','helicopter','drone','boat'];
-                    const kind = kinds.includes(e.kind) ? e.kind : 'car';
-                    const air = ['plane','helicopter','drone'].includes(kind);
-                    const mhp = kind === 'tank' ? 180 : kind === 'armored' ? 130 : kind === 'bus' || kind === 'truck' ? 120 : kind === 'bike' || kind === 'drone' ? 45 : 90;
-                    const bh = e.behavior || {}; const aiMode = sstr(bh.kind || e.ai || (e.hostile?'chase_player':''), 20);
-                    const route = (Array.isArray(e.route || bh.route) ? (e.route || bh.route) : []).slice(0,8).map(q => { const qx=px+snum(q&&q.dx,-1800,1800,0), qy=py+snum(q&&q.dy,-1800,1800,0); return air?{x:qx,y:qy}:snapRoad(qx,qy) });
-                    const base = { x:f.x,y:f.y,v:0,ang:snum(e.angle,-7,7,0),hp:mhp,mhp,ramCd:0,svid,kind,col,air,alt:air?.15:0,aiMode,route,routeIndex:0,loop:bh.loop!==false,targetRef:sstr(bh.target||e.target,28),cruise:snum(bh.speed||e.speed,30,520,kind==='plane'?360:kind==='helicopter'?220:150),label:sstr(e.name||e.label,16) };
-                    if (e.hostile && gangs.length < 7) gangs.push({ ...base, hunt:1, parked:false });
-                    else traffic.push({ ...base, parked: aiMode ? false : e.parked !== false, mkey:e.marked?1:0 })
+                    const col = LPAL[e.color] || '#f472b6', svid = sstr(e.id, 14) || ('v' + (Math.random() * 999 | 0));
+                    const kind = ['car', 'sports', 'van', 'tank', 'bike', 'armored', 'bus'].includes(e.kind) ? e.kind : 'car';
+                    const mhp = kind === 'tank' ? 180 : kind === 'armored' ? 130 : kind === 'bus' ? 115 : kind === 'bike' ? 45 : 90;
+                    if (e.hostile && gangs.length < 5) gangs.push({ x: f.x, y: f.y, v: 0, ang: 0, hp: mhp, mhp, ramCd: 0, hunt: 1, svid, kind, col });
+                    else traffic.push({ x: f.x, y: f.y, ang: 0, v: 0, hp: mhp, mhp, col, parked: true, mkey: e.marked ? 1 : 0, svid, kind, label: sstr(e.name || e.label, 16) })
                 }
                 else if (e.type === 'pickup' && pickups.length < 12) {
                     const f = findFree(px + ox, py + oy, 10);
@@ -1459,15 +1285,14 @@
             },
             load(scene) {
                 if (!scene || typeof scene !== 'object') return;
-                scene = SceneCompiler.compile(scene); S.compiledBeats = scene.beats || [];
-                for (const e of (Array.isArray(scene.spawn) ? scene.spawn : []).slice(0, 28)) S.spawnEnt(e);
-                for (const r of (Array.isArray(scene.rules) ? scene.rules : []).slice(0, 28)) {
+                for (const e of (Array.isArray(scene.spawn) ? scene.spawn : []).slice(0, 16)) S.spawnEnt(e);
+                for (const r of (Array.isArray(scene.rules) ? scene.rules : []).slice(0, 14)) {
                     if (!r || typeof r.when !== 'string') continue;
                     const parts = String(r.when).slice(0, 44).split(':');
                     const rule = {
                         when: parts[0], id: parts[1] || '', arg: +(parts[2] ?? parts[1]) || 0,
-                        once: r.once !== false, fired: false, cd: 0, beatId: sstr(r.beatId,14), repaired: !!r.repaired,
-                        do: (Array.isArray(r.do) ? r.do : []).slice(0, 10)
+                        once: r.once !== false, fired: false, cd: 0,
+                        do: (Array.isArray(r.do) ? r.do : []).slice(0, 6)
                     };
                     S.rules.push(rule); if (rule.once) S.onceTotal++
                 }
@@ -1548,7 +1373,7 @@
                 if (lm) { S.navRef = 'landmark:' + lm.id; return }
             },
             setObjective(txt, nav) {
-                if (txt) { const c = UIK.card(); c.children[1].textContent = txt; S.objectiveText = sstr(txt, 90); S.lastObjectiveT = t; S.lastProgressT = t }
+                if (txt) { const c = UIK.card(); c.children[1].textContent = txt; S.objectiveText = sstr(txt, 90) }
                 // The arrow is part of the mission contract. If the Director updates text
                 // without nav, infer the intended target from current zones/NPCs/properties.
                 const guessed = (nav === undefined || nav === null || nav === '') ? S.guessNavRef(txt) : null;
@@ -1590,7 +1415,7 @@
                     if (r.once && r.fired) continue;
                     if (!r.once && t < r.cd) continue;
                     if (!r.fired && r.once) S.onceDone++;
-                    r.fired = true; r.cd = t + 3; did = true; S.lastProgressT = t; S.lastRuleKey = key;
+                    r.fired = true; r.cd = t + 3; did = true;
                     S.runActs(r.do);
                     if (state !== 'play') return true
                 }
@@ -1620,23 +1445,11 @@
                 S.setObjective('Follow the next lead before closing this job', 'zone:' + zid);
                 return true;
             },
-            repairAtTarget(key, id, nav) {
-                if (!M.cur || M.cur.verb !== 'scene') return false;
-                // First try a live rule that references the same target but used the wrong trigger spelling.
-                const allowed = key.startsWith('zone:') ? ['enter_zone','zone_stay','nav_arrived'] : key.startsWith('npc:') ? ['npc_near','nav_arrived'] : key.startsWith('vehicle:') ? ['in_vehicle','vehicle_near','nav_arrived'] : key.startsWith('pickup:') ? ['pickup_taken','nav_arrived'] : ['nav_arrived'];
-                const candidates = S.rules.filter(r => !r.fired && r.id===id && allowed.includes(r.when));
-                if (candidates.length) {
-                    const r=candidates[0];
-                    if(r.when==='zone_stay' && (S.zoneStay[id]||0)<(r.arg||1)) return false;
-                    if(r.once)S.onceDone++; r.fired=true; S.lastProgressT=t; S.runActs(r.do); return true
-                }
-                if (S.hasPendingHardRule()) { Msg.show('Objective reached — complete the highlighted action', 'waitact', 4); return false }
-                S.repairCount++;
-                if (S.repairCount <= 2) return S.extendScene('You reached the target. A witness points you toward the real handoff.');
-                const c=UIK.card(); c.children[1].textContent='The operation is secured. Leave the scene to close the chapter.';
-                return S.extendScene('The Director repairs a broken mission branch with a clear extraction objective.')
+            softArrival(key, id, nav) {
+                if (!M.cur || M.cur.verb !== 'scene' || S.hasPendingHardRule()) return false;
+                if (S.softSteps <= 0) return S.extendScene('You reached the place. Look deeper before calling it done.');
+                S.forceFinal = true; M.finish(true); return true;
             },
-            softArrival(key,id,nav){ return S.repairAtTarget(key,id,nav) },
             runActs(list) {
                 for (const a of list) {
                     if (!a || typeof a !== 'object') continue;
@@ -1669,10 +1482,6 @@
                             if (a.speed) n.speed = snum(a.speed, 30, 160, n.speed)
                         }
                     }
-                    else if (act === 'vehicle_behavior') {
-                        const v = traffic.find(v=>v.svid===a.id) || gangs.find(v=>v.svid===a.id) || (car&&car.svid===a.id?car:null);
-                        if(v){ v.aiMode=sstr(a.kind||a.mode,20); v.targetRef=sstr(a.target,28); v.cruise=snum(a.speed,30,520,v.cruise||150); if(Array.isArray(a.route))v.route=a.route.slice(0,8).map(q=>v.air?{x:px+snum(q&&q.dx,-1800,1800,0),y:py+snum(q&&q.dy,-1800,1800,0)}:snapRoad(px+snum(q&&q.dx,-1800,1800,0),py+snum(q&&q.dy,-1800,1800,0))); v.routeIndex=0; v.parked=false }
-                    }
                     else if (act === 'reward') { const v = Math.round(snum(a.amount, 5, 800, 50)); cash += v; Msg.show('+$' + v, 'rw', 0) }
                     else if (act === 'give') {
                         if (a.kind === 'ammo') ammo = Math.min(99, ammo + Math.round(snum(a.amount, 1, 60, 10)));
@@ -1704,15 +1513,9 @@
                 return ''
             },
             hasPendingHardRule() {
-                const key=S.navKey(), id=key.indexOf(':')>=0?key.split(':').slice(1).join(':'):'';
-                return S.rules.some(r => {
-                    if(r.fired)return false;
-                    if(r.when==='timer')return !!S.timers[r.id];
-                    if(['in_vehicle','pickup_taken','zone_stay'].includes(r.when))return r.id===id;
-                    if(r.when==='npc_dead') { const n=S.npcs.find(n=>n.id===r.id); return key.startsWith('npc:')&&r.id===id&&n&&n.role==='hostile' }
-                    if(r.when==='heat_at')return /escape|lose|heat|police|cop/i.test(S.objectiveText||'');
-                    return false
-                })
+                // If a live rule explicitly waits for a fight, vehicle entry, item pickup, timer, or hold-zone,
+                // do not auto-complete the scene just because the player reached the current arrow.
+                return S.rules.some(r => !r.fired && ['npc_dead', 'in_vehicle', 'pickup_taken', 'timer', 'zone_stay', 'heat_at', 'hearts_below'].includes(r.when))
             },
             hasLiveRule(when, id) {
                 return S.rules.some(r => !r.fired && r.when === when && (id == null || r.id === id))
@@ -1765,7 +1568,7 @@
             forceZoneArrival(id) {
                 if (!id) return false;
                 let did = false;
-                for (const r of S.rules) if (!r.fired && r.when === 'zone_stay' && r.id === id && (S.zoneStay[id]||0) >= (r.arg||1)) {
+                for (const r of S.rules) if (!r.fired && r.when === 'zone_stay' && r.id === id) {
                     r.fired = true; if (r.once) S.onceDone++;
                     S.runActs(r.do); did = true;
                     if (state !== 'play') return true
@@ -1798,7 +1601,9 @@
                         S.zoneIn[id] = 1;
                         if (S.forceZoneArrival(id)) return
                     }
-                    if (!fired) { S.repairAtTarget(key, id, nav); return }
+                    if (!fired && (key.startsWith('zone:') || key.startsWith('prop:') || key.startsWith('landmark:') || key.startsWith('lm:') || key.startsWith('block:'))) {
+                        S.softArrival(key, id, nav); return
+                    }
                 }
                 if (S.navTouchT > 3.2 && M.cur && M.cur.verb === 'scene' && !S.hasPendingHardRule()) {
                     S.softArrival(key, id, nav);
@@ -1841,7 +1646,6 @@
                     if (r.when === 'heat_at' && heat >= (r.arg || 5)) hit = true;
                     if (r.when === 'hearts_below' && hearts < (r.arg || 1)) hit = true;
                     if (r.when === 'npc_near') { const n = S.npcs.find(n => n.id === r.id); if (n && Math.hypot(n.x - px, n.y - py) < (r.arg || 60)) hit = true }
-                    if (r.when === 'vehicle_near') { const v=traffic.find(v=>v.svid===r.id)||gangs.find(v=>v.svid===r.id)||(car&&car.svid===r.id?car:null); if(v&&Math.hypot(v.x-px,v.y-py)<(r.arg||90))hit=true }
                     if (hit) { if (!r.fired && r.once) S.onceDone++; r.fired = true; S.runActs(r.do); if (state !== 'play') return }
                 }
                 for (const n of S.npcs) {
@@ -1880,12 +1684,6 @@
                 }
                 S.npcs = S.npcs.filter(n => !n.gone);
                 S.checkNavArrival(dt); if (state !== 'play') return;
-                if (M.cur && M.cur.verb==='scene' && t-S.lastProgressT>18) {
-                    S.ensureNav(); const nav=S.resolveNav();
-                    if (!nav) { const ref=S.makeObjectiveZone(S.objectiveText||'Find the next lead'); S.setObjective(S.objectiveText||'Find the next lead',ref) }
-                    else if (t-S.lastProgressT>30 && S.repairCount<3) { S.repairCount++; S.extendScene('The mission stalled, so a new verified lead has been marked.') }
-                    S.lastProgressT=t
-                }
                 S.bubbles = S.bubbles.filter(b => b.t > t)
             }
         };
@@ -2078,8 +1876,7 @@
                 const n2 = snum(op.n, 2, 6, 3), cc = LPAL[op.color] || '#e8e8ee';
                 for (let k2 = 0; k2 < n2; k2++) {
                     const s2 = snapRoad(px + ox + k2 * 84, py + oy);
-                    const kk=['car','sports','van','truck','taxi','limo','bus'].includes(op.kind)?op.kind:'car';
-                    traffic.push({ x: s2.x, y: s2.y, ang: 0, v: 96, hp: kk==='truck'||kk==='bus'?120:70, mhp: kk==='truck'||kk==='bus'?120:70, tm: 'brake', col: cc, parked: false, kind:kk })
+                    traffic.push({ x: s2.x, y: s2.y, ang: 0, v: 96, hp: 60, mhp: 60, tm: 'brake', col: cc, parked: false, kind: op.kind || 'car' })
                 }
             }
             else if (op.op === 'vehicle') S.spawnEnt({ type: 'vehicle', id: op.id, name: op.name, label: op.label, dx: op.dx, dy: op.dy, color: op.color, marked: !!op.marked, hostile: !!op.hostile, kind: op.kind });
@@ -2130,37 +1927,6 @@
                 else { g.push({ s: 'rect', x: 18, y: 30, w: 64, h: 48, w2 }); g.push({ s: 'poly', pts: [[14, 32], [50, 10], [86, 32]], w2 }); if (this.chance(.6)) g.push({ s: 'rect', x: 42, y: 52, w: 16, h: 26, f: 1 }) }
                 return g.slice(0, 16)
             },
-            blueprint(kind) {
-                const C={dark:'#252b2e',concrete:'#6b7375',light:'#e7ecef',grass:'#43593f',glass:'#34414a',gold:'#e2d36a',red:'#d34949'};
-                if(kind==='airport'||kind==='helipad') return [
-                    {kind:'rect',x:4,y:6,w:92,h:88,c:C.grass},{kind:'rect',x:10,y:12,w:80,h:78,c:C.concrete},
-                    {kind:'runway',x:50,y:54,w:82,h:17,angle:-24,c:C.dark,c2:'#bfc5b8'},
-                    {kind:'building',x:14,y:15,w:28,h:18,c:'#9ca4a6',c2:C.glass,rows:2,cols:4},
-                    {kind:'hangar',x:68,y:70,w:23,h:17,c:'#8c9496',c2:'#b6bec0'},
-                    {kind:'parking',x:12,y:42,w:25,h:17,c:'#596164',c2:'#d9d9d9',cols:4},
-                    {kind:'tower',x:82,y:18,r:6,h:10,c:'#c1c7c9',c2:'#39474f'},
-                    {kind:'plane',x:66,y:43,angle:28,c:C.light,c2:C.red},{kind:'plane',x:34,y:66,angle:-62,c:C.light,c2:C.red}
-                ];
-                if(kind==='whitehouse') return [
-                    {kind:'rect',x:12,y:30,w:76,h:44,c:'#e8e8e1'},{kind:'building',x:23,y:38,w:54,h:33,c:'#d6d7d2',c2:'#7690a0',rows:2,cols:6},
-                    {kind:'poly',pts:[[18,38],[50,17],[82,38]],c:'#f4f1df',stroke:true,w2:2},{kind:'fence',x:8,y:20,w:84,h:62,c:'#a8b0b6'},
-                    {kind:'road',x:50,y:88,w:70,h:8,c:'#373b3d',c2:'#e2d36a'}
-                ];
-                if(kind==='farm'||kind==='maze') return [
-                    {kind:'rect',x:4,y:4,w:92,h:92,c:'#273323'},{kind:'crop',x:50,y:50,w:78,h:72,rows:8,c:'#8a7b3e',w2:3},
-                    {kind:'building',x:70,y:68,w:20,h:18,c:'#7c5030',c2:'#d4a15d',rows:1,cols:2},{kind:'tree',x:20,y:22,r:7,c:'#2f4a33'},{kind:'tree',x:30,y:78,r:8,c:'#2f4a33'}
-                ];
-                if(kind==='tank'||kind==='motorpool') return [
-                    {kind:'rect',x:5,y:5,w:90,h:90,c:'#31352f'},{kind:'parking',x:8,y:10,w:84,h:80,c:'#41463f',c2:'#8a927f',cols:5},
-                    {kind:'tank',x:28,y:30,w:25,h:14,angle:12,c:'#6e7e52'},{kind:'tank',x:60,y:55,w:25,h:14,angle:-18,c:'#6e7e52'},
-                    {kind:'hangar',x:74,y:20,w:24,h:18,c:'#777d75',c2:'#9aa09a'}
-                ];
-                if(kind==='lab'||kind==='crystal') return [
-                    {kind:'rect',x:5,y:5,w:90,h:90,c:'#1c2630'},{kind:'building',x:14,y:14,w:72,h:72,c:'#263949',c2:'#60a5fa',rows:4,cols:4},
-                    {kind:'circle',x:50,y:50,r:16,c:'#67e8f9',a:.55},{kind:'line',x:18,y:82,x2:82,y2:18,c:'#a78bfa',w2:3}
-                ];
-                return null
-            },
             // ---- invent a block to expand the city (drawn fresh each time) ----
             invent() {
                 return this.inventFor({ outcomeHint: this.R(['witness', 'smuggling', 'safehouse', 'repair', 'memory']) })
@@ -2191,14 +1957,12 @@
                 const asProp = this.chance(.46);
                 const innerPal = ['#22252C', '#1C2230', '#273323', '#2A2418', '#262A33', '#101216', '#2D2434', '#20333A', '#D8C98A', '#1E2A22'];
                 const o = { op: asProp ? 'property' : 'landmark', id: 'lg' + (this.uid++), dx: p.dx, dy: p.dy, name, sign: this.sign(name), purpose: spec[1], style: 'custom', color: col, inner: this.R(innerPal) };
-                const bpKind = hint==='airport' ? 'airport' : hint==='authority' ? 'whitehouse' : hint==='farm' ? 'farm' : hint==='armor' ? 'motorpool' : hint==='lab' ? 'lab' : spec[2];
-                o.blueprint = this.blueprint(bpKind);
                 if (spec[3]) {
                     o.walk = true; o.ground = spec[4] || this.R(['grass', 'soil', 'sand', 'water', 'paving', 'asphalt']);
-                    if(!o.blueprint)o.glyph = this.glyph(spec[2] || (o.ground === 'water' || o.ground === 'soil' ? 'waves' : 'ring'));
+                    o.glyph = this.glyph(spec[2] || (o.ground === 'water' || o.ground === 'soil' ? 'waves' : 'ring'));
                 } else {
                     o.walk = false; o.roof = this.R(['blue', 'purple', 'green', 'orange', 'white', 'red', null]);
-                    if(!o.blueprint)o.glyph = this.glyph(spec[2] || this.R(['tower', 'dome', 'crystal', 'estate', 'campus', 'ring']));
+                    o.glyph = this.glyph(spec[2] || this.R(['tower', 'dome', 'crystal', 'estate', 'campus', 'ring']));
                 }
                 if (asProp) { o.price = 220 + (Math.random() * 1350 | 0); o.income = 12 + (Math.random() * 70 | 0); o.perk = this.R(['heal', 'ammo', 'garage', 'none', 'none']) }
                 return o
@@ -2212,7 +1976,7 @@
             // ---- compose one scripted scene, procedurally filled ----
             compose(step) {
                 const rew = 120 + chapterN * 25 + (Math.random() * 130 | 0);
-                const templates = step === 1 ? ['hook'] : step >= 5 ? ['finale', 'finale', 'hunt', 'airlift'] : ['escort', 'bomb', 'choice', 'stakeout', 'heist', 'deadline', 'hunt', 'tail', 'rescue', 'intercept', 'airlift'];
+                const templates = step === 1 ? ['hook'] : step >= 5 ? ['finale', 'finale', 'hunt'] : ['escort', 'bomb', 'choice', 'stakeout', 'heist', 'deadline', 'hunt'];
                 let kind = this.R(templates);
                 if (kind === this.lastKind && templates.length > 1) kind = this.R(templates.filter(k => k !== this.lastKind));
                 this.lastKind = kind;
@@ -2273,34 +2037,6 @@
                     const rules = [{ when: 'start', do: [{ act: 'timer', id: 'clk', seconds: t }, { act: 'objective', text: 'Deliver to ' + who + ' — ' + t + 's', nav: 'zone:' + z }] }, { when: 'enter_zone:' + z, do: [{ act: 'reward', amount: rew }, { act: 'banner', text: who + ' got the package on time.' }, { act: 'complete' }] }, { when: 'timer:clk', do: [{ act: 'fail', reason: 'the window closed' }] }];
                     return { banner: 'a clock just started somewhere with your name on it', mission: { title: 'Beat The Clock', briefing: who + ' needs this across town before the window shuts.', verb: 'scene', reward: rew, heatStart: 1 }, scene: { objective: 'Race to the drop', nav: 'zone:' + z, spawn, rules }, outcomeHint: 'delivered' };
                 }
-                if (kind === 'tail') {
-                    const mark=id(), end=id(), start=P(300,480), finish=P(950,1300), who=this.person();
-                    const spawn=[{type:'vehicle',id:mark,name:who+"'s Sedan",dx:start.dx,dy:start.dy,color:'blue',kind:'sports',behavior:{kind:'circle',speed:150}},{type:'zone',id:end,dx:finish.dx,dy:finish.dy,r:105,label:'HANDOFF',color:'orange'}];
-                    const rules=[
-                        {when:'nav_arrived:'+mark,do:[{act:'phone',from:'DISPATCH',text:'That is the car. Stay close and do not lose it.'},{act:'vehicle_behavior',id:mark,kind:'route',speed:185,route:[{dx:520,dy:120},{dx:760,dy:-300},{dx:finish.dx,dy:finish.dy}],},{act:'objective',text:'Tail the sedan to its handoff',nav:'zone:'+end}]},
-                        {when:'enter_zone:'+end,do:[{act:'spawn',type:'npc',id:'courier',name:who,dx:finish.dx+25,dy:finish.dy,color:'orange',role:'neutral',behavior:{kind:'guard'}},{act:'objective',text:'Confront '+who+' at the handoff',nav:'npc:courier'}]},
-                        {when:'npc_near:courier:60',do:[{act:'say',id:'courier',text:'You were not supposed to see this route.'},{act:'reward',amount:rew},{act:'complete',final:true}]}
-                    ];
-                    return {banner:'a moving target is carrying tonight’s secret',mission:{title:'The Long Tail',briefing:'Track '+who+"'s car to the handoff without losing the trail.",verb:'scene',reward:rew},scene:{objective:'Find the marked sedan',nav:'vehicle:'+mark,spawn,rules},outcomeHint:'smuggling'}
-                }
-                if (kind === 'rescue') {
-                    const who=this.person(), captive=id(), safe=id(), a=P(420,680), b=P(900,1250);
-                    const spawn=[{type:'npc',id:captive,name:who,dx:a.dx,dy:a.dy,color:'green',role:'friendly',hp:5,behavior:{kind:'guard'}},{type:'npc',id:'guard1',name:this.crew(),dx:a.dx+55,dy:a.dy+20,color:'red',role:'hostile',hp:4,behavior:{kind:'guard'}},{type:'zone',id:safe,dx:b.dx,dy:b.dy,r:100,label:'SAFE EXIT',color:'green'}];
-                    const rules=[{when:'npc_near:'+captive+':65',do:[{act:'say',id:captive,text:'Get me out before the guard calls backup.'},{act:'behavior',id:captive,kind:'follow_player',role:'friendly',speed:92},{act:'objective',text:'Escort '+who+' to the safe exit',nav:'zone:'+safe}]},{when:'enter_zone:'+safe,do:[{act:'banner',text:who+' is out. The rescue changes the balance of the district.'},{act:'reward',amount:rew},{act:'complete',final:true}]},{when:'npc_dead:'+captive,do:[{act:'fail',reason:who+' did not survive'}]}];
-                    return {banner:'someone alive is worth more than the money tonight',mission:{title:'Bring Them Home',briefing:'Reach '+who+', break the guard line, and escort them out.',verb:'scene',reward:rew},scene:{objective:'Reach '+who,nav:'npc:'+captive,spawn,rules},outcomeHint:'protected'}
-                }
-                if (kind === 'intercept') {
-                    const v=id(), p=P(520,820);
-                    const spawn=[{type:'vehicle',id:v,name:'Iron Courier',dx:p.dx,dy:p.dy,color:'red',kind:'armored',hostile:true,behavior:{kind:'chase_player',speed:220}}];
-                    const rules=[{when:'start',do:[{act:'phone',from:'WATCHER',text:'The armored courier is moving. Disable it before it leaves the district.'}]},{when:'vehicle_destroyed:'+v,do:[{act:'banner',text:'The courier is stopped. Its cargo becomes tomorrow’s problem.'},{act:'reward',amount:rew},{act:'complete',final:true}]}];
-                    return {banner:'an armored courier has crossed the wrong block',mission:{title:'Steel Intercept',briefing:'Stop the moving armored courier and survive the response.',verb:'scene',reward:rew,heatStart:2},scene:{objective:'Intercept the armored courier',nav:'vehicle:'+v,spawn,rules},outcomeHint:'armor'}
-                }
-                if (kind === 'airlift') {
-                    const craft=id(), pad=id(), a=P(260,430), b=P(1100,1500);
-                    const spawn=[{type:'vehicle',id:craft,name:'Courier Rotor',dx:a.dx,dy:a.dy,color:'white',kind:'helicopter',marked:true,parked:true},{type:'zone',id:pad,dx:b.dx,dy:b.dy,r:115,label:'LANDING PAD',color:'blue'}];
-                    const rules=[{when:'in_vehicle:'+craft,do:[{act:'phone',from:'TOWER',text:'Rotor clearance granted. Take the package above the blocks.'},{act:'objective',text:'Fly the helicopter to the landing pad',nav:'zone:'+pad}]},{when:'enter_zone:'+pad,do:[{act:'banner',text:'The air corridor is open. Blocktown just became larger.'},{act:'reward',amount:rew+120},{act:'complete',final:true}]},{when:'vehicle_destroyed:'+craft,do:[{act:'fail',reason:'the aircraft was lost'}]}];
-                    return {banner:'the city has a roofline, and tonight it matters',mission:{title:'Above The Blocks',briefing:'Take the courier helicopter across the city and reach the landing pad.',verb:'scene',reward:rew+120},scene:{objective:'Board the courier helicopter',nav:'vehicle:'+craft,spawn,rules},outcomeHint:'airport'}
-                }
                 // finale / hunt — a boss and their crew
                 const boss = this.person(), crew = this.crew();
                 const bp = P(500, 760), m1 = P(300, 520), m2 = P(300, 520);
@@ -2327,9 +2063,9 @@
                 // Buildings are permanent city consequences, not disposable scenery. Add them only when a chapter needs one.
                 const shouldBuild = chapterN < 1 || step === 1 || step === 3 || step >= 5 || this.chance(.28);
                 if (shouldBuild) world.push(this.inventFor(built));
-                if ((step >= 5 || this.chance(.12)) && landmarks.length + props.length < 36) world.push(this.inventFor({ outcomeHint: this.R(['authority', 'armor', 'farm', 'lab', 'airport']) }));
+                if ((step >= 5 || this.chance(.12)) && landmarks.length + props.length < 10) world.push(this.inventFor({ outcomeHint: this.R(['authority', 'armor', 'farm', 'lab', 'airport']) }));
                 if (this.chance(.35)) {
-                    const vp = this.pos(280, 760), kind = this.R(['sports','van','armored','bike','tank','car','truck','taxi','helicopter','drone']);
+                    const vp = this.pos(280, 760), kind = this.R(['sports', 'van', 'armored', 'bike', 'tank', 'car']);
                     world.push({ op: 'vehicle', id: 'veh' + (this.uid++), dx: vp.dx, dy: vp.dy, kind, color: this.R(['gold', 'blue', 'green', 'orange', 'white', 'purple', 'red']), marked: this.chance(.45), hostile: false, name: kind.toUpperCase() + ' PROTOTYPE' });
                 }
                 if (this.chance(.26)) world.push({ op: 'weather', kind: this.R(['night', 'rain', 'clear', 'fog']) });
@@ -2394,49 +2130,33 @@
                     'SCENE spawn entities (positions {dx,dy} = px offsets from player, +-1600, snapped to roads; colors C = gold|pink|blue|green|red|white|orange|purple):',
                     ' {"type":"zone","id","dx","dy","r":40-220,"label":str12,"visible":bool,"color":C}',
                     ' {"type":"npc","id","name":str12,"dx","dy","color":C,"role":"friendly|hostile|neutral","hp":1-14,"speed":30-160,"behavior":{"kind":"wander|follow_player|flee_player|chase_player|goto|guard","dx","dy"}}',
-                    ' {"type":"vehicle","id","dx","dy","color":C,"kind":"car|sports|van|tank|bike|armored|bus|truck|taxi|limo|police|plane|helicopter|drone|boat","marked":bool,"hostile":bool,"name":str16} | {"type":"pickup","id","kind":"heart|ammo|cash|item","label","dx","dy"}',
+                    ' {"type":"vehicle","id","dx","dy","color":C,"kind":"car|sports|van|tank|bike|armored|bus","marked":bool,"hostile":bool,"name":str16} | {"type":"pickup","id","kind":"heart|ammo|cash|item","label","dx","dy"}',
                     'RULE 4 - THE CITY IS YOUR CANVAS (INVENT BLOCKS): You CAN invent buildings, parks, and special areas using `style:"custom"`, but only when the current chapter needs that block. Prefer fewer, memorable, reusable places over random new buildings. EVERY building needs purpose/why: why this block exists in the story, what current or future mission it supports. {"type":"landmark","id","dx","dy","name":str18,"sign":str16,"purpose":str90,"style":"custom","walk":true|false,"blocker":true|false,"ground":"grass|soil|sand|paving|asphalt|water|gold","inner":"#RRGGBB"|C,"roof":"#RRGGBB"|C,"color":C,"glyph":G}. Walkable customs paint your glyph across the WHOLE block (use this to draw farms, checkpoints, parks, mazes). Solid customs are buildings whose roof you draw.',
                     'GLYPH G = Your vector art tool for the inner 170x170 component area. DO NOT rely on presets. Export custom shapes as max 20-item JSON array in a 0-100 viewbox: [{"s":"rect","x","y","w","h"}|{"s":"circle","x","y","r"}|{"s":"ellipse","x","y","rx","ry"}|{"s":"line","x1","y1","x2","y2"}|{"s":"poly","pts":[[x,y],...]}]. Options: {"f":1 filled,"d":1 dashed,"w2":2-8 stroke width,"c":"#RRGGBB" or color name,"a":0.1-1}. INVENT components: crop rows, parking stalls, military base, mansion floorplan, White-House roof, helipad, market tents, maze, dock, bunker, lab table, barricade. The rest of the 260x260 block is road; only draw/design inside this component area.',
-                    'RULES (max 14: {"when":TRIGGER,"once":bool,"do":[max 6 ACTIONS]}). TRIGGERS: start | enter_zone:ID | exit_zone:ID | zone_stay:ID:SECS | npc_dead:ID | npc_reached:ID | npc_near:ID:DIST | vehicle_destroyed:ID | vehicle_reached:ID | vehicle_near:ID:DIST | in_vehicle:ID | pickup_taken:ID | nav_arrived:ID | timer:ID | heat_zero | heat_at:N | hearts_below:N | bought:PROPID.',
-                    'ACTIONS: {"act":"say","id":npc,"text"} | {"act":"phone","from","text"} | {"act":"objective","text","nav":"zone:ID"|"npc:ID"|"vehicle:ID"|"prop:ID"|"landmark:ID"} | {"act":"spawn",...entity} | {"act":"despawn","id"} | {"act":"behavior","id","kind","role","speed"} | {"act":"vehicle_behavior","id","kind","target","speed","route"} | {"act":"reward","amount"} | {"act":"give","kind":"ammo|heart|cash","amount"} | {"act":"heat","set":0-5} | {"act":"timer","id","seconds"} | {"act":"explode","id"} | {"act":"complete"} | {"act":"fail","reason"} | {"act":"banner","text"} | {"act":"shake"} | any WORLD OP as {"act":OP,...}.',
+                    'RULES (max 14: {"when":TRIGGER,"once":bool,"do":[max 6 ACTIONS]}). TRIGGERS: start | enter_zone:ID | exit_zone:ID | zone_stay:ID:SECS | npc_dead:ID | npc_reached:ID | npc_near:ID:DIST | vehicle_destroyed:ID | in_vehicle:ID | pickup_taken:ID | nav_arrived:ID | timer:ID | heat_zero | heat_at:N | hearts_below:N | bought:PROPID.',
+                    'ACTIONS: {"act":"say","id":npc,"text"} | {"act":"phone","from","text"} | {"act":"objective","text","nav":"zone:ID"|"npc:ID"|"vehicle:ID"|"prop:ID"|"landmark:ID"} | {"act":"spawn",...entity} | {"act":"despawn","id"} | {"act":"behavior","id","kind",..,"role","speed"} | {"act":"reward","amount"} | {"act":"give","kind":"ammo|heart|cash","amount"} | {"act":"heat","set":0-5} | {"act":"timer","id","seconds"} | {"act":"explode","id"} | {"act":"complete"} | {"act":"fail","reason"} | {"act":"banner","text"} | {"act":"shake"} | any WORLD OP as {"act":OP,...}.',
                     'MISSION DESIGN: Craft scenes, not chores. NEVER end a mission immediately on the first circle unless it is explicitly the final beat. Each mission needs 2-4 playable beats: arrive -> dialogue/discovery -> complication/choice/chase/fight/infiltration -> success/fail ending. Any ring/zone objective must trigger with enter_zone as soon as the player touches the circle; do not require exact center standing. When the first zone is reached, use say/phone/banner/objective with a new nav to send the player to the next target, spawn an NPC/vehicle, start a timer, or reveal a choice. Only use complete after the player has done a meaningful second action. Use named NPCs with motives, purposeful vehicles, crowds, traffic, and buildings. Make the player do grounded real-world actions: meet, escort, steal a vehicle, tail a car, survive an ambush, deliver goods, buy/visit a property, protect an NPC, dump evidence, raid a depot, negotiate, infiltrate, investigate, smuggle, rescue, or choose between routes. Outside active missions, you may still evolve the city with small believable world ops/properties/crowds that seed future missions.',
                     'MISSION ROBUSTNESS: every mission must handle normal player chaos. Add branches for npc_dead for important NPCs, vehicle_destroyed for important vehicles, timer failure if a timer exists, and at least one valid success ending. If an objective says enter/reach a zone, include enter_zone:ID that clearly advances the story. If an objective says talk to a person, use npc_near:ID or nav_arrived:ID plus dialogue and a next objective. Never point the arrow at a decorative NPC when the text names a place. Reuse permanent locations when possible; create a new block only when it has a future purpose in the arc.',
-                    'WORLD OPS (max 8): earthquake | eclipse | nuke{dx,dy} | zombies | airdrop | lockdown | ambush{dx,dy,n} | gang{dx,dy} | crowd{dx,dy,n} | pickup{kind,dx,dy} | weather{kind:"clear|rain|night|fog"} | traffic{n} | landmark | property | vehicle{kind:"car|sports|van|tank|bike|armored|bus|truck|taxi|limo|police|plane|helicopter|drone|boat",dx,dy,color,marked,hostile,name} | mood{traffic:0-14,peds:0-24} | calm | panic{dx,dy,r} | possess{name,text,dx,dy} | convoy{dx,dy,n,color,kind}.',
+                    'WORLD OPS (max 8): earthquake | eclipse | nuke{dx,dy} | zombies | airdrop | lockdown | ambush{dx,dy,n} | gang{dx,dy} | crowd{dx,dy,n} | pickup{kind,dx,dy} | weather{kind:"clear|rain|night|fog"} | traffic{n} | landmark | property | vehicle{kind:"car|sports|van|tank|bike|armored|bus",dx,dy,color,marked,hostile,name} | mood{traffic:0-14,peds:0-24} | calm | panic{dx,dy,r} | possess{name,text,dx,dy} | convoy{dx,dy,n,color,kind}.',
                     'INVENTION RULE: invent whatever the current story needs: farm, lab, shrine, checkpoint, prison, radio tower, flooded dock, clinic, roadblock, arena, market, scrapyard, safehouse, embassy, courthouse, mansion, bunker, motor pool, civic landmark, fake White House, ferry terminal, casino, school, warehouse, or secret base. Create it as custom landmark/property with purpose and glyph, then make the current or future mission interact with it via nav/rules. Plan the city like a living block-based world: solid blocks, walkable blocks, commerce, hazards, parking, roads, NPCs, and traffic must all have a reason.',
                     'ECONOMY: dying costs $200. SHOP: 0-3 practical items only [{"label":str20,"cost":n,"id":"bribe|heal|ammo"}]. No magic powers, no god items, no fake body resources.',
                     'UI (max 2 panels): these are merged into one bottom-left MISSION TRACKER below chat. Only show mission-relevant facts. Do NOT invent fake inventory/body stats/resources like lungs, antidotes, blood, vials, organs, meters, or currencies. Use binds from ' + JSON.stringify(BINDS_OK) + ' for stats/bars, or short objective text only.',
-                    'CITY-SCRIPT COMPILER: Prefer scene.beats over hand-wired rules. beats is 2-6 ordered playable beats: [{"id":str14,"objective":str70,"nav":REF,"trigger":optional TRIGGER,"actions":[ACTIONS],"final":bool}]. The engine compiles beats into safe rules and repairs missing branches. Beat 1 must be an actual interaction, beat 2 must change the situation, final beat must visibly resolve success or failure. Never create a mission with only one arrival.',
-                    'BLOCK BLUEPRINTS: A custom landmark may include blueprint:[max40 primitives] in the 0-100 inner-block coordinate system. Primitive kinds: rect,roundRect,line,circle,ellipse,poly,road,runway,parking,building,hangar,tower,tree,plane,helipad,crop,water,fence,tent,container,tank,car,label. Common fields x,y,w,h,r,rx,ry,x2,y2,angle,c,c2,a,fill,stroke,w2,text,rows,cols,pts. Airport example: [{kind:"rect",x:5,y:5,w:90,h:90,c:"#43593f"},{kind:"runway",x:50,y:55,w:82,h:18,angle:-24,c:"#252b2e"},{kind:"building",x:12,y:12,w:28,h:18,c:"#9ca4a6"},{kind:"hangar",x:70,y:72,w:22,h:16,c:"#8c9496"},{kind:"plane",x:66,y:44,angle:28,c:"#e7ecef"}]. Use the same system to invent any component without raw HTML.',
-                    'VEHICLE INTELLIGENCE: vehicle kinds also include truck,taxi,limo,police,plane,helicopter,drone,boat. A vehicle can have behavior:{kind:"follow_player|flee_player|chase_player|route|circle|park",target:REF,speed:n,route:[{dx,dy}],loop:bool}. Use vehicle_behavior actions to change it mid-mission. You may create tailing, interception, convoy, aerial escape, escort, surveillance, roadblock, or pursuit missions.',
-                    'DIRECTOR QUALITY GATE: every objective text and arrow must name the same target; every target must exist; every target arrival must have a trigger; every important NPC/vehicle must have death/destruction handling; every timer must have timeout handling; every mission needs 2-6 playable beats and a clear ending. Reuse meaningful permanent blocks. World changes outside missions should seed future story, not random noise.',
-                    'RESPOND ONLY MINIFIED JSON: {"memory":str900,"banner":str90,"mission":{"title":str26,"briefing":str140,"verb":"scene","reward":50-2000,"timeLimit":0|20-180,"heatStart":1-5},"scene":{"objective":str70,"nav":REF,"spawn":[entities],"beats":[beats],"rules":[optional legacy rules]},"world":[ops],"shop":[items],"ui":[panels]}',
-                    'STATE: ' + JSON.stringify({ cash, hearts, maxHearts, heat, ammo, inCar: !onFoot, currentVehicle:car&&car.kind, weather, chapter: chapterN, minutes: Math.round(playMin), objective:S.objectiveText||'', nav:S.navRef||null, ownedProps: owned, forSale, city: landmarks.slice(0, 24).map(l => ({name:l.name,style:l.style,purpose:l.purpose})), activeNPCs:S.npcs.map(n=>({id:n.id,name:n.name,role:n.role})), activeVehicles:traffic.filter(v=>v.svid).map(v=>({id:v.svid,name:v.label,kind:v.kind,mode:v.aiMode})), pastMissions: M.hist || [], sessionSaved: store.ok }),
+                    'RESPOND ONLY MINIFIED JSON: {"memory":str900,"banner":str90,"mission":{"title":str26,"briefing":str140,"verb":"scene","waypoints":[{"dx","dy","label"}],"reward":50-2000,"timeLimit":0|20-180,"heatStart":1-5},"scene":{"objective":str60,"nav":REF,"spawn":[entities],"rules":[rules]},"world":[ops],"shop":[items],"ui":[panels]}',
+                    'STATE: ' + JSON.stringify({ cash, hearts, maxHearts, heat, ammo, inCar: !onFoot, weather, chapter: chapterN, minutes: Math.round(playMin), ownedProps: owned, forSale, city: landmarks.slice(0, 12).map(l => l.name + '(' + l.style + ')'), pastMissions: M.hist || [], sessionSaved: store.ok }),
                     'MUSE (secret inspiration words for this saga): ' + muse.join(', '),
                     'MEMORY: ' + (Director.memory || '(START OF A NEW ENDLESS SAGA. 1. Create a completely unique premise from your MUSE words. 2. Write a 5-mission Outline [M1..M5]. 3. Track Current Step: 1. 4. Spawn a unique custom building with a custom glyph array right now to serve as the narrative backdrop.)'),
                     'LAST MISSION RESULT: ' + (M.result || '(none yet)'),
                     'RECENT EVENTS: ' + (events.join(' | ') || '(quiet)')
                 ].join('\n')
             },
-            validate(raw) {
-                raw = raw && typeof raw === 'object' ? raw : {};
-                if (raw.mission && raw.mission.verb === 'scene') {
-                    raw.scene = SceneCompiler.compile(raw.scene || {});
-                    const sc=raw.scene, refs=[]; if(sc.nav)refs.push(String(sc.nav));
-                    for(const r of sc.rules||[])for(const a of r.do||[])if(a&&a.act==='objective'&&a.nav)refs.push(String(a.nav));
-                    if(!sc.objective)sc.objective='Follow the marked lead';
-                    if(!sc.nav&&sc.spawn&&sc.spawn.length){const e=sc.spawn.find(e=>e&&e.id&&['zone','npc','vehicle','pickup','landmark','property'].includes(e.type));if(e)sc.nav=(e.type==='landmark'?'landmark':e.type==='property'?'prop':e.type)+':'+e.id}
-                }
-                return raw
-            },
             apply(raw) {
                 try {
-                    raw = Director.validate(raw);
                     Director.memory = sstr(raw.memory, 900) || Director.memory;
                     if (raw.banner) UIK.feed(sstr(raw.banner, 90), 'GOD');
 
                     renderShop(raw.shop);
 
-                    for (const op of (Array.isArray(raw.world) ? raw.world : []).slice(0, 8)) applyOp(op);
+                    for (const op of (Array.isArray(raw.world) ? raw.world : []).slice(0, 6)) applyOp(op);
                     const rm = raw.mission;
                     if (rm && typeof rm === 'object' && !M.cur) {
                         let verb = ['goto', 'deliver', 'race', 'taxi', 'jack', 'evade', 'hunt', 'hit', 'scene'].includes(rm.verb) ? rm.verb : 'goto';
@@ -2464,24 +2184,6 @@
             }
         };
 
-        const WorldBrain = {
-            ambientT: 18, idleT: 0, hintT: 0,
-            reset(){this.ambientT=14+Math.random()*12;this.idleT=0;this.hintT=0},
-            pulse(){
-                if(state!=='play')return;
-                const lm=(landmarks.concat(props))[Math.random()*(landmarks.length+props.length)|0];
-                if(lm && Math.random()<.55){const c=blockCenter(lm.bi,lm.bj);for(let i=0;i<2+(Math.random()*4|0)&&peds.length<pedTarget+5;i++)peds.push({x:c.x+(Math.random()-.5)*110,y:c.y+(Math.random()-.5)*110,a:Math.random()*7,speed:14+Math.random()*20,pause:Math.random()*2,homeX:c.x,homeY:c.y,col:['#e0c9a6','#b6c9d6','#d6b6c9','#c9d6b6'][Math.random()*4|0]})}
-                else if(Math.random()<.45) applyOp({op:'convoy',dx:500,dy:0,n:2+(Math.random()*3|0),color:['white','blue','orange'][Math.random()*3|0],kind:Math.random()<.2?'truck':'car'});
-                if(Math.random()<.18) weather=['clear','rain','fog','night'][Math.random()*4|0]
-            },
-            update(dt){
-                if(state!=='play')return; this.ambientT-=dt;
-                if(!M.cur){this.idleT+=dt;if(this.idleT>2.5&&!Director.busy){this.idleT=0;Director.plan(20)}}else this.idleT=0;
-                if(this.ambientT<=0){this.ambientT=24+Math.random()*24;this.pulse()}
-                if(M.cur&&M.cur.verb==='scene'&&t-S.lastProgressT>12&&t-this.hintT>10){this.hintT=t;const nav=M.navTarget();if(nav)Msg.show('Follow the green arrow — '+Math.max(1,Math.round(Math.hypot(nav.x-px,nav.y-py)/10))+'m','brainhint',7);else S.ensureNav()}
-            }
-        };
-
         /* ================= GAME FLOW ================= */
         function reset() {
             cash = 0; heat = 0; coolT = 0; onFoot = true; car = null; hearts = 3; maxHearts = 3; invT = 0; godT = 0; grabT = 0; stuckT = 0; ammo = 10;
@@ -2489,7 +2191,7 @@
             peds = []; traffic = []; cops = []; gangs = []; gangsters = []; bullets = []; pickups = []; parts = []; rings = []; wrecks = [];
             takenLots = {}; copSpawnT = 0; pickupT = 12; targetPed = null; M.cur = null; trafficTarget = 6;
             events = []; Director.memory = ''; $('shop-panel').style.display = 'none';
-            props = []; landmarks = []; tileOv = {}; lmIdx = {}; chapterN = 0; playMin = 0; S.clear(); skids = []; muse = pickMuse(); pedTarget = 13; LG.reset(); WorldBrain.reset();
+            props = []; landmarks = []; tileOv = {}; lmIdx = {}; chapterN = 0; playMin = 0; S.clear(); skids = []; muse = pickMuse(); pedTarget = 13; LG.reset();
             lookX = 0; lookY = 0; curProp = null; if (buyNode) { buyNode.remove && buyNode.remove(); buyNode = null }
         }
 
@@ -2642,7 +2344,6 @@
         function action() {
             if (state !== 'play') return;
             if (!onFoot) {
-                if (car && car.air && ((car.alt||0)>.22 || Math.abs(car.v)>45)) { Msg.show('slow down and land before exiting', 'landfirst', 2); return }
                 const cands = [[0, 36], [0, -36], [40, 0], [-40, 0], [32, 32], [-32, 32], [32, -32], [-32, -32]];
                 let spot = null;
                 for (const s of cands) {
@@ -2659,7 +2360,7 @@
             if (bestC) {
                 traffic.splice(traffic.indexOf(bestC), 1);
                 if (!bestC.parked) { bump(1); logEvent('player carjacked a moving car'); Msg.show('★ CARJACKING — police en route', 'cj') }
-                car = bestC; car.v = 0; car.hp = car.hp == null ? 100 : car.hp; car.mhp = car.mhp || 100; car.air = !!car.air || ['plane','helicopter','drone'].includes(car.kind); car.alt = car.alt || 0; onFoot = false; grabT = 0;
+                car = bestC; car.v = 0; car.hp = car.hp == null ? 100 : car.hp; car.mhp = 100; onFoot = false; grabT = 0;
                 if (car.mkey) logEvent('player stole the marked car')
             }
             else Msg.show('no car in reach', 'nocar', 2)
@@ -2718,9 +2419,9 @@
             const dir = lane < RW / 2 ? 1 : -1;
             const nightBoost = weather === 'night' || weather === 'rain';
             const roll = Math.random();
-            const kind = roll < .05 ? 'bike' : roll < .14 ? 'van' : roll < .19 ? 'bus' : roll < .24 ? 'truck' : roll < .36 ? 'sports' : roll < .50 ? 'taxi' : roll < .54 ? 'limo' : 'car';
-            const baseSpeed = kind === 'bike' ? 150 : kind === 'sports' ? 166 : kind === 'bus' || kind==='truck' ? 82 : kind === 'van' ? 104 : kind === 'taxi' ? 132 : kind==='limo'?112:116;
-            const mhp = kind === 'bike' ? 38 : kind === 'bus' || kind==='truck' ? 130 : kind === 'van' ? 94 : kind === 'sports' ? 65 : kind === 'taxi' ? 70 : kind==='limo'?86:62;
+            const kind = roll < .06 ? 'bike' : roll < .18 ? 'van' : roll < .23 ? 'bus' : roll < .35 ? 'sports' : roll < .46 ? 'taxi' : 'car';
+            const baseSpeed = kind === 'bike' ? 150 : kind === 'sports' ? 166 : kind === 'bus' ? 82 : kind === 'van' ? 104 : kind === 'taxi' ? 132 : 116;
+            const mhp = kind === 'bike' ? 38 : kind === 'bus' ? 130 : kind === 'van' ? 94 : kind === 'sports' ? 65 : kind === 'taxi' ? 70 : 62;
             traffic.push({
                 x: p.x, y: p.y, ang: p.axis === 'v' ? (dir > 0 ? PI / 2 : -PI / 2) : (dir > 0 ? 0 : PI),
                 v: baseSpeed * (.78 + Math.random() * .30) * (nightBoost ? .9 : 1), hp: mhp, mhp,
@@ -2750,7 +2451,7 @@
             for (let i = 0; i < n && peds.length < pedTarget + 3; i++) {
                 peds.push({
                     x: p.x + (Math.random() * 18 - 9), y: p.y + (Math.random() * 18 - 9),
-                    a: p.axis==='v' ? (Math.random()<.5?PI/2:-PI/2) : (Math.random()<.5?0:PI), axis:p.axis, dir:Math.random()<.5?1:-1, speed: 16 + Math.random() * 22,
+                    a: Math.random() * 6.283, speed: 12 + Math.random() * 26,
                     pause: Math.random() * 2.5, homeX: p.x, homeY: p.y,
                     col: ['#e0c9a6', '#b6c9d6', '#d6b6c9', '#c9d6b6', '#f5d0fe', '#bfdbfe'][Math.random() * 6 | 0]
                 })
@@ -2847,34 +2548,6 @@
             }
         }
 
-        function entityByRef(ref) {
-            ref=String(ref||''); const ix=ref.indexOf(':'), k=ix>0?ref.slice(0,ix):'', id=ix>0?ref.slice(ix+1):ref;
-            if(k==='npc')return S.npcs.find(n=>n.id===id); if(k==='zone')return S.zones.find(z=>z.id===id);
-            if(k==='vehicle')return traffic.find(v=>v.svid===id)||gangs.find(v=>v.svid===id)||(car&&car.svid===id?car:null);
-            if(k==='prop'){const q=props.find(p=>p.id===id);return q&&blockCenter(q.bi,q.bj)}
-            if(k==='landmark'||k==='block'||k==='lm'){const q=landmarks.find(p=>p.id===id)||props.find(p=>p.id===id);return q&&blockCenter(q.bi,q.bj)}
-            return null
-        }
-        function updateVehicleBrain(c,dt) {
-            if(!c||!c.aiMode)return false;
-            let target=null;
-            if(c.aiMode==='follow_player'||c.aiMode==='chase_player'||c.aiMode==='flee_player')target={x:px,y:py};
-            else if(c.targetRef)target=entityByRef(c.targetRef);
-            else if(c.route&&c.route.length)target=c.route[c.routeIndex||0];
-            if(c.aiMode==='circle'){const a=t*.35+(c.routeIndex||0);target={x:px+Math.cos(a)*260,y:py+Math.sin(a)*260}}
-            if(!target)return false;
-            const dx=target.x-c.x,dy=target.y-c.y,dd=Math.hypot(dx,dy)||1;
-            let want=Math.atan2(dy,dx); if(c.aiMode==='flee_player')want+=PI;
-            c.ang+=cl(na(want-c.ang))*dt*(c.air?1.5:2.2);
-            c.desiredV=(c.cruise||150)*(c.aiMode==='flee_player'?1.2:1);
-            if(c.route&&c.route.length&&dd<(c.air?70:48)){
-                c.routeIndex=(c.routeIndex||0)+1;
-                if(c.routeIndex>=c.route.length){if(c.loop)c.routeIndex=0;else{c.aiMode='park';c.desiredV=0;c.parked=true; if(c.svid)S.fire('vehicle_reached:'+c.svid)}}
-            }
-            if(c.air){c.alt=Math.min(1,(c.alt||0)+dt*.35);c.v+=(c.desiredV-c.v)*dt*1.2;c.x+=Math.cos(c.ang)*c.v*dt;c.y+=Math.sin(c.ang)*c.v*dt;return true}
-            return false
-        }
-
         function update(dt) {
             const k = kbSteer(), kbActive = k.up || k.down || k.left || k.right;
             lookX *= Math.pow(.03, dt); lookY *= Math.pow(.03, dt);
@@ -2924,21 +2597,17 @@
                     }
                     else car.v *= Math.pow(.2, dt)
                 }
-                const vmax = car.air ? (car.kind==='plane'?520:car.kind==='helicopter'?300:240) : 340;
-                car.v = Math.max(car.air?-40:-140, Math.min(vmax, car.v));
+                car.v = Math.max(-140, Math.min(340, car.v));
 
-                const speed0 = car.v; let hardHit = false;
-                if (car.air) {
-                    car.alt = Math.max(0, Math.min(1, (car.alt||0) + (Math.abs(car.v)>55?dt*.45:-dt*.35)));
-                    car.x += Math.cos(car.ang)*car.v*dt; car.y += Math.sin(car.ang)*car.v*dt;
-                } else hardHit = slideCar(car, dt);
+                const speed0 = car.v;
+                const hardHit = slideCar(car, dt);
 
                 if (hardHit && Math.abs(speed0) > 170) {
                     car.hp -= (Math.abs(speed0) - 150) / 9; boom(car.x, car.y, 3); shake = Math.max(shake, 4);
                     if (Math.abs(speed0) > 285) hurtHeart(-Math.cos(car.ang) * .6, -Math.sin(car.ang) * .6, 'brutal crash');
                 }
 
-                if (!car.air && !clearAt(car.x, car.y, 10)) { const f = findFree(car.x, car.y, 14); car.x = f.x; car.y = f.y; car.v = 0 }
+                if (!clearAt(car.x, car.y, 10)) { const f = findFree(car.x, car.y, 14); car.x = f.x; car.y = f.y; car.v = 0 }
                 px = car.x; py = car.y; facing = car.ang;
                 const zt = 1 - Math.min(.12, Math.abs(car.v) / 2800); // gentle zoom-out at speed
                 zoomF += (zt - zoomF) * Math.min(1, dt * 2.2); Z = baseZ * zoomF;
@@ -2958,7 +2627,7 @@
             lastPX = px; lastPY = py;
             M.update(dt); if (state !== 'play') return;
             S.update(dt); if (state !== 'play') return;
-            econTick(dt); playMin += dt / 60; WorldBrain.update(dt);
+            econTick(dt); playMin += dt / 60;
 
             /* bullets */
             for (const b of bullets) {
@@ -3032,10 +2701,8 @@
             for (const p of peds) {
                 p.pause = Math.max(0, (p.pause || 0) - dt);
                 if (p.pause <= 0 && Math.random() < .006) p.pause = .8 + Math.random() * 2.4;
-                if (Math.random()<dt*.18) p.a += (Math.random()-.5)*.35;
+                p.a += (Math.random() - .5) * dt * 2.4;
                 let vx = p.pause > 0 ? 0 : Math.cos(p.a) * (p.speed || 22), vy = p.pause > 0 ? 0 : Math.sin(p.a) * (p.speed || 22);
-                const rx=mod(p.x,T), ry=mod(p.y,T), atCorner=rx<RW+8&&ry<RW+8;
-                if(atCorner && Math.random()<dt*.9){ if(p.axis==='v'){p.axis='h';p.a=Math.random()<.5?0:PI}else{p.axis='v';p.a=Math.random()<.5?PI/2:-PI/2} }
                 if (p.homeX !== undefined) {
                     const hx = p.homeX - p.x, hy = p.homeY - p.y, hd = Math.hypot(hx, hy);
                     if (hd > 80) { vx += hx / hd * 28; vy += hy / hd * 28 }
@@ -3058,11 +2725,10 @@
             const wf = weather === 'rain' ? .78 : weather === 'fog' ? .85 : 1;
             for (const c of traffic) {
                 if (c.parked) continue;
-                if (updateVehicleBrain(c,dt)) continue;
                 const pd = Math.hypot(c.x - px, c.y - py);
                 const threat = !onFoot && Math.abs(car.v) > 110 && pd < 160;
                 const panicked = threat || heat >= 3 && pd < 200;
-                let vt = c.desiredV || 118 * wf;
+                let vt = 118 * wf;
                 if (panicked) vt = c.tm === 'flee' ? 238 : 6;
                 c.v += (vt - c.v) * dt * (panicked ? 4 : 1.2);
                 if (panicked && c.tm === 'brake' && pd > 1) { c.x += (c.x - px) / pd * 26 * dt; c.y += (c.y - py) / pd * 26 * dt }
@@ -3147,7 +2813,6 @@
             /* gangs */
             for (const c of gangs) {
                 c.ramCd = Math.max(0, c.ramCd - dt);
-                if (updateVehicleBrain(c,dt)) continue;
 
                 const dx = px - c.x, dy = py - c.y, dd = Math.hypot(dx, dy) || 1;
                 c.ang += cl(na(Math.atan2(dy, dx) - c.ang)) * 2.5 * dt;
@@ -3412,7 +3077,7 @@
                     g.fillStyle = '#101216'; g.beginPath(); g.arc(PSX + Math.cos(facing) * 3.5, PSY + Math.sin(facing) * 3.5, 3, 0, 7); g.fill()
                 }
                 else if (car) {
-                    drawCar(PSX, PSY, car.ang, car.mkey ? '#f472b6' : (godT > 0 && Math.sin(t * 15) > 0 ? '#ffffff' : '#ffd166'), false, car, night, true);
+                    drawCar(PSX, PSY, car.ang, car.mkey ? '#f472b6' : (godT > 0 && Math.sin(t * 15) > 0 ? '#ffffff' : '#ffd166'), false, null, night, true);
                 }
             }
 
@@ -3590,7 +3255,6 @@
                     g.fillRect(x, y, BS, BS);
                     g.strokeStyle = 'rgba(255,255,255,.08)'; g.lineWidth = 1;
                     g.strokeRect(x + .5, y + .5, BS - 1, BS - 1);
-                    if (lm.blueprint) drawBlueprint(x + BS / 2, y + BS / 2, BS - 10, lm.blueprint, col);
                     if (lm.glyph) drawGlyph(x + BS / 2, y + BS / 2 + 2, BS - 16, lm.glyph, col, 2)
                 }
                 else if (lm.glyph && !['park', 'farm', 'plaza'].includes(lm.style)) drawGlyph(x + BS / 2, y + BS / 2 + 2, 104, lm.glyph, col, true)
@@ -3626,7 +3290,6 @@
                     g.strokeStyle = 'rgba(255,255,255,.10)'; g.lineWidth = 2; g.strokeRect(x + 1, y + 1, BS - 2, BS - 2);
                     g.fillStyle = 'rgba(255,255,255,.06)'; g.fillRect(x, y, BS, 4); g.fillRect(x, y, 4, BS);
                     g.fillStyle = 'rgba(0,0,0,.20)'; g.fillRect(x + BS - 8, y + 8, 6, BS - 16); g.fillRect(x + 8, y + BS - 8, BS - 16, 6);
-                    if (lm.blueprint) drawBlueprint(x + BS / 2, y + BS / 2, BS - 20, lm.blueprint, col);
                     if (lm.glyph) drawGlyph(x + BS / 2, y + BS / 2 + 3, BS - 28, lm.glyph, col)
                 }
                 else if (lm.style === 'billboard') {
@@ -3664,15 +3327,8 @@
 
         function drawCar(x, y, ang, col, cop, ent, night, isPlayer) {
             const kind = ent && ent.kind || 'car';
-            if(ent && ent.air && (ent.alt||0)>0){g.save();g.globalAlpha=.18+.18*(1-(ent.alt||0));g.fillStyle='#000';g.beginPath();g.ellipse(x+18*(ent.alt||0),y+22*(ent.alt||0),28,12,ang,0,7);g.fill();g.restore()}
-            g.save(); g.translate(x, y); g.rotate(ang); if(ent&&ent.air)g.scale(1+(ent.alt||0)*.18,1+(ent.alt||0)*.18);
-            if (kind === 'plane') {
-                g.fillStyle=col;g.fillRect(-4,-28,8,56);g.fillRect(-32,-5,64,10);g.fillRect(-15,18,30,6);g.fillStyle='rgba(255,255,255,.35)';g.fillRect(-2,-24,4,12)
-            } else if (kind === 'helicopter') {
-                g.fillStyle=col;g.beginPath();g.ellipse(0,0,18,10,0,0,7);g.fill();g.fillRect(-28,-2,26,4);g.strokeStyle='rgba(255,255,255,.45)';g.lineWidth=3;g.beginPath();g.moveTo(-28,-18);g.lineTo(28,18);g.moveTo(-28,18);g.lineTo(28,-18);g.stroke()
-            } else if (kind === 'drone') {
-                g.fillStyle=col;g.fillRect(-7,-7,14,14);g.strokeStyle=col;g.lineWidth=3;for(const a of [[-18,-18],[18,-18],[-18,18],[18,18]]){g.beginPath();g.moveTo(0,0);g.lineTo(a[0],a[1]);g.stroke();g.beginPath();g.arc(a[0],a[1],6,0,7);g.stroke()}
-            } else if (kind === 'bike') {
+            g.save(); g.translate(x, y); g.rotate(ang);
+            if (kind === 'bike') {
                 g.fillStyle = col; g.fillRect(-16, -4, 32, 8);
                 g.fillStyle = '#111827'; g.beginPath(); g.arc(-12, 0, 5, 0, 7); g.arc(12, 0, 5, 0, 7); g.fill();
             } else if (kind === 'tank') {
@@ -3682,8 +3338,8 @@
                 g.fillStyle = col; g.fillRect(-2, -4, 34, 8);
                 g.strokeStyle = 'rgba(0,0,0,.55)'; g.strokeRect(-23, -12, 46, 24);
             } else {
-                const L = kind === 'bus' || kind==='truck' ? 56 : kind === 'van' || kind === 'armored' || kind==='limo' ? 48 : kind === 'sports' ? 44 : 40;
-                const HH = kind === 'bus' || kind==='truck' ? 14 : kind === 'armored' ? 13 : 11;
+                const L = kind === 'bus' ? 56 : kind === 'van' || kind === 'armored' ? 48 : kind === 'sports' ? 44 : 40;
+                const HH = kind === 'bus' ? 14 : kind === 'armored' ? 13 : 11;
                 g.fillStyle = col; g.fillRect(-L / 2, -HH, L, HH * 2);
                 g.fillStyle = 'rgba(255,255,255,.14)'; g.fillRect(-L / 2, -HH, L, 5);
                 g.fillStyle = 'rgba(0,0,0,.35)'; g.fillRect(2, -8, Math.min(14, L * .24), 16);
