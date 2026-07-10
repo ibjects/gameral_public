@@ -7,14 +7,16 @@
     <title>Blocktown - The Endless AI City</title>
     <style>
         :root {
-            --bg-color: #1F2229;
-            --panel-bg: #15171c;
-            --text-main: #e7e9ee;
-            --text-muted: #8b8fa3;
+            --bg-color: #0a0c10;
+            --panel-bg: rgba(20, 22, 29, 0.6);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
             --accent: #ffd166;
-            --accent-glow: rgba(255, 209, 102, 0.2);
-            --road-color: #22252c;
-            --road-lines: rgba(255, 220, 120, 0.28);
+            --accent-glow: rgba(255, 209, 102, 0.3);
+            --accent-sec: #4ade80;
+            --accent-sec-glow: rgba(74, 222, 128, 0.3);
+            --road-color: #1a1d24;
+            --road-lines: rgba(255, 220, 120, 0.15);
             --green-zone: #233327;
         }
 
@@ -28,65 +30,74 @@
             padding: 0;
             background-color: var(--bg-color);
             color: var(--text-main);
-            font-family: ui-monospace, Menlo, Consolas, monospace;
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             line-height: 1.6;
-            /* Infinite City Grid Background */
+            overflow-x: hidden;
+        }
+
+        /* Infinite City Grid Background */
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
             background-image:
                 linear-gradient(var(--road-lines) 2px, transparent 2px),
                 linear-gradient(90deg, var(--road-lines) 2px, transparent 2px);
             background-size: 260px 260px;
             background-position: center top;
+            z-index: -2;
+            opacity: 0.6;
+            transform: perspective(1000px) rotateX(45deg) scale(2) translateY(-200px);
+            animation: gridMove 20s linear infinite;
         }
 
-        /* Overlay to fade the grid into the dark background */
+        @keyframes gridMove {
+            0% {
+                background-position: center 0;
+            }
+
+            100% {
+                background-position: center 260px;
+            }
+        }
+
+        /* Gradient Overlay to fade grid smoothly */
         .overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: radial-gradient(circle at center, transparent 0%, var(--bg-color) 80%);
+            background: radial-gradient(circle at 50% 30%, transparent 0%, var(--bg-color) 70%);
             z-index: -1;
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1100px;
             margin: 0 auto;
             padding: 4rem 2rem;
             position: relative;
             z-index: 10;
         }
 
+        /* --- HERO SECTION --- */
         header {
             text-align: center;
-            margin-bottom: 4rem;
-        }
-
-        h1 {
-            font-size: 4rem;
-            color: var(--accent);
-            text-shadow: 0 4px 12px var(--accent-glow);
-            margin: 0;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-        }
-
-        .tagline {
-            color: var(--text-muted);
-            font-size: 1.2rem;
-            margin-top: 0.5rem;
+            margin-bottom: 6rem;
+            padding-top: 2rem;
         }
 
         .coin-shine {
             display: inline-block;
             position: relative;
             overflow: hidden;
-            width: 180px;
-            height: 180px;
-            border-radius: 60%;
-            /* margin-bottom: 6px; */
-            /* background: transparent; */
-            box-shadow: 0 0 6px rgba(255, 209, 102, 0.14);
+            width: 160px;
+            height: 160px;
+            border-radius: 50%;
+            box-shadow: 0 0 40px rgba(255, 209, 102, 0.15);
+            margin-bottom: 1.5rem;
         }
 
         .coin-shine img {
@@ -103,86 +114,174 @@
             border-radius: inherit;
             background: linear-gradient(115deg,
                     transparent 35%,
-                    rgba(255, 255, 255, 0.08) 43%,
-                    rgba(255, 247, 190, 0.72) 50%,
-                    rgba(255, 255, 255, 0.16) 57%,
+                    rgba(255, 255, 255, 0.1) 43%,
+                    rgba(255, 247, 190, 0.6) 50%,
+                    rgba(255, 255, 255, 0.2) 57%,
                     transparent 65%);
             transform: translateX(-120%) skewX(-18deg);
-            animation: coinSweep 4.8s ease-in-out infinite;
-            pointer-events: none;
+            animation: coinSweep 4s ease-in-out infinite;
         }
 
         @keyframes coinSweep {
 
             0%,
-            58% {
+            60% {
                 transform: translateX(-120%) skewX(-18deg);
                 opacity: 0;
             }
 
-            63% {
+            65% {
                 opacity: 1;
             }
 
-            78% {
+            80% {
                 transform: translateX(120%) skewX(-18deg);
                 opacity: 1;
             }
 
-            84%,
+            85%,
             100% {
                 transform: translateX(120%) skewX(-18deg);
                 opacity: 0;
             }
         }
 
-        @media (prefers-reduced-motion: reduce) {
-            .coin-shine::after {
-                animation: none;
-                opacity: 0;
-            }
+        h1 {
+            font-size: 4.5rem;
+            color: #fff;
+            margin: 0;
+            letter-spacing: -0.02em;
+            font-weight: 800;
+        }
+
+        h1 span {
+            color: var(--accent);
+            text-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .tagline {
+            color: var(--text-muted);
+            font-size: 1.25rem;
+            margin-top: 1rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        /* --- BUTTONS --- */
+        .btn-group {
+            display: flex;
+            gap: 1.5rem;
+            justify-content: center;
+            margin-top: 3rem;
+            flex-wrap: wrap;
         }
 
         .btn {
-            display: inline-block;
-            background: rgba(255, 209, 102, 0.13);
-            border: 2px solid var(--accent);
-            color: var(--accent);
-            padding: 16px 32px;
-            font-family: inherit;
-            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px 36px;
+            font-family: ui-monospace, Menlo, monospace;
+            font-weight: 700;
             font-size: 1.1rem;
             text-decoration: none;
             letter-spacing: 0.1em;
-            margin-top: 2rem;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
         }
 
-        .btn:hover {
-            background: rgba(255, 209, 102, 0.3);
-            transform: scale(1.05);
+        .btn-primary {
+            background: rgba(255, 209, 102, 0.1);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            box-shadow: 0 0 20px var(--accent-glow);
         }
 
+        .btn-primary:hover {
+            background: var(--accent);
+            color: var(--bg-color);
+            box-shadow: 0 0 30px var(--accent-glow);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid var(--accent-sec);
+            color: var(--accent-sec);
+            box-shadow: 0 0 20px var(--accent-sec-glow);
+        }
+
+        .btn-secondary:hover {
+            background: var(--accent-sec);
+            color: var(--bg-color);
+            box-shadow: 0 0 30px var(--accent-sec-glow);
+            transform: translateY(-2px);
+        }
+
+        /* --- PANELS (Glassmorphism) --- */
         .panel {
             background: var(--panel-bg);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            padding: 2.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 3rem;
             margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .panel-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
         }
 
         .panel h2 {
-            color: var(--accent);
-            border-bottom: 1px dashed var(--road-lines);
-            padding-bottom: 0.5rem;
+            color: #fff;
+            font-size: 1.8rem;
             margin-top: 0;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .panel h2::before {
+            content: '';
+            display: block;
+            width: 12px;
+            height: 12px;
+            background: var(--accent);
+            border-radius: 2px;
+            box-shadow: 0 0 10px var(--accent);
+        }
+
+        .panel p,
+        .panel li {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .panel a {
+            color: var(--accent);
+            text-decoration: none;
+            border-bottom: 1px dashed var(--accent);
+            transition: color 0.2s;
+        }
+
+        .panel a:hover {
+            color: #fff;
+            border-bottom-color: #fff;
         }
 
         /* --- THE BLOCK THEORY VISUALIZER --- */
-        .vision-grid {
+        .vision-flex {
             display: flex;
-            gap: 2rem;
+            gap: 4rem;
             align-items: center;
             flex-wrap: wrap;
         }
@@ -196,18 +295,22 @@
             width: 260px;
             height: 260px;
             background-color: var(--road-color);
-            border: 2px dashed var(--road-lines);
+            border: 2px dashed rgba(255, 220, 120, 0.4);
             position: relative;
             margin: 0 auto;
+            border-radius: 4px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
         .diagram-road-label {
             position: absolute;
-            color: var(--road-lines);
+            color: rgba(255, 220, 120, 0.6);
+            font-family: ui-monospace, monospace;
             font-size: 10px;
             text-align: center;
             width: 100%;
             top: 15px;
+            letter-spacing: 2px;
         }
 
         .inner-zone {
@@ -224,74 +327,140 @@
             text-align: center;
             padding: 1rem;
             font-size: 0.8rem;
-            color: rgba(255, 255, 255, 0.7);
+            color: rgba(255, 255, 255, 0.8);
+            font-family: ui-monospace, monospace;
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
         }
 
         .measurement {
             position: absolute;
+            font-family: ui-monospace, monospace;
             font-size: 10px;
             color: var(--text-muted);
         }
 
         .m-width {
-            bottom: -20px;
+            bottom: -25px;
             left: 0;
             width: 100%;
             text-align: center;
         }
 
         .m-inner {
-            top: -20px;
+            top: -25px;
             left: 0;
             width: 100%;
             text-align: center;
-            color: #4ade80;
+            color: var(--accent-sec);
+        }
+
+        /* --- FEATURE CARDS (COMING SOON) --- */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .feature-card {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: 12px;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.03);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .feature-card h3 {
+            color: var(--accent-sec);
+            margin-top: 0;
+            font-size: 1.2rem;
+            font-family: ui-monospace, monospace;
+        }
+
+        .feature-card p {
+            font-size: 1rem;
+            margin-bottom: 0;
         }
 
         /* --- TABLES FOR CONTROLS --- */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 1rem;
+            font-family: ui-monospace, monospace;
         }
 
         th,
         td {
             text-align: left;
-            padding: 12px;
+            padding: 16px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.05);
         }
 
         th {
-            color: var(--text-muted);
+            color: #fff;
             font-size: 0.9rem;
             text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        td {
+            color: var(--text-muted);
         }
 
         kbd {
-            background: #2a2d35;
+            background: #1e212b;
             border: 1px solid #3e424f;
-            border-radius: 4px;
-            padding: 2px 6px;
+            border-radius: 6px;
+            padding: 4px 8px;
             color: var(--accent);
             font-size: 0.9rem;
+            box-shadow: 0 2px 0 #000;
         }
 
-        a {
-            color: var(--accent);
-            text-decoration: none;
-            border-bottom: 1px dotted var(--accent);
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            color: var(--text-muted);
+            font-family: ui-monospace, monospace;
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 10;
         }
 
-        a:hover {
-            color: #fff;
-            border-bottom: 1px solid #fff;
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 3rem;
+            }
+
+            .panel-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .vision-flex {
+                flex-direction: column;
+            }
+
+            .btn-group {
+                flex-direction: column;
+                padding: 0 2rem;
+            }
+
+            .btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
 
 <body>
 
+    <div class="grid-bg"></div>
     <div class="overlay"></div>
 
     <div class="container">
@@ -299,14 +468,67 @@
             <span class="coin-shine">
                 <img src="blocktown-badge.png" alt="Blocktown">
             </span>
-            <!-- <h1>BLOCKTOWN</h1> -->
-            <div class="tagline">AI controlled world, mission and storyline.</div>
-            <a href="index.html" class="btn">PLAY NOW</a>
+            <h1>Block<span>town</span></h1>
+            <div class="tagline">An infinite procedural city where an AI Director controls the world, the missions, and
+                the narrative.</div>
+
+            <div class="btn-group">
+                <a href="index.html" class="btn btn-primary">🎮 PLAY SAGA</a>
+                <a href="townbuilder.html" class="btn btn-secondary">🏗️ TOWN BUILDER</a>
+            </div>
         </header>
+
+        <div class="panel-grid">
+            <div class="panel" style="margin-bottom: 0;">
+                <h2>Controls</h2>
+                <p>You can play offline with the built-in procedural engine, or connect an AI Director to weave a
+                    never-ending narrative saga.</p>
+                <table>
+                    <tr>
+                        <th>Action</th>
+                        <th>Input</th>
+                    </tr>
+                    <tr>
+                        <td>Drive / Walk</td>
+                        <td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>Drift</td>
+                        <td><kbd>Space</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>Jack Vehicle</td>
+                        <td><kbd>E</kbd></td>
+                    </tr>
+                    <tr>
+                        <td>Fire Weapon</td>
+                        <td><kbd>F</kbd></td>
+                    </tr>
+                </table>
+                <p style="margin-top: 1.5rem; font-size: 0.85rem;">
+                    * Native touch joysticks available on mobile.
+                </p>
+            </div>
+
+            <div class="panel" id="api-key" style="margin-bottom: 0;">
+                <h2>The AI Director</h2>
+                <p>To experience the true game, you need a Google Gemini API key. This allows the engine to communicate
+                    directly with the AI to generate missions, shops, dialogue, and city layout in real-time.</p>
+                <ol style="color: var(--text-muted); font-size: 1.05rem; padding-left: 1.2rem;">
+                    <li style="margin-bottom: 10px;">Go to <a href="https://aistudio.google.com/app/apikey"
+                            target="_blank">Google AI Studio</a>.</li>
+                    <li style="margin-bottom: 10px;">Sign in and click <strong>Create API Key</strong>.</li>
+                    <li>Paste the key into the Blocktown main menu when starting a new Saga.</li>
+                </ol>
+                <p style="font-size: 0.85rem; margin-top: 2rem;"><em>Security Note: Your API key is never stored on an
+                        external server. It is saved locally in your browser and sent directly to Google's servers.</em>
+                </p>
+            </div>
+        </div>
 
         <div class="panel">
             <h2>The Vision: The Block Theory</h2>
-            <div class="vision-grid">
+            <div class="vision-flex">
                 <div class="vision-text">
                     <p>Blocktown isn't just a map; it's a precisely defined mathematical grid designed to be the
                         ultimate sandbox for Large Language Models.</p>
@@ -315,11 +537,11 @@
                         that no matter how the AI arranges the city, the streets always connect flawlessly.</p>
                     <p>But the real magic happens in the inner <strong>170x170 pixel core</strong>. This is the seed
                         area. It is a blank canvas where the AI Director can spawn procedurally generated skyscrapers,
-                        brutalist parking lots, lush parks, or custom narrative landmarks. It knows exactly what fits,
-                        who can walk over it, and where the shadows fall.</p>
+                        brutalist parking lots, lush parks, or custom narrative landmarks using raw HTML and SVG
+                        injections.</p>
                 </div>
 
-                <div style="padding: 20px;">
+                <div style="padding: 20px; width: 100%; max-width: 300px;">
                     <div class="block-diagram">
                         <div class="diagram-road-label">45px ROAD MARGIN</div>
                         <div class="inner-zone">
@@ -332,62 +554,48 @@
             </div>
         </div>
 
-        <div class="panel">
-            <h2>How to Play</h2>
-            <p>You can play offline with the built-in procedural engine, or connect an AI Director to weave a
-                never-ending narrative saga around your actions.</p>
 
-            <table>
-                <tr>
-                    <th>Action</th>
-                    <th>Keyboard</th>
-                </tr>
-                <tr>
-                    <td>Move / Drive</td>
-                    <td><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or <kbd>Arrows</kbd></td>
-                </tr>
-                <tr>
-                    <td>Handbrake Drift</td>
-                    <td><kbd>Space</kbd></td>
-                </tr>
-                <tr>
-                    <td>Enter / Exit Vehicle</td>
-                    <td><kbd>E</kbd></td>
-                </tr>
-                <tr>
-                    <td>Fire Weapon</td>
-                    <td><kbd>F</kbd></td>
-                </tr>
-            </table>
-            <p style="margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
-                * Touch controls are also supported natively via on-screen joysticks when playing on mobile devices.
-            </p>
+
+        <!-- COMING SOON SECTION -->
+        <div class="panel" style="margin-top: 2rem;">
+            <h2 style="color: #fff;"><span style="color: var(--accent-sec);">//</span> The Future of Blocktown</h2>
+            <p>Blocktown is an evolving experiment in AI-driven game design. Here is what we are exploring for future
+                updates:</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>Community Snippet Market</h3>
+                    <p>Build custom HTML/SVG blocks in the Town Builder, save them as Snippets, and share them with the
+                        community. The AI Director will dynamically pull highly-rated community blocks into your live
+                        game.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Faction Wars & Territory</h3>
+                    <p>The AI will manage long-term territorial control between distinct gangs. Missions you accept will
+                        permanently alter neighborhood borders, gang colors, and street hostility levels.</p>
+                </div>
+                <div class="feature-card">
+                    <h3>Interiors & Layered Grids</h3>
+                    <p>Expanding the 170x170 canvas to support seamlessly walking into buildings. The AI will
+                        procedurally generate interior layouts, vaults, and safehouses on a secondary rendering layer.
+                    </p>
+                </div>
+                <div class="feature-card">
+                    <h3>Multi-Agent Director</h3>
+                    <p>Instead of a single AI prompt, splitting the workload. One lightweight model handles real-time
+                        traffic and weather moods, while a heavy reasoning model (like Gemini Pro) architects the grand
+                        storyline.</p>
+                </div>
+            </div>
         </div>
 
-        <div class="panel" id="api-key">
-            <h2>Connecting the AI Director</h2>
-            <p>To experience the "NEW SAGA (AI)" mode, you will need a Google Gemini API key. This allows the game
-                engine to communicate directly with the AI model to generate missions, shops, dialogue, and city layout
-                in real-time.</p>
-            <ul>
-                <li>Head over to <a href="https://aistudio.google.com/app/apikey" target="_blank">Google AI Studio</a>.
-                </li>
-                <li>Sign in and click <strong>Create API Key</strong>.</li>
-                <li>Copy the key and paste it into the Blocktown main menu when starting a new AI Saga.</li>
-            </ul>
-            <p style="font-size: 0.85rem; color: var(--text-muted);"><em>Note: Your API key is never stored on a server.
-                    It is only saved locally in your browser's localStorage and sent directly to Google's servers during
-                    gameplay.</em></p>
-        </div>
     </div>
 
+    <footer>
+        <div>© 2026 <a href="https://gameral.com" target="_blank">Gameral</a> &nbsp;•&nbsp; Created by <a
+                href="https://chaudhrytalha.carrd.co/" target="_blank">Chaudhry Talha</a> &nbsp;•&nbsp; v1.0</div>
+    </footer>
+
 </body>
-
-
-<footer style="text-align:center;padding:0 0 2rem 0;color:var(--text-muted);font-size:0.9rem">
-    <div>© 2026 <a href="https://gameral.com" target="_blank">Gameral</a> • By: <a
-            href="https://chaudhrytalha.carrd.co/" target="_blank">Chaudhry Talha</a> • v0.3.1 </div>
-    <!-- <div>Version 0.3.1</div> -->
-</footer>
 
 </html>
