@@ -155,10 +155,14 @@
             position: relative;
             background-color: #0c0e12;
             overflow: hidden;
+            cursor: crosshair;
+        }
+
+        .map-side.pan-mode {
             cursor: grab;
         }
 
-        .map-side:active {
+        .map-side.pan-mode:active {
             cursor: grabbing;
         }
 
@@ -166,11 +170,10 @@
         #map-container {
             position: absolute;
             transform-origin: 0 0;
-            /* Strict top-left origin for accurate pointer-zoom math */
             background-size: var(--tile-size) var(--tile-size);
             background-image:
-                linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+                linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
         }
 
         /* --- CITY BLOCKS --- */
@@ -181,6 +184,16 @@
             background-color: var(--road-color);
             border: 2px dashed var(--road-lines);
             box-sizing: border-box;
+        }
+
+        /* Hover Preview Ghosting */
+        .hover-preview {
+            background-color: rgba(255, 209, 102, 0.1);
+            border: 2px solid var(--accent);
+            pointer-events: none;
+            z-index: 100;
+            transition: left 0.05s linear, top 0.05s linear;
+            display: none;
         }
 
         /* Inner Playable Area (Strictly 170x170) */
@@ -232,16 +245,10 @@
 
         /* STRICT 170x170 Custom Wrapper */
         .custom-wrapper {
-            width: 170px;
-            height: 170px;
-            background: rgba(74, 222, 128, 0.05);
-            border: 2px solid #4ade80;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
-            /* Prevent user code from breaking grid */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
+            display: block;
             position: relative;
         }
 
@@ -261,15 +268,8 @@
 
     <div class="layout">
         <div class="controls-side">
-            <h1>Town Builder</h1>
-            <div class="toolbar" id="toolbar">
-                <button class="btn active" data-tool="building">🏢 Building</button>
-                <button class="btn" data-tool="park">🌳 Park</button>
-                <button class="btn" data-tool="parking">🅿️ Parking</button>
-                <button class="btn" data-tool="custom">⚡ Custom (HTML)</button>
-                <button class="btn" data-tool="eraser" style="border-color: #f87171; color: #f87171;">🗑️
-                    Eraser</button>
-            </div>
+            <h1>Town Builder <span style="font-size: 0.4em;">v0.1</span></h1>
+            <div class="toolbar" id="toolbar"></div>
 
             <div class="custom-code-area" id="custom-area">
                 <label>
@@ -299,7 +299,9 @@
         </div>
 
         <div class="map-side" id="map-viewport">
-            <div id="map-container" style="width: 10000px; height: 10000px;"></div>
+            <div id="map-container" style="width: 10000px; height: 10000px;">
+                <div id="hover-preview" class="city-block hover-preview"></div>
+            </div>
 
             <div class="map-ui">
                 <button class="btn" id="center-map" title="Center on starting block">🎯 Center</button>
@@ -309,77 +311,171 @@
         </div>
     </div>
 
+    <script src="blocks/block-snippets.js"></script>
     <script>
         const mapContainer = document.getElementById('map-container');
         const viewport = document.getElementById('map-viewport');
+        const toolbar = document.getElementById('toolbar');
+        const customArea = document.getElementById('custom-area');
         const customCodeInput = document.getElementById('custom-code');
         const snippetSelect = document.getElementById('snippet-select');
+        const hoverPreview = document.getElementById('hover-preview');
+
         const tileSize = 260;
-        const bpal = ['#2b3242', '#343049', '#3a2f3b', '#2e3a3a', '#373430', '#303648'];
+        const blockSnippets = window.BLOCK_SNIPPETS || {};
+        const LOCAL_PREFIX = 'local:';
+        const STORE_KEY = 'bt_citybuilder_snippets';
 
         // --- STATE ---
-        let currentTool = 'building';
+        let currentTool = Object.keys(blockSnippets)[0] || 'custom';
         let scale = 1;
         let panX = 0;
         let panY = 0;
         let isDragging = false;
+        let actualDragOccurred = false; // Tracks if the mouse actually moved during a click
         let startX, startY;
-        const blocks = {}; // Store placed blocks by "x,y" 
-        const mapCenterGrid = Math.floor(10000 / 2 / tileSize); // Grid index for absolute center
+        const blocks = {};
+        const mapCenterGrid = Math.floor(10000 / 2 / tileSize);
 
-        // --- LOCAL STORAGE SNIPPETS ---
-        const STORE_KEY = 'bt_citybuilder_snippets';
-        let snippets = JSON.parse(localStorage.getItem(STORE_KEY)) || {
-            "Default Ad": `<div style="background: #f472b6; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center;">\n  <b style="color:#000;">AD SPACE<br>OR CSS</b>\n</div>`,
-            "Pool": `<div style="background: #0ea5e9; width: 100%; height: 100%; border: 10px solid #e2e8f0; border-radius: 12px; box-sizing: border-box;"></div>`
-        };
+        // --- BLOCK SNIPPETS ---
+        let savedSnippets = JSON.parse(localStorage.getItem(STORE_KEY)) || {};
+
+        function getSavedSnippetName(key) {
+            return key.slice(LOCAL_PREFIX.length);
+        }
+
+        function getSnippet(key) {
+            if (key.startsWith(LOCAL_PREFIX)) {
+                const name = getSavedSnippetName(key);
+                return { name, icon: '◆', html: savedSnippets[name], editable: true, local: true };
+            }
+            return blockSnippets[key];
+        }
+
+        function getSnippetEntries() {
+            const builtIns = Object.entries(blockSnippets);
+            const saved = Object.keys(savedSnippets).map(name => [
+                LOCAL_PREFIX + name,
+                { name, icon: '◆', html: savedSnippets[name], editable: true, local: true }
+            ]);
+            return builtIns.concat(saved);
+        }
+
+        function snippetLabel(snippet) {
+            return `${snippet.icon ? snippet.icon + ' ' : ''}${snippet.name || 'Untitled'}`;
+        }
+
+        function renderToolbar() {
+            toolbar.innerHTML = '';
+
+            // Inject dedicated Pan Tool
+            const panBtn = document.createElement('button');
+            panBtn.className = 'btn';
+            panBtn.dataset.tool = 'pan';
+            panBtn.textContent = '🖐️ Pan / View';
+            panBtn.style.borderColor = '#60a5fa';
+            panBtn.style.color = '#60a5fa';
+            toolbar.appendChild(panBtn);
+
+            getSnippetEntries().forEach(([key, snippet]) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.dataset.tool = key;
+                btn.textContent = snippetLabel(snippet);
+                toolbar.appendChild(btn);
+            });
+
+            const eraser = document.createElement('button');
+            eraser.className = 'btn';
+            eraser.dataset.tool = 'eraser';
+            eraser.textContent = '🗑️ Eraser';
+            eraser.style.borderColor = '#f87171';
+            eraser.style.color = '#f87171';
+            toolbar.appendChild(eraser);
+        }
 
         function renderSnippets() {
             snippetSelect.innerHTML = '';
-            for (let key in snippets) {
-                let opt = document.createElement('option');
+            getSnippetEntries().forEach(([key, snippet]) => {
+                if (typeof snippet.html !== 'string' && !snippet.editable) return;
+                const opt = document.createElement('option');
                 opt.value = key;
-                opt.textContent = key;
+                opt.textContent = snippet.name || key;
                 snippetSelect.appendChild(opt);
+            });
+        }
+
+        function selectTool(tool) {
+            currentTool = tool;
+            document.querySelectorAll('.toolbar .btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tool === tool);
+            });
+
+            const snippet = getSnippet(tool);
+            const canEditHtml = !!snippet && (typeof snippet.html === 'string' || snippet.editable);
+            customArea.style.display = canEditHtml ? 'flex' : 'none';
+
+            if (canEditHtml) {
+                if (typeof snippet.html === 'string') customCodeInput.value = snippet.html;
+                snippetSelect.value = tool;
+            }
+
+            // Adjust viewport cursors
+            if (tool === 'pan') {
+                viewport.classList.add('pan-mode');
+                hoverPreview.style.display = 'none';
+            } else {
+                viewport.classList.remove('pan-mode');
             }
         }
 
         snippetSelect.addEventListener('change', (e) => {
-            customCodeInput.value = snippets[e.target.value];
+            selectTool(e.target.value);
         });
 
         document.getElementById('save-snippet-btn').addEventListener('click', () => {
             let name = prompt("Enter a name to save this snippet:");
             if (!name) return;
-            snippets[name] = customCodeInput.value;
-            localStorage.setItem(STORE_KEY, JSON.stringify(snippets));
+            savedSnippets[name] = customCodeInput.value;
+            localStorage.setItem(STORE_KEY, JSON.stringify(savedSnippets));
+            renderToolbar();
             renderSnippets();
-            snippetSelect.value = name;
+            selectTool(LOCAL_PREFIX + name);
         });
 
         document.getElementById('del-snippet-btn').addEventListener('click', () => {
             let current = snippetSelect.value;
-            if (Object.keys(snippets).length <= 1) return alert("Keep at least one snippet.");
-            if (confirm(`Delete snippet '${current}'?`)) {
-                delete snippets[current];
-                localStorage.setItem(STORE_KEY, JSON.stringify(snippets));
+            if (!current.startsWith(LOCAL_PREFIX)) return alert("Edit block-snippets.js to remove built-in snippets.");
+            const name = getSavedSnippetName(current);
+            if (confirm(`Delete snippet '${name}' and remove all of its blocks from the map?`)) {
+
+                // Sweep and purge orphaned blocks
+                Object.keys(blocks).forEach(key => {
+                    if (blocks[key].dataset.type === current) {
+                        blocks[key].remove();
+                        delete blocks[key];
+                    }
+                });
+
+                delete savedSnippets[name];
+                localStorage.setItem(STORE_KEY, JSON.stringify(savedSnippets));
+
+                renderToolbar();
                 renderSnippets();
-                customCodeInput.value = snippets[snippetSelect.value];
+                selectTool(Object.keys(blockSnippets)[0] || snippetSelect.value);
             }
         });
 
+        renderToolbar();
         renderSnippets();
-        customCodeInput.value = snippets[snippetSelect.value]; // Load initial
+        selectTool(currentTool);
 
 
         // --- TOOLBAR LOGIC ---
-        document.querySelectorAll('.toolbar .btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                document.querySelectorAll('.toolbar .btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-                currentTool = e.target.getAttribute('data-tool');
-                document.getElementById('custom-area').style.display = (currentTool === 'custom') ? 'flex' : 'none';
-            });
+        toolbar.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn');
+            if (!btn) return;
+            selectTool(btn.dataset.tool);
         });
 
         // --- PAN & POINTER-CENTRIC ZOOM LOGIC ---
@@ -392,7 +488,6 @@
             let targetGridX = mapCenterGrid;
             let targetGridY = mapCenterGrid;
 
-            // Focus on the very first block placed, or default center
             if (keys.length > 0) {
                 const firstBlock = keys[0].split(',');
                 targetGridX = parseInt(firstBlock[0]);
@@ -405,51 +500,67 @@
             const vW = viewport.clientWidth;
             const vH = viewport.clientHeight;
 
-            // Calculate pan to put target pixel directly in viewport center
             panX = (vW / 2) - (targetPx * scale);
             panY = (vH / 2) - (targetPy * scale);
             updateTransform();
         }
 
         viewport.addEventListener('mousedown', e => {
-            // Prevent dragging if clicking UI buttons
             if (e.target.closest('.map-ui')) return;
             isDragging = true;
+            actualDragOccurred = false;
             startX = e.clientX - panX;
             startY = e.clientY - panY;
-            viewport.style.cursor = 'grabbing';
+            hoverPreview.style.display = 'none';
         });
 
         window.addEventListener('mousemove', e => {
-            if (!isDragging) return;
-            panX = e.clientX - startX;
-            panY = e.clientY - startY;
-            updateTransform();
+            // Drag Logic
+            if (isDragging) {
+                // Determine if we actually moved enough to call it a "drag" rather than a twitchy click
+                if (Math.abs(e.clientX - startX - panX) > 3 || Math.abs(e.clientY - startY - panY) > 3) {
+                    actualDragOccurred = true;
+                }
+                panX = e.clientX - startX;
+                panY = e.clientY - startY;
+                updateTransform();
+                return;
+            }
+
+            // Hover Preview Logic (Only show if not panning/dragging)
+            if (currentTool !== 'pan' && currentTool !== 'eraser') {
+                const rect = viewport.getBoundingClientRect();
+                const mouseX = (e.clientX - rect.left - panX) / scale;
+                const mouseY = (e.clientY - rect.top - panY) / scale;
+
+                const gridX = Math.floor(mouseX / tileSize);
+                const gridY = Math.floor(mouseY / tileSize);
+
+                hoverPreview.style.display = 'block';
+                hoverPreview.style.left = `${gridX * tileSize}px`;
+                hoverPreview.style.top = `${gridY * tileSize}px`;
+            } else {
+                hoverPreview.style.display = 'none';
+            }
         });
 
         window.addEventListener('mouseup', () => {
             isDragging = false;
-            viewport.style.cursor = 'grab';
         });
 
         // Pointer-centric smooth scroll zoom
         viewport.addEventListener('wheel', e => {
             e.preventDefault();
-
-            // Get mouse position relative to viewport
             const rect = viewport.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            // Determine zoom direction and intensity
             const zoomIntensity = 0.002;
             const wheel = e.deltaY < 0 ? 1 : -1;
             const zoomFactor = Math.exp(wheel * zoomIntensity * Math.abs(e.deltaY));
 
-            // Limit scale between 0.15 (far out) and 3 (close up)
             const newScale = Math.max(0.15, Math.min(scale * zoomFactor, 3));
 
-            // Offset the pan to keep the point under the mouse stationary
             panX = mouseX - (mouseX - panX) * (newScale / scale);
             panY = mouseY - (mouseY - panY) * (newScale / scale);
             scale = newScale;
@@ -464,11 +575,9 @@
         // --- BUILDING LOGIC ---
         viewport.addEventListener('click', e => {
             if (e.target.closest('.map-ui')) return;
+            if (currentTool === 'pan') return; // Safe pan mode
+            if (actualDragOccurred) return; // Prevent placement if the user was dragging the map
 
-            // Don't place a block if we were just dragging
-            if (Math.abs(e.clientX - startX - panX) > 5 || Math.abs(e.clientY - startY - panY) > 5) return;
-
-            // Calculate grid coordinates accounting for scale and pan offsets
             const rect = viewport.getBoundingClientRect();
             const clickX = (e.clientX - rect.left - panX) / scale;
             const clickY = (e.clientY - rect.top - panY) / scale;
@@ -491,41 +600,22 @@
         });
 
         function createBlock(x, y, type) {
+            const snippet = getSnippet(type);
+            if (!snippet) return;
+
             const block = document.createElement('div');
             block.className = 'city-block';
             block.style.left = `${x * tileSize}px`;
             block.style.top = `${y * tileSize}px`;
+            block.dataset.type = type; // Tag it so we can delete it later if the snippet is trashed
 
             const inner = document.createElement('div');
             inner.className = 'inner-block';
 
-            if (type === 'building') {
-                const roof = document.createElement('div');
-                roof.className = 'bldg-roof';
-                roof.style.backgroundColor = bpal[Math.floor(Math.random() * bpal.length)];
-                inner.appendChild(roof);
+            if (typeof snippet.create === 'function') {
+                inner.appendChild(snippet.create({ tileSize, innerSize: 170 }));
             }
-            else if (type === 'park') {
-                const grass = document.createElement('div');
-                grass.className = 'park-grass';
-                for (let i = 0; i < 5; i++) {
-                    const tree = document.createElement('div');
-                    tree.className = 'park-tree';
-                    const r = 10 + Math.random() * 8;
-                    tree.style.width = `${r * 2}px`;
-                    tree.style.height = `${r * 2}px`;
-                    tree.style.left = `${20 + Math.random() * 90}px`;
-                    tree.style.top = `${20 + Math.random() * 90}px`;
-                    grass.appendChild(tree);
-                }
-                inner.appendChild(grass);
-            }
-            else if (type === 'parking') {
-                const parking = document.createElement('div');
-                parking.className = 'parking-lot';
-                inner.appendChild(parking);
-            }
-            else if (type === 'custom') {
+            else if (typeof snippet.html === 'string' || snippet.editable) {
                 const wrapper = document.createElement('div');
                 wrapper.className = 'custom-wrapper';
                 wrapper.innerHTML = customCodeInput.value;
@@ -538,13 +628,10 @@
         }
 
         // --- INITIALIZATION ---
-        // Place the first building in the absolute center
-        createBlock(mapCenterGrid, mapCenterGrid, 'building');
-        // Center the camera on it
+        createBlock(mapCenterGrid, mapCenterGrid, currentTool);
         centerMap();
 
     </script>
-    <script src="blocks/block-snippets.js"></script>
 </body>
 
 </html>

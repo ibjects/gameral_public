@@ -1,8 +1,114 @@
-window.BLOCK_SNIPPETS = {
-  airport: {
-    name: "Airport Pad",
-    tags: ["airport", "escape", "travel"],
-    html: `<div style="width: 170px; height: 170px; overflow: hidden; background: #2f3a3f;">
+(function () {
+  const BPAL = [
+    "#2b3242",
+    "#343049",
+    "#3a2f3b",
+    "#2e3a3a",
+    "#373430",
+    "#303648",
+  ];
+  const rand = (min, max) => Math.random() * (max - min) + min;
+  const pick = (items) => items[Math.floor(Math.random() * items.length)];
+
+  function el(tag, className) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    return node;
+  }
+
+  function createBuilding() {
+    const roof = el("div", "bldg-roof");
+    roof.style.backgroundColor = pick(BPAL);
+    return roof;
+  }
+
+  function createPark() {
+    const grass = el("div", "park-grass");
+    for (let i = 0; i < 5; i++) {
+      const tree = el("div", "park-tree");
+      const r = rand(10, 18);
+      tree.style.width = `${r * 2}px`;
+      tree.style.height = `${r * 2}px`;
+      tree.style.left = `${20 + Math.random() * 90}px`;
+      tree.style.top = `${20 + Math.random() * 90}px`;
+      grass.appendChild(tree);
+    }
+    return grass;
+  }
+
+  function createParking() {
+    return el("div", "parking-lot");
+  }
+
+  window.BLOCK_SNIPPETS = {
+    building: {
+      name: "Building",
+      icon: "🏢",
+      tags: ["building", "city", "solid"],
+      create: createBuilding,
+      landmark: {
+        style: "custom",
+        walk: false,
+        ground: "paving",
+        roof: "#2b3242",
+        color: "gold",
+      },
+    },
+
+    park: {
+      name: "Park",
+      icon: "🌳",
+      tags: ["park", "green", "walkable"],
+      create: createPark,
+      landmark: {
+        style: "park",
+        walk: true,
+        ground: "grass",
+        color: "green",
+      },
+    },
+
+    parking: {
+      name: "Parking",
+      icon: "🅿️",
+      tags: ["parking", "lot", "cars"],
+      create: createParking,
+      landmark: {
+        style: "lot",
+        walk: true,
+        ground: "asphalt",
+        color: "white",
+        glyph: [
+          { s: "line", x1: 20, y1: 20, x2: 20, y2: 80, c: "#e8e8ee", w2: 3 },
+          { s: "line", x1: 40, y1: 20, x2: 40, y2: 80, c: "#e8e8ee", w2: 3 },
+          { s: "line", x1: 60, y1: 20, x2: 60, y2: 80, c: "#e8e8ee", w2: 3 },
+          { s: "line", x1: 80, y1: 20, x2: 80, y2: 80, c: "#e8e8ee", w2: 3 },
+        ],
+      },
+    },
+
+    custom: {
+      name: "Custom HTML",
+      icon: "⚡",
+      tags: ["custom", "html"],
+      editable: true,
+      html: `<div style="background: #f472b6; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; text-align: center;">
+  <b style="color:#000;">AD SPACE<br>OR CSS</b>
+</div>`,
+      landmark: {
+        style: "custom",
+        walk: false,
+        ground: "paving",
+        roof: "pink",
+        color: "pink",
+      },
+    },
+
+    airport: {
+      name: "Airport Pad",
+      icon: "✈️",
+      tags: ["airport", "escape", "travel"],
+      html: `<div style="width: 170px; height: 170px; overflow: hidden; background: #2f3a3f;">
   <svg
     width="170"
     height="170"
@@ -89,18 +195,19 @@ window.BLOCK_SNIPPETS = {
   </svg>
 </div>`,
 
-    // Canvas/AI version for index.html:
-    landmark: {
-      style: "custom",
-      walk: true,
-      ground: "asphalt",
-      inner: "#0ea5e9",
-      color: "white",
-      glyph: [
-        { s: "rect", x: 12, y: 12, w: 76, h: 76, c: "#e2e8f0", w2: 6 },
-        { s: "line", x1: 25, y1: 50, x2: 75, y2: 50, c: "#e2e8f0", w2: 8 },
-        { s: "line", x1: 50, y1: 25, x2: 50, y2: 75, c: "#e2e8f0", w2: 8 },
-      ],
+      // Canvas/AI version for index.html:
+      landmark: {
+        style: "custom",
+        walk: true,
+        ground: "asphalt",
+        inner: "#0ea5e9",
+        color: "white",
+        glyph: [
+          { s: "rect", x: 12, y: 12, w: 76, h: 76, c: "#e2e8f0", w2: 6 },
+          { s: "line", x1: 25, y1: 50, x2: 75, y2: 50, c: "#e2e8f0", w2: 8 },
+          { s: "line", x1: 50, y1: 25, x2: 50, y2: 75, c: "#e2e8f0", w2: 8 },
+        ],
+      },
     },
-  },
-};
+  };
+})();
